@@ -1,0 +1,12 @@
+---
+description: Conferir no navegador toda mudança visível do editor.
+alwaysApply: true
+---
+
+# Conferir a tela
+
+Depois de mudar preview, layout, fonte, formulário ou rota, abra o app e faça o gesto afetado. Clique, digite ou arraste como quem usa o editor.
+
+- `npx tsc` não substitui essa conferência.
+- O console do Vite não pode ficar com um erro novo. Aviso de `<script>` dentro de componente e chave duplicada no React são falha, não ruído.
+- Se a tela quebrar, corrija antes de seguir para outra mudança.

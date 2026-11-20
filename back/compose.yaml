@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: nshift
+      POSTGRES_PASSWORD: nshift
+      POSTGRES_DB: nshift
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nshift -d nshift"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgres://nshift:nshift@db:5432/nshift
+      PORT: 3000
+      TLS_CERT_PATH: /app/dev-certs/local-ca.crt
+      TLS_KEY_PATH: /app/dev-certs/local-ca.key
+    ports:
+      - "3000:3000"
+    volumes:
+      - ${NSHIFTUI_LOCAL_CERT_DIR:?Run npm run setup:local-https first}:/app/dev-certs:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

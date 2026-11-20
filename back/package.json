@@ -1,0 +1,26 @@
+{
+  "name": "cms-back",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "setup:local-https": "node ./scripts/setup-local-https.mjs"
+  },
+  "dependencies": {
+    "@fastify/cors": "11.1.0",
+    "@fastify/swagger": "9.6.1",
+    "@fastify/swagger-ui": "5.2.4",
+    "fastify": "5.6.2",
+    "postgres": "3.4.7",
+    "rainbow-parser-wasm-node": "https://github.com/NShiftUI-OSS/RainbowParser-Rust/releases/download/v0.1.0-beta.1/rainbow-parser-wasm-node.tgz",
+    "selfsigned": "^2.4.1",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}

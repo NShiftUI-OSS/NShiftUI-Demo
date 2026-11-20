@@ -1,0 +1,40 @@
+## Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+
+## Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+## macOS
+.DS_Store
+**/.DS_Store
+.AppleDouble
+.LSOverride
+._*
+**/._*
+
+## Local environment and certificates
+.env
+.env.*
+!.env.example
+dev-certs/
+local-certs/
+*.key
+*.crt
+*.cer
+*.pem
+*.p12
+*.mobileprovision
+
+## Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.swp
+*.swo

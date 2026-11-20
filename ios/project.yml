@@ -1,0 +1,58 @@
+name: NShiftUI-POC-iOS
+options:
+  bundleIdPrefix: br.ufsc.nshift
+  deploymentTarget:
+    iOS: "15.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    SUPPORTS_MACCATALYST: NO
+    SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+    SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+    CODE_SIGN_STYLE: Automatic
+targets:
+  NShiftUI:
+    type: application
+    platform: iOS
+    sources:
+      - path: NShiftUI
+        excludes:
+          - "**/.gitkeep"
+          - "Resources/Fonts/**"
+      - path: NShiftUI/Resources/Fonts
+        type: folder
+        buildPhase: resources
+      - path: NShiftUI/UI
+        includes:
+          - "**/.gitkeep"
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: br.ufsc.nshift.NShiftUIIOSPOC
+        PRODUCT_NAME: NShiftUI
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: NShiftUI/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+schemes:
+  NShiftUI:
+    build:
+      targets:
+        NShiftUI: all
+    run:
+      config: Debug

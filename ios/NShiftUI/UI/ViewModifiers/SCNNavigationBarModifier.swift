@@ -1,0 +1,291 @@
+import SwiftUI
+import UIKit
+
+struct SCNNavigationBarModifier: ViewModifier {
+    @EnvironmentObject private var theme: SCNTheme
+    @Environment(\.dismiss) private var dismiss
+
+    private let title: String
+    private let size: SCNNavigationBarSize
+    private let leading: SCNNavigationBarLeading
+    private let center: Image?
+    private let trailing: SCNNavigationBarTrailing
+    private let isTranslucent: Bool
+    private let background: Color?
+
+    init(
+        title: String,
+        size: SCNNavigationBarSize,
+        leading: SCNNavigationBarLeading,
+        center: Image? = nil,
+        trailing: SCNNavigationBarTrailing,
+        isTranslucent: Bool,
+        background: Color?
+    ) {
+        self.title = title
+        self.size = size
+        self.leading = leading
+        self.center = center
+        self.trailing = trailing
+        self.isTranslucent = isTranslucent
+        self.background = background
+    }
+
+    init(
+        title: String,
+        size: SCNNavigationBarSize,
+        leading: SCNNavigationBarLeading,
+        center: Image,
+        trailing: SCNNavigationBarTrailing,
+        isTranslucent: Bool,
+        background: Color?
+    ) {
+        self.title = title
+        self.size = size
+        self.leading = leading
+        self.center = center
+        self.trailing = trailing
+        self.isTranslucent = isTranslucent
+        self.background = background
+    }
+
+    func body(content: Content) -> some View {
+        legacy(content)
+    }
+
+    private var titleDisplayMode: NavigationBarItem.TitleDisplayMode {
+        switch size {
+        case .large:
+            return .large
+        case .inline:
+            return .inline
+        }
+    }
+
+    private var showsLeading: Bool {
+        switch leading {
+        case .none:
+            return false
+        case .back, .image, .button:
+            return true
+        }
+    }
+
+    private var showsTrailing: Bool {
+        switch trailing {
+        case .none:
+            return false
+        case .close, .button:
+            return true
+        }
+    }
+}
+
+extension SCNNavigationBarModifier {
+    @ViewBuilder
+    private func legacy(_ content: Content) -> some View {
+        let titled = applyAppearance(
+            content
+                .navigationBarTitleDisplayMode(titleDisplayMode)
+                .navigationTitle(title)
+        )
+        let placed = barItems(titled)
+        if let center {
+            placed.toolbar {
+                ToolbarItem(placement: .principal) {
+                    center
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: theme.spacing.s5, height: theme.spacing.s5)
+                }
+            }
+        } else {
+            placed
+        }
+    }
+
+    @ViewBuilder
+    private func barItems<V: View>(_ view: V) -> some View {
+        if showsLeading && showsTrailing {
+            view.navigationBarItems(
+                leading: leadingControl,
+                trailing: trailingControl
+            )
+        } else if showsLeading {
+            view.navigationBarItems(leading: leadingControl)
+        } else if showsTrailing {
+            view.navigationBarItems(trailing: trailingControl)
+        } else {
+            view
+        }
+    }
+
+    @ViewBuilder
+    private func applyAppearance<V: View>(_ view: V) -> some View {
+        if background != nil || isTranslucent {
+            view.background(
+                SCNNavigationBarAppearance(
+                    isTranslucent: isTranslucent,
+                    background: background
+                )
+            )
+        } else {
+            view
+        }
+    }
+}
+
+private struct SCNNavigationBarAppearance: UIViewControllerRepresentable {
+    let isTranslucent: Bool
+    let background: Color?
+
+    func makeUIViewController(context: Context) -> Controller {
+        Controller()
+    }
+
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.isTranslucent = isTranslucent
+        controller.background = background.map { UIColor($0) }
+        controller.apply()
+    }
+
+    final class Controller: UIViewController {
+        var isTranslucent = false
+        var background: UIColor?
+
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            apply()
+        }
+
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            apply()
+        }
+
+        func apply() {
+            var current: UIViewController? = self
+            var navigationController: UINavigationController?
+            while let controller = current {
+                if let navigation = controller.navigationController {
+                    navigationController = navigation
+                    break
+                }
+                current = controller.parent
+            }
+            guard let navigationController else { return }
+            let bar = navigationController.navigationBar
+            let appearance = UINavigationBarAppearance()
+            if isTranslucent {
+                appearance.configureWithTransparentBackground()
+            } else {
+                appearance.configureWithOpaqueBackground()
+            }
+            if let background {
+                appearance.backgroundColor = background.withAlphaComponent(isTranslucent ? 0.72 : 1)
+            }
+            appearance.titleTextAttributes = [
+                .font: UIFont.systemFont(ofSize: 17, weight: .semibold)
+            ]
+            appearance.largeTitleTextAttributes = [
+                .font: UIFont.systemFont(ofSize: 34, weight: .bold)
+            ]
+            bar.isTranslucent = isTranslucent
+            bar.standardAppearance = appearance
+            bar.scrollEdgeAppearance = appearance
+            bar.compactAppearance = appearance
+        }
+    }
+}
+
+extension SCNNavigationBarModifier {
+    @ViewBuilder
+    private var leadingControl: some View {
+        switch leading {
+        case .none:
+            EmptyView()
+        case .back(let action):
+            barButton(
+                icon: .arrowLeft,
+                action: action ?? { dismiss() }
+            )
+        case .image(let image):
+            image
+                .resizable()
+                .scaledToFill()
+                .frame(
+                    width: theme.spacing.s8,
+                    height: theme.spacing.s8
+                )
+                .clipShape(Circle())
+        case .button(
+            let icon,
+            let action
+        ):
+            barButton(
+                icon: icon,
+                action: action
+            )
+        }
+    }
+}
+
+extension SCNNavigationBarModifier {
+    @ViewBuilder
+    private var trailingControl: some View {
+        switch trailing {
+        case .none:
+            EmptyView()
+        case .close(let action):
+            barButton(
+                icon: .x,
+                action: action ?? { dismiss() }
+            )
+        case .button(
+            let icon,
+            let action
+        ):
+            barButton(
+                icon: icon,
+                action: action
+            )
+        }
+    }
+}
+
+extension SCNNavigationBarModifier {
+    private func barButton(
+        icon: SCNIconName,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            SCNIcon(
+                icon,
+                size: theme.spacing.s5,
+                color: theme.palette.foreground
+            )
+        }
+    }
+}
+
+private struct SCNNavigationBarPreview: View {
+    var body: some View {
+        NavigationView {
+            List {
+                SCNText("Row")
+            }
+            .scnNavigationBar(
+                title: "Navigation",
+                size: .large
+            )
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+    }
+}
+
+#Preview {
+    SCNComponentPreview {
+        SCNNavigationBarPreview()
+    }
+}
