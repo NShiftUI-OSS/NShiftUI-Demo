@@ -120,6 +120,28 @@ export function createUseCases(repos: Repositories) {
         if (!screen) throw new NotFoundError('screen_not_found', 'Tela não existe')
         return repos.screens.versions(id)
       },
+      activate: async (id: string, version: string, revision: number) => {
+        const screen = await repos.screens.findById(id)
+        if (!screen) throw new NotFoundError('screen_not_found', 'Tela não existe')
+        if (screen.revision !== revision) {
+          throw new ConflictError(
+            'revision_conflict',
+            'Alguém publicou esta tela enquanto você editava. Abra o editor para juntar as alterações.',
+          )
+        }
+        const history = await repos.screens.versions(id)
+        if (!history.some((item) => item.version === version)) {
+          throw new NotFoundError('screen_version_not_found', 'Versão não existe')
+        }
+        const row = await repos.screens.activate(id, version, revision)
+        if (!row) {
+          throw new ConflictError(
+            'revision_conflict',
+            'Alguém publicou esta tela enquanto você editava. Abra o editor para juntar as alterações.',
+          )
+        }
+        return row
+      },
     },
     audit: {
       page: (action: string, page: number) => repos.audit.page(action, page),

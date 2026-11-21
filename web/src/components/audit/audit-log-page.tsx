@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   ChevronDownIcon,
+  HistoryIcon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
@@ -23,6 +24,7 @@ const filters: { value: '' | AuditAction; label: string }[] = [
   { value: '', label: 'Tudo' },
   { value: 'screen.created', label: 'Criações' },
   { value: 'screen.published', label: 'Publicações' },
+  { value: 'screen.activated', label: 'Entregas' },
   { value: 'screen.deleted', label: 'Exclusões' },
 ]
 
@@ -44,6 +46,11 @@ const actionStyle: Record<
     icon: Trash2Icon,
     bubble: 'bg-rose-500/15 text-rose-600 dark:text-rose-400',
     label: 'Apagou',
+  },
+  'screen.activated': {
+    icon: HistoryIcon,
+    bubble: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    label: 'Entregou',
   },
 }
 

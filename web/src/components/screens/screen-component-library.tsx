@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { renderPreview, screenComponents } from '@/components/screens/preview'
 import type { ScreenComponentDefinition } from '@/components/screens/preview/types'
+import { usePreviewDisplay } from '@/components/phones/preview-display'
 import { useScreenLayout } from '@/components/screens/screen-layout-context'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -88,6 +89,8 @@ function ExpandedLibrary({
   onSearchChange: (value: string) => void
 }) {
   const groups = groupComponents(components)
+  const { mode } = usePreviewDisplay()
+  const simulation = mode === 'simulation'
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -101,7 +104,9 @@ function ExpandedLibrary({
         <p className="text-muted-foreground mt-2 text-[11px]">
           {components.length === 0
             ? 'Nenhum plugin com esse nome.'
-            : `${components.length} plugins · arraste o card para o telefone`}
+            : simulation
+              ? 'Simulação ligada: o telefone não recebe plugins.'
+              : `${components.length} plugins · arraste o card para o telefone`}
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
@@ -129,6 +134,8 @@ function LibraryCard({ component }: { component: ScreenComponentDefinition }) {
     startNativeLibraryDrag,
     handleNativeDragEnd,
   } = useScreenLayout()
+  const { mode } = usePreviewDisplay()
+  const simulation = mode === 'simulation'
   const selected = Boolean(
     activeDrag && !activeDrag.nodeId && activeDrag.componentId === component.id,
   )
@@ -136,16 +143,17 @@ function LibraryCard({ component }: { component: ScreenComponentDefinition }) {
 
   return (
     <article
-      draggable
+      draggable={!simulation}
       aria-grabbed={selected}
       aria-label={component.name}
       className={cn(
-        'bg-card cursor-grab overflow-hidden rounded-lg border shadow-sm active:cursor-grabbing',
+        'bg-card overflow-hidden rounded-lg border shadow-sm',
+        simulation ? 'cursor-default' : 'cursor-grab active:cursor-grabbing',
         selected
           ? 'border-primary ring-primary/40 ring-2'
           : 'border-border hover:border-foreground/30',
       )}
-      onPointerDown={(event) => startLibraryDrag(component, event)}
+      onPointerDown={simulation ? undefined : (event) => startLibraryDrag(component, event)}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'copy'
         event.dataTransfer.setData('text/plain', component.id)
@@ -181,6 +189,8 @@ function LibraryCard({ component }: { component: ScreenComponentDefinition }) {
 function CollapsedLibrary() {
   const { startLibraryDrag, startNativeLibraryDrag, handleNativeDragEnd, activeDrag } =
     useScreenLayout()
+  const { mode } = usePreviewDisplay()
+  const simulation = mode === 'simulation'
 
   return (
     <div className="flex flex-col items-center gap-1 p-2">
@@ -193,15 +203,16 @@ function CollapsedLibrary() {
           <button
             key={id}
             type="button"
-            draggable
+            draggable={!simulation}
             aria-pressed={selected}
             className={cn(
               'hover:bg-sidebar-accent flex size-8 items-center justify-center rounded-md transition-colors',
+              simulation ? 'cursor-default' : 'cursor-grab',
               selected && 'bg-primary/15 text-primary ring-primary ring-1',
             )}
             title={name}
             aria-label={name}
-            onPointerDown={(event) => startLibraryDrag(component, event)}
+            onPointerDown={simulation ? undefined : (event) => startLibraryDrag(component, event)}
             onDragStart={(event) => {
               event.dataTransfer.effectAllowed = 'copy'
               event.dataTransfer.setData('text/plain', component.id)

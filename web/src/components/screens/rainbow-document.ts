@@ -539,7 +539,7 @@ function printNode(node: RainbowNode, indent: number): string {
   const comments = printComments(node.leading?.comments ?? [], indent)
   const name =
     node.name.kind === 'placeholder' ? `#{${node.name.value}}` : node.name.value
-  const parameters = printParameters(node.parameters, indent)
+  const parameters = printParameters(node.parameters, indent, node.block == null)
   const header = `${comments}${pad}${name}${parameters}`
   const lines: string[] = []
   if (node.block) {
@@ -608,8 +608,12 @@ function printSlots(slots: RainbowSlot[], indent: number): string[] {
   return lines
 }
 
-function printParameters(parameters: RainbowParameter[], indent: number) {
-  if (parameters.length === 0) return '()'
+function printParameters(
+  parameters: RainbowParameter[],
+  indent: number,
+  constructor: boolean,
+) {
+  if (parameters.length === 0) return constructor ? '()' : ''
   const pad = '  '.repeat(indent + 1)
   const body = parameters
     .map(

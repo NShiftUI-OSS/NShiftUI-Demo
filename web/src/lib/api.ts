@@ -35,7 +35,11 @@ export type ScreenVersion = {
   current: boolean
 }
 
-export type AuditAction = 'screen.created' | 'screen.published' | 'screen.deleted'
+export type AuditAction =
+  | 'screen.created'
+  | 'screen.published'
+  | 'screen.deleted'
+  | 'screen.activated'
 
 export type AuditRecord = {
   id: string
@@ -99,6 +103,11 @@ export const api = {
     request<StoryboardData>('/storyboard'),
   screen: (id: string) => request<ScreenRecord>(`/screens/${id}`),
   screenVersions: (id: string) => request<ScreenVersion[]>(`/screens/${id}/versions`),
+  activateScreenVersion: (id: string, version: string, revision: number) =>
+    request<ScreenRecord>(`/screens/${id}/versions/${encodeURIComponent(version)}/activate`, {
+      method: 'POST',
+      body: JSON.stringify({ revision }),
+    }),
   audit: (page = 1, action = '') => {
     const params = new URLSearchParams({ page: String(page) })
     if (action) params.set('action', action)

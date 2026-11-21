@@ -28,7 +28,11 @@ export type ScreenVersionRecord = {
   current: boolean
 }
 
-export type AuditAction = 'screen.created' | 'screen.published' | 'screen.deleted'
+export type AuditAction =
+  | 'screen.created'
+  | 'screen.published'
+  | 'screen.deleted'
+  | 'screen.activated'
 
 export type AuditRecord = {
   id: string
@@ -74,6 +78,7 @@ export interface ScreenRepository {
   ): Promise<ScreenRecord | null>
   delete(id: string): Promise<boolean>
   versions(id: string): Promise<ScreenVersionRecord[]>
+  activate(id: string, version: string, revision: number): Promise<ScreenRecord | null>
 }
 
 export interface AuditRepository {

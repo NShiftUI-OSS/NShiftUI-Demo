@@ -1,6 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react'
 
+import { usePreviewAssist } from '@/components/phones/preview-display'
 import { useScreenLayout } from '@/components/screens/screen-layout-context'
+import { cn } from '@/lib/utils'
 import { ScnIconMark } from '@/scn/scn-icon'
 import {
   navigationBarVisible,
@@ -19,11 +21,16 @@ export function ScreenFrame({
   interactive?: boolean
 }) {
   const { openPluginAction } = useScreenLayout()
+  const assist = usePreviewAssist()
   if (!chrome) return children
 
   return (
     <div
-      className="border-primary/70 flex min-h-0 w-full flex-1 flex-col border-2 border-dashed bg-transparent"
+      data-preview-assist={assist ? 'debug' : 'simulation'}
+      className={cn(
+        'flex min-h-0 w-full flex-1 flex-col bg-transparent',
+        assist && 'border-primary/70 border-2 border-dashed',
+      )}
       onClick={
         interactive
           ? (event) => {

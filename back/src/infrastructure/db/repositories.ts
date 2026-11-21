@@ -142,7 +142,7 @@ export function createRepositories(sql: Database): {
 } {
   const screens: ScreenRepository = {
     async list() {
-      const rows = await sql<ScreenRow[]>`select * from screens order by name`
+      const rows = await sql<ScreenRow[]>`select * from screens order by is_root desc, name`
       return rows.map(screenFrom)
     },
     async page(query, page) {
@@ -160,7 +160,7 @@ export function createRepositories(sql: Database): {
       const rows = await sql<ScreenRow[]>`
         select * from screens
         ${filter}
-        order by name
+        order by is_root desc, name
         limit ${screenPageSize}
         offset ${(currentPage - 1) * screenPageSize}
       `
@@ -323,6 +323,68 @@ export function createRepositories(sql: Database): {
           delete from screens where id = ${id} returning id
         `
         return rows.length > 0
+      })
+    },
+    async activate(id, version, revision) {
+      return sql.begin(async (transaction) => {
+        const locked = await transaction<ScreenRow[]>`
+          select * from screens
+          where id = ${id} and revision = ${revision}
+          for update
+        `
+        const current = locked[0]
+        if (!current) return null
+        if (current.version === version) return screenFrom(current)
+        const snapshots = await transaction<
+          {
+            version: string
+            name: string
+            description: string
+            rainbow_source: string
+            is_root: boolean
+          }[]
+        >`
+          select version, name, description, rainbow_source, is_root
+          from screen_versions
+          where screen_id = ${id} and version = ${version}
+        `
+        const snapshot = snapshots[0]
+        if (!snapshot) return null
+        if (snapshot.is_root) {
+          await transaction`
+            update screens
+            set is_root = false
+            where is_root = true and id <> ${id}
+          `
+        }
+        const rows = await transaction<ScreenRow[]>`
+          update screens
+          set name = ${snapshot.name},
+              description = ${snapshot.description},
+              rainbow_source = ${snapshot.rainbow_source},
+              is_root = ${snapshot.is_root},
+              version = ${snapshot.version},
+              revision = revision + 1,
+              updated_at = now()
+          where id = ${id} and revision = ${revision}
+          returning *
+        `
+        const row = rows[0]
+        if (!row) return null
+        await writeAudit(transaction as unknown as Database, {
+          action: 'screen.activated',
+          entityId: row.id,
+          entityName: row.name,
+          summary: `Passou a entregar a versão ${snapshot.version} da tela ${row.name}. Nenhuma versão nova foi criada.`,
+          version: snapshot.version,
+          payload: {
+            previousVersion: current.version,
+            version: snapshot.version,
+            name: row.name,
+            revision: row.revision,
+          },
+        })
+        return screenFrom(row)
       })
     },
     async versions(id) {

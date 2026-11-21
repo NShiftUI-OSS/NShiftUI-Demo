@@ -5,13 +5,15 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useLocation } from '@tanstack/react-router'
 
 import { Android } from '@/components/ui/android'
 import { Button } from '@/components/ui/button'
 import { Iphone, type IphoneProps } from '@/components/ui/iphone'
 import { cn } from '@/lib/utils'
 
-const STORAGE_KEY = 'nshift.phone-devices'
+const STORAGE_KEY = 'nshift.phone-flows'
+const LEGACY_KEY = 'nshift.phone-devices'
 
 export const PREVIEW_PHONE_HEIGHT_CLASS =
   'h-[min(78svh,760px,calc(100svh-9rem))]'
@@ -34,51 +36,114 @@ export type PhoneSelection = {
   android: boolean
 }
 
+type PhoneFlow = 'screens' | 'storyboard' | 'preview'
+
+type FlowSelections = Record<PhoneFlow, PhoneSelection>
+
 type PhoneDeviceContextValue = {
   selection: PhoneSelection
+  single: boolean
   toggle: (device: keyof PhoneSelection) => void
 }
 
 const PhoneDeviceContext = createContext<PhoneDeviceContextValue | null>(null)
 
-function readSelection(): PhoneSelection {
-  if (typeof window === 'undefined') return { iphone: true, android: true }
-  const raw = window.localStorage.getItem(STORAGE_KEY)
+function flowOf(pathname: string): PhoneFlow | null {
+  if (pathname === '/storyboard') return 'storyboard'
+  if (pathname === '/contents') return 'screens'
+  if (pathname.startsWith('/contents/') && pathname !== '/contents/new') return 'preview'
+  return null
+}
+
+function oneDevice(selection: PhoneSelection): PhoneSelection {
+  if (selection.iphone) return { iphone: true, android: false }
+  if (selection.android) return { iphone: false, android: true }
+  return { iphone: true, android: false }
+}
+
+function atLeastOne(selection: PhoneSelection): PhoneSelection {
+  if (selection.iphone || selection.android) return selection
+  return { iphone: true, android: true }
+}
+
+function isSelection(value: unknown): value is PhoneSelection {
+  if (!value || typeof value !== 'object') return false
+  const parsed = value as Partial<PhoneSelection>
+  return typeof parsed.iphone === 'boolean' && typeof parsed.android === 'boolean'
+}
+
+function readLegacy(): PhoneSelection {
+  const raw = window.localStorage.getItem(LEGACY_KEY)
   if (raw) {
     try {
-      const parsed = JSON.parse(raw) as Partial<PhoneSelection>
-      if (
-        typeof parsed.iphone === 'boolean' &&
-        typeof parsed.android === 'boolean'
-      ) {
-        return { iphone: parsed.iphone, android: parsed.android }
-      }
+      const parsed = JSON.parse(raw) as unknown
+      if (isSelection(parsed)) return parsed
     } catch {
       // Ignore a broken saved value and use the default below.
     }
   }
-  const legacy = window.localStorage.getItem('nshift.phone-device')
-  if (legacy === 'android') return { iphone: false, android: true }
-  if (legacy === 'iphone') return { iphone: true, android: false }
+  const older = window.localStorage.getItem('nshift.phone-device')
+  if (older === 'android') return { iphone: false, android: true }
+  if (older === 'iphone') return { iphone: true, android: false }
   return { iphone: true, android: true }
 }
 
+function readFlows(): FlowSelections {
+  const fallback = typeof window === 'undefined' ? { iphone: true, android: true } : readLegacy()
+  const empty: FlowSelections = {
+    screens: oneDevice(fallback),
+    storyboard: oneDevice(fallback),
+    preview: atLeastOne(fallback),
+  }
+  if (typeof window === 'undefined') return empty
+  const raw = window.localStorage.getItem(STORAGE_KEY)
+  if (!raw) return empty
+  try {
+    const parsed = JSON.parse(raw) as Partial<Record<PhoneFlow, unknown>>
+    return {
+      screens: isSelection(parsed.screens) ? oneDevice(parsed.screens) : empty.screens,
+      storyboard: isSelection(parsed.storyboard) ? oneDevice(parsed.storyboard) : empty.storyboard,
+      preview: isSelection(parsed.preview) ? atLeastOne(parsed.preview) : empty.preview,
+    }
+  } catch {
+    return empty
+  }
+}
+
 export function PhoneDeviceProvider({ children }: { children: ReactNode }) {
-  const [selection, setSelection] = useState<PhoneSelection>(readSelection)
+  const { pathname } = useLocation()
+  const flow = flowOf(pathname)
+  const [flows, setFlows] = useState<FlowSelections>(readFlows)
+  const selection = flow ? flows[flow] : flows.preview
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(selection))
-  }, [selection])
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(flows))
+  }, [flows])
 
   function toggle(device: keyof PhoneSelection) {
-    setSelection((current) => ({ ...current, [device]: !current[device] }))
+    if (!flow) return
+    setFlows((current) => {
+      const selected = current[flow]
+      const next =
+        flow === 'preview'
+          ? togglePreview(selected, device)
+          : { iphone: device === 'iphone', android: device === 'android' }
+      if (next.iphone === selected.iphone && next.android === selected.android) return current
+      return { ...current, [flow]: next }
+    })
   }
 
   return (
-    <PhoneDeviceContext.Provider value={{ selection, toggle }}>
+    <PhoneDeviceContext.Provider value={{ selection, single: flow !== 'preview', toggle }}>
       {children}
     </PhoneDeviceContext.Provider>
   )
+}
+
+function togglePreview(current: PhoneSelection, device: keyof PhoneSelection): PhoneSelection {
+  const next = { ...current, [device]: !current[device] }
+  if (!next.iphone && !next.android) return current
+  return next
 }
 
 function usePhoneDevice() {
@@ -106,12 +171,12 @@ export function PhoneFrame(props: IphoneProps) {
 }
 
 export function PhoneDeviceToggle() {
-  const { selection, toggle } = usePhoneDevice()
+  const { selection, single, toggle } = usePhoneDevice()
 
   return (
     <div className="flex items-center gap-1">
       <Button
-        aria-label={selection.iphone ? 'Ocultar iPhone' : 'Mostrar iPhone'}
+        aria-label={single ? 'iPhone' : selection.iphone ? 'Ocultar iPhone' : 'Mostrar iPhone'}
         aria-pressed={selection.iphone}
         size="icon"
         title="iPhone"
@@ -127,7 +192,7 @@ export function PhoneDeviceToggle() {
         <AppleMark />
       </Button>
       <Button
-        aria-label={selection.android ? 'Ocultar Android' : 'Mostrar Android'}
+        aria-label={single ? 'Android' : selection.android ? 'Ocultar Android' : 'Mostrar Android'}
         aria-pressed={selection.android}
         size="icon"
         title="Android"

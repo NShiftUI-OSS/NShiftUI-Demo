@@ -9,12 +9,14 @@ import type { Container } from '../../composition/container.js'
 import { DomainError, defaultRainbow } from '../../domain/values.js'
 import { openapi } from './openapi.js'
 import {
+  activateVersionBody,
   auditListQuery,
   idParam,
   nameParam,
   screenBody,
   screenListQuery,
   screenUpdateBody,
+  versionParam,
 } from './schemas.js'
 
 type UseCases = Container['useCases']
@@ -90,6 +92,13 @@ export function createApp(
   app.get('/screens/:id/versions', async (request) => ({
     data: await useCases.screens.versions(parse(idParam, request.params).id),
   }))
+  app.post('/screens/:id/versions/:version/activate', async (request) => {
+    const params = parse(versionParam, request.params)
+    const body = parse(activateVersionBody, request.body)
+    return {
+      data: await useCases.screens.activate(params.id, params.version, body.revision),
+    }
+  })
   app.get('/audit', async (request) => {
     const query = parse(auditListQuery, request.query)
     return { data: await useCases.audit.page(query.action, query.page) }

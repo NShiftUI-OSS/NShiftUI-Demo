@@ -17,8 +17,17 @@ export const screenUpdateBody = screenBody.extend({
 export const auditListQuery = z.object({
   page: z.coerce.number().int().positive().default(1),
   action: z
-    .enum(['', 'screen.created', 'screen.published', 'screen.deleted'])
+    .enum(['', 'screen.created', 'screen.published', 'screen.deleted', 'screen.activated'])
     .default(''),
+})
+
+export const activateVersionBody = z.object({
+  revision: z.number().int().nonnegative(),
+})
+
+export const versionParam = z.object({
+  id: z.uuid(),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/),
 })
 
 export const screenListQuery = z.object({

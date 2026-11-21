@@ -1,6 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import { usePreviewDisplay } from '@/components/phones/preview-display'
+
 type ChromeValues = Record<string, string | number | boolean | string[]> | undefined
 
 export function PluginChrome({
@@ -12,23 +14,29 @@ export function PluginChrome({
   measure: boolean
   children: ReactNode
 }) {
+  const { mode } = usePreviewDisplay()
+  const showMeasures = measure && mode === 'debug'
   const [hovered, setHovered] = useState<HTMLDivElement | null>(null)
   const style = pluginChromeStyle(values)
-  if (!measure && Object.keys(style).length === 0) return children
+  if (!showMeasures && Object.keys(style).length === 0) return children
 
   return (
     <div
       data-plugin-chrome=""
       className="relative w-full min-w-0"
       style={style}
-      onMouseOver={(event) => {
-        const deepest = (event.target as HTMLElement).closest('[data-plugin-chrome]')
-        setHovered(deepest === event.currentTarget ? event.currentTarget : null)
-      }}
-      onMouseLeave={() => setHovered(null)}
+      onMouseOver={
+        showMeasures
+          ? (event) => {
+              const deepest = (event.target as HTMLElement).closest('[data-plugin-chrome]')
+              setHovered(deepest === event.currentTarget ? event.currentTarget : null)
+            }
+          : undefined
+      }
+      onMouseLeave={showMeasures ? () => setHovered(null) : undefined}
     >
       {children}
-      {hovered ? <FigmaMeasures target={hovered} /> : null}
+      {showMeasures && hovered ? <FigmaMeasures target={hovered} /> : null}
     </div>
   )
 }

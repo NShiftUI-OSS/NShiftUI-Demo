@@ -32,6 +32,7 @@ import {
   updatePlacedPlugin,
   type RainbowDocument,
 } from '@/components/screens/rainbow-document'
+import { usePreviewDisplay } from '@/components/phones/preview-display'
 import { useNShift } from '@/di/nshift-provider'
 import type { NShiftPluginModel } from '@/domain/plugins/nshift-plugin-model'
 import type { PluginMetadataValue } from '@/scn/plugin-fields'
@@ -233,6 +234,8 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
   const [pendingPlacement, setPendingPlacement] =
     useState<PendingPlacement | null>(null)
   const pendingRef = useRef<PendingPlacement | null>(null)
+  const { mode } = usePreviewDisplay()
+  const simulation = mode === 'simulation'
   const [activeDrag, setActiveDrag] = useState<ActiveLayoutDrag | null>(null)
   const [flowFocus, setFlowFocus] = useState<string | null>(null)
   const [pluginAction, setPluginAction] = useState<{
@@ -373,6 +376,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
 
   const updateDrag = useCallback(
     (clientX: number, clientY: number, forceStarted = false) => {
+      if (simulation) return
       const current = dragRef.current
       if (!current) return
 
@@ -394,7 +398,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
       dragRef.current = next
       setActiveDrag(next)
     },
-    [resolveDropTarget],
+    [resolveDropTarget, simulation],
   )
 
   const finishDrag = useCallback(() => {
@@ -477,7 +481,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
 
   const startLibraryDrag = useCallback(
     (component: ScreenComponentDefinition, event: ReactPointerEvent) => {
-      if (event.button !== 0) return
+      if (simulation || event.button !== 0) return
       event.preventDefault()
       const next: ActiveLayoutDrag = {
         componentId: component.id,
@@ -495,11 +499,12 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
       dragRef.current = next
       setActiveDrag(next)
     },
-    [],
+    [simulation],
   )
 
   const startNativeLibraryDrag = useCallback(
     (component: ScreenComponentDefinition) => {
+      if (simulation) return
       const next: ActiveLayoutDrag = {
         componentId: component.id,
         pointerId: -1,
@@ -516,7 +521,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
       dragRef.current = next
       setActiveDrag(next)
     },
-    [],
+    [simulation],
   )
 
   const startComponentDrag = useCallback(
@@ -545,6 +550,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
 
   const startNativeComponentDrag = useCallback(
     (node: ScreenLayoutNode, event: DragEvent) => {
+      if (simulation) return
       const next: ActiveLayoutDrag = {
         componentId: node.componentId,
         nodeId: node.id,
@@ -562,7 +568,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
       dragRef.current = next
       setActiveDrag(next)
     },
-    [],
+    [simulation],
   )
 
   const handleNativeDragOver = useCallback(

@@ -33,11 +33,11 @@ import { ScreenFrame } from '@/components/screens/preview/screen-frame'
 import { readScreenChrome, readScreenTheme, writeScreenTheme } from '@/scn/screen-theme'
 import { ScnPresetSelect, useScnTheme } from '@/scn/theme'
 import {
-  PhoneDeviceToggle,
   PhoneSelectionView,
   PREVIEW_PHONE_HEIGHT_CLASS,
   type PhoneSelection,
 } from '@/components/phones/phone-device'
+import { usePreviewDisplay } from '@/components/phones/preview-display'
 import { PreviewFidelityNotice } from '@/components/preview-fidelity-notice'
 import { FlowCanvas } from '@/components/screens/flow/flow-canvas'
 import {
@@ -124,15 +124,6 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
   const frozen = Boolean(
     visibleScreen && viewedSnapshot && viewedSnapshot.version !== visibleScreen.version,
   )
-  const restoreChanges = Boolean(
-    frozen &&
-      viewedSnapshot &&
-      visibleScreen &&
-      (viewedSnapshot.rainbow !== visibleScreen.rainbow ||
-        viewedSnapshot.name !== visibleScreen.name ||
-        viewedSnapshot.description !== visibleScreen.description ||
-        viewedSnapshot.isRoot !== visibleScreen.isRoot),
-  )
   const unpublished = Boolean(
     !frozen && visibleScreen && rainbowSource && rainbowSource !== visibleScreen.rainbow,
   )
@@ -167,21 +158,34 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
   const publish = useCallback(() => {
     if (!visibleScreen || publishing) return
     if (frozen) {
-      if (!viewedSnapshot || !restoreChanges) return
-    } else if (!unpublished) {
+      if (!viewedSnapshot) return
+      setPublishing(true)
+      api
+        .activateScreenVersion(visibleScreen.id, viewedSnapshot.version, visibleScreen.revision)
+        .then((updated) => {
+          setScreen(updated)
+          setViewedVersion(updated.version)
+          setRainbowSource(updated.rainbow)
+          setMergeNote(null)
+          setConfirmPublish(false)
+          api.screenVersions(updated.id).then(setVersions).catch(() => undefined)
+        })
+        .catch((error: unknown) => {
+          reportApiError(error, 'Não foi possível entregar esta versão')
+        })
+        .finally(() => setPublishing(false))
       return
     }
-    const source = frozen && viewedSnapshot ? viewedSnapshot.rainbow : rainbowSource
+    if (!unpublished) return
+    const source = rainbowSource
     setPublishing(true)
     api
       .updateScreen(visibleScreen.id, {
-        name: frozen && viewedSnapshot ? viewedSnapshot.name : visibleScreen.name,
-        description:
-          frozen && viewedSnapshot ? viewedSnapshot.description : visibleScreen.description,
+        name: visibleScreen.name,
+        description: visibleScreen.description,
         rainbow: source,
         revision: visibleScreen.revision,
-        isRoot: frozen && viewedSnapshot ? viewedSnapshot.isRoot : visibleScreen.isRoot,
-        restoredFrom: frozen && viewedSnapshot ? viewedSnapshot.version : undefined,
+        isRoot: visibleScreen.isRoot,
       })
       .then((updated) => {
         setScreen(updated)
@@ -225,7 +229,6 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
     frozen,
     publishing,
     rainbowSource,
-    restoreChanges,
     setRainbowSource,
     unpublished,
     viewedSnapshot,
@@ -265,27 +268,23 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
           subtitle={
             visibleScreen
               ? frozen
-                ? `Versão ${viewedVersion} publicada · não pode ser alterada`
-                : [
-                    visibleScreen.version,
-                    mergeNote ??
-                      (unpublished ? 'Alterações ainda não publicadas' : null),
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')
+                ? `Olhando a versão ${viewedVersion}`
+                : unpublished
+                  ? `Rascunho sobre ${visibleScreen.version}`
+                  : `Versão no app · ${visibleScreen.version}`
               : 'Screen editor'
           }
           actions={
             <div className="flex items-center gap-4">
               {versions.length > 0 && viewedVersion ? (
                 <Select value={viewedVersion} onValueChange={showVersion}>
-                  <SelectTrigger aria-label="Versão da tela" className="w-36" size="sm">
+                  <SelectTrigger aria-label="Versão da tela" className="w-44" size="sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {versions.map((item) => (
                       <SelectItem key={item.version} value={item.version}>
-                        {item.current ? `${item.version} · atual` : item.version}
+                        {item.current ? `${item.version} · no app` : item.version}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -300,7 +299,6 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                   if (next !== rainbowSource) setRainbowSource(next)
                 }}
               />
-              <PhoneDeviceToggle />
               <label className="flex items-center gap-2 text-xs">
                 <span>Editor Rainbow</span>
                 <Switch
@@ -311,19 +309,40 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
               </label>
               <Button
                 size="sm"
-                disabled={
-                  publishing ||
-                  (frozen
-                    ? !restoreChanges
-                    : !unpublished || hasMergeMarkers(rainbowSource))
-                }
+                disabled={publishing || (!frozen && (!unpublished || hasMergeMarkers(rainbowSource)))}
                 onClick={() => setConfirmPublish(true)}
               >
-                {frozen ? 'Restaurar' : 'Publicar'}
+                {frozen ? 'Usar no app' : 'Publicar'}
               </Button>
             </div>
           }
         />
+        {visibleScreen ? (
+          <div
+            className={
+              frozen
+                ? 'border-b border-amber-500/40 bg-amber-500/15 px-4 py-3'
+                : unpublished
+                  ? 'border-b border-sky-500/30 bg-sky-500/10 px-4 py-3'
+                  : 'border-b border-emerald-500/30 bg-emerald-500/10 px-4 py-3'
+            }
+            data-version-status
+          >
+            <p className="text-sm font-medium">
+              {displayScreenName(visibleScreen.name)}
+              {' · '}
+              {frozen ? `versão ${viewedVersion}` : `versão ${visibleScreen.version}`}
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              {frozen
+                ? `Você está olhando uma versão antiga. Ela não pode ser editada. O aplicativo ainda recebe a ${visibleScreen.version}.`
+                : unpublished
+                  ? `Você está editando um rascunho. Publicar cria a próxima versão. O aplicativo ainda recebe a ${visibleScreen.version}.`
+                  : 'Você está na versão que o aplicativo recebe. Editar e publicar cria uma versão nova.'}
+            </p>
+            {mergeNote ? <p className="mt-1 text-sm">{mergeNote}</p> : null}
+          </div>
+        ) : null}
 
         <div
           ref={editorRowRef}
@@ -372,7 +391,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                 initialSource={visibleScreen.rainbow}
                 notice={
                   frozen
-                    ? `A versão ${viewedVersion} já foi publicada. Restaurar cria uma versão nova com este Rainbow.`
+                    ? `Versão ${viewedVersion}, somente leitura. O aplicativo recebe a ${visibleScreen.version}. Usar no app troca a entrega, sem criar outra versão.`
                     : mergeNote
                 }
                 readOnly={frozen}
@@ -400,12 +419,12 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {frozen ? 'Restaurar esta versão?' : 'Publicar esta tela?'}
+              {frozen ? 'Entregar esta versão?' : 'Publicar esta tela?'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {frozen
-                ? `A versão ${viewedVersion} continua intacta. Restaurar publica uma cópia nova, e essa cópia passa a ser a que o aplicativo recebe.`
-                : 'Publicar envia o Rainbow para o backend. O parser formata o texto, o patch do SemVer aumenta e essa versão passa a ser a que o aplicativo recebe. A versão anterior não é alterada.'}
+                ? `O aplicativo passa a receber a versão ${viewedVersion} de ${displayScreenName(visibleScreen?.name ?? 'esta tela')}. Nenhuma versão nova é criada, e a ${visibleScreen?.version} continua no histórico.`
+                : 'Publicar cria a próxima versão. A versão que está no aplicativo agora permanece no histórico e não é alterada.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -417,7 +436,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                 publish()
               }}
             >
-              {publishing ? 'Publicando...' : frozen ? 'Restaurar' : 'Publicar'}
+              {publishing ? 'Salvando...' : frozen ? 'Usar no app' : 'Publicar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -979,15 +998,18 @@ function LayoutNodeView({
     handleNativeDrop,
   } = useScreenLayout()
 
+  const { mode } = usePreviewDisplay()
+  const assist = mode === 'debug'
+
   return renderPreview(node.componentId, {
     sizing,
     values: node.props,
     nodes: node.children,
     dropTargetId: node.id,
     isDropTarget: activeDrag?.dropTargetId === node.id && activeDrag.overCanvas,
-    className: 'cursor-grab active:cursor-grabbing',
+    className: assist ? 'cursor-grab active:cursor-grabbing' : undefined,
     interactive: true,
-    draggable: true,
+    draggable: assist,
     renderNode: (child, childSizing) => (
       <LayoutNodeView node={child} sizing={childSizing} />
     ),
