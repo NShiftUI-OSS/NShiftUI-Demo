@@ -66,23 +66,22 @@ export function pluginChromeStyle(values: ChromeValues): CSSProperties {
   if (minHeight !== null) style.minHeight = minHeight
   if (maxHeight !== null) style.maxHeight = maxHeight
 
-  const alignment = typeof values['style.alignment'] === 'string' ? values['style.alignment'] : ''
-  if (!alignment) return style
-  const leading = alignment === 'leading' || alignment.endsWith('Leading')
-  const trailing = alignment === 'trailing' || alignment.endsWith('Trailing')
-  const top = alignment.startsWith('top')
-  const bottom = alignment.startsWith('bottom')
-  if (leading) style.marginRight = 'auto'
-  else if (trailing) style.marginLeft = 'auto'
-  else style.marginInline = 'auto'
-  if (top) style.alignSelf = 'flex-start'
-  else if (bottom) style.alignSelf = 'flex-end'
-  else if (!leading && !trailing) style.alignSelf = 'center'
+  const background = typeof values['style.background.color'] === 'string' ? values['style.background.color'].trim() : ''
+  if (background) style.backgroundColor = previewColor(background)
+  const offsetX = numberValue('style.offset.x')
+  const offsetY = numberValue('style.offset.y')
+  if (offsetX || offsetY) style.transform = `translate(${offsetX ?? 0}px, ${offsetY ?? 0}px)`
   return style
 }
 
+function previewColor(token: string) {
+  if (token.startsWith('#')) return token
+  const kebab = token.replace(/^\./, '').replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)
+  return `var(--${kebab})`
+}
+
 export function styleSpacing(values: ChromeValues) {
-  const value = values?.['style.spacing']
+  const value = values?.spacing ?? values?.['style.spacing']
   const spacing = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(spacing) && spacing > 0 ? spacing : undefined
 }

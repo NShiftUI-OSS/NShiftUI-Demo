@@ -82,42 +82,24 @@ const textStyle = ['sm', 'xs', 'base', 'lg', 'xl', 'xl2']
 const textWeight = ['regular', 'medium', 'semibold']
 const textColor = ['foreground', 'mutedForeground', 'primary', 'destructive']
 
+const safeAreaEdges = ['all', 'top', 'bottom', 'leading', 'trailing']
+
 export const pluginStyleFields: PluginField[] = [
-  select(
-    'style.alignment',
-    'Alinhamento',
-    [
-      'topLeading',
-      'top',
-      'topTrailing',
-      'leading',
-      'center',
-      'trailing',
-      'bottomLeading',
-      'bottom',
-      'bottomTrailing',
-    ],
-    'center',
-  ),
-  number('style.spacing', 'Espaçamento', '0'),
+  text('style.background.color', 'Fundo', ''),
+  select('style.background.ignoreSafeArea', 'Fundo ignora safe area', ['', ...safeAreaEdges], ''),
+  select('style.ignoreSafeArea', 'Ignorar safe area', ['', ...safeAreaEdges], ''),
+  number('style.offset.x', 'Deslocamento X', '0'),
+  number('style.offset.y', 'Deslocamento Y', '0'),
+  bool('style.animation.isEnabled', 'Animação', 'false'),
+  select('style.animation.curve', 'Curva', ['easeInOut', 'easeIn', 'easeOut', 'linear'], 'easeInOut'),
+  number('style.animation.duration', 'Duração (ms)', '300'),
+  number('style.animation.delay', 'Atraso (ms)', '0'),
   number('style.width', 'Largura', ''),
   number('style.height', 'Altura', ''),
   number('style.minWidth', 'Largura mínima', ''),
   number('style.maxWidth', 'Largura máxima', ''),
   number('style.minHeight', 'Altura mínima', ''),
   number('style.maxHeight', 'Altura máxima', ''),
-]
-
-pluginStyleFields[0].optionLabels = [
-  'Topo à esquerda',
-  'Topo',
-  'Topo à direita',
-  'Esquerda',
-  'Centro',
-  'Direita',
-  'Base à esquerda',
-  'Base',
-  'Base à direita',
 ]
 
 export const pluginFields: Partial<Record<PreviewPluginId, PluginField[]>> = {
@@ -161,6 +143,22 @@ export const pluginFields: Partial<Record<PreviewPluginId, PluginField[]>> = {
   ],
   skeleton: [number('height', 'Altura', '16')],
   calendar: [number('selection', 'Data', '0', true)],
+  'vertical-stack': [
+    select('alignment', 'Alinhamento', ['leading', 'center', 'trailing'], 'leading'),
+    number('spacing', 'Espaçamento', '0'),
+  ],
+  'horizontal-stack': [
+    select('alignment', 'Alinhamento', ['top', 'center', 'bottom'], 'top'),
+    number('spacing', 'Espaçamento', '0'),
+  ],
+  'layer-stack': [
+    select(
+      'alignment',
+      'Alinhamento',
+      ['topLeading', 'top', 'topTrailing', 'leading', 'center', 'trailing', 'bottomLeading', 'bottom', 'bottomTrailing'],
+      'topLeading',
+    ),
+  ],
 }
 
 export function fieldsFor(previewId?: string) {

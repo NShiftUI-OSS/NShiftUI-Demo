@@ -1,31 +1,49 @@
 import {
-  nshiftPluginAlignments,
-  type NShiftPluginAlignment,
-} from '@/domain/plugins/style/nshift-plugin-alignment'
-import {
   emptyPluginFrame,
   type NShiftPluginFrame,
 } from '@/domain/plugins/style/nshift-plugin-frame'
 
+export type NShiftAnimationCurve = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut'
+
 export type NShiftPluginStyle = {
   readonly frame: NShiftPluginFrame
-  readonly alignment: NShiftPluginAlignment
-  readonly spacing: number
+  readonly background?: {
+    readonly color?: string
+    readonly ignoreSafeArea?: string[]
+  }
+  readonly ignoreSafeArea?: string[]
+  readonly offset: { readonly x: number; readonly y: number }
+  readonly animation?: {
+    readonly isEnabled: boolean
+    readonly curve: NShiftAnimationCurve
+    readonly duration: number
+    readonly delay: number
+  }
 }
 
 export function emptyPluginStyle(): NShiftPluginStyle {
   return {
     frame: emptyPluginFrame(),
-    alignment: 'center',
-    spacing: 0,
+    offset: { x: 0, y: 0 },
   }
+}
+
+function edges(value: string | undefined) {
+  const tokens = (value ?? '')
+    .split(',')
+    .map((item) => item.trim().replace(/^\./, ''))
+    .filter(Boolean)
+  return tokens.length > 0 ? tokens : undefined
+}
+
+function numberOr(value: string | undefined, fallback: number) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
 }
 
 export function pluginStyleFromFields(
   raw: Record<string, string>,
 ): NShiftPluginStyle {
-  const alignment = raw['style.alignment']
-  const spacing = Number(raw['style.spacing'] || '0')
   const dimension = (key: string) => {
     const text = (raw[key] ?? '').trim()
     if (!text) return null
@@ -50,12 +68,31 @@ export function pluginStyleFromFields(
   if (minHeight !== null && maxHeight !== null && minHeight > maxHeight) {
     throw new Error('A altura mínima é maior que a máxima.')
   }
-  const known = nshiftPluginAlignments.includes(
-    alignment as NShiftPluginAlignment,
-  )
+  const color = raw['style.background.color']?.trim()
+  const backgroundEdges = edges(raw['style.background.ignoreSafeArea'])
+  const background = color || backgroundEdges
+    ? { color: color || undefined, ignoreSafeArea: backgroundEdges }
+    : undefined
+  const curve = raw['style.animation.curve']
+  const animationEnabled = raw['style.animation.isEnabled'] === 'true'
+  const animation = animationEnabled
+    ? {
+        isEnabled: true,
+        curve: (curve === 'linear' || curve === 'easeIn' || curve === 'easeOut' || curve === 'easeInOut'
+          ? curve
+          : 'easeInOut') as NShiftAnimationCurve,
+        duration: numberOr(raw['style.animation.duration'], 300),
+        delay: numberOr(raw['style.animation.delay'], 0),
+      }
+    : undefined
   return {
-    alignment: known ? (alignment as NShiftPluginAlignment) : 'center',
-    spacing: Number.isFinite(spacing) ? spacing : 0,
+    background,
+    ignoreSafeArea: edges(raw['style.ignoreSafeArea']),
+    offset: {
+      x: numberOr(raw['style.offset.x'], 0),
+      y: numberOr(raw['style.offset.y'], 0),
+    },
+    animation,
     frame: { width, height, minWidth, maxWidth, minHeight, maxHeight },
   }
 }

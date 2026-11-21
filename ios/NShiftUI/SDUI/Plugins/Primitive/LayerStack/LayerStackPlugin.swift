@@ -3,12 +3,13 @@ import SwiftUI
 
 @NShiftPlugin(
     name: "LayerStack",
-    version: "1.0.0"
+    version: "1.0.0",
+    metadata: StackLayoutMetadata.self
 )
 struct LayerStackPlugin: NShiftPlugin {
     var body: some View {
         ZStack(
-            alignment: .topLeading
+            alignment: metadata.layerAlignment()
         ) {
             children()
         }

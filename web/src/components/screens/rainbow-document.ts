@@ -158,11 +158,54 @@ function parametersFromPlugin(plugin: NShiftPluginModel): RainbowParameter[] {
   return parameters
 }
 
+function identifier(value: string): RainbowValue {
+  return { kind: 'identifier', value: value.replace(/^\./, '') }
+}
+
+function edgeValue(edges: string[] | undefined): RainbowValue | null {
+  const tokens = (edges ?? []).map((edge) => edge.replace(/^\./, '')).filter(Boolean)
+  if (tokens.length === 0) return null
+  if (tokens.length === 1) return identifier(tokens[0])
+  return { kind: 'array', values: tokens.map(identifier) }
+}
+
 function styleParameters(style: NShiftPluginStyle): RainbowParameter[] {
-  const parameters: RainbowParameter[] = [
-    parameter('alignment', { kind: 'identifier', value: style.alignment }),
-    parameter('spacing', numberValue(style.spacing)),
-  ]
+  const parameters: RainbowParameter[] = []
+  if (style.background?.color || style.background?.ignoreSafeArea?.length) {
+    const entries: { key: string; value: RainbowValue }[] = []
+    if (style.background.color) {
+      entries.push({ key: 'color', value: identifier(style.background.color) })
+    }
+    const edges = edgeValue(style.background.ignoreSafeArea)
+    if (edges) entries.push({ key: 'ignoreSafeArea', value: edges })
+    parameters.push(parameter('background', { kind: 'object', entries }))
+  }
+  const ignored = edgeValue(style.ignoreSafeArea)
+  if (ignored) parameters.push(parameter('ignoreSafeArea', ignored))
+  if (style.offset.x !== 0 || style.offset.y !== 0) {
+    parameters.push(
+      parameter('offset', {
+        kind: 'object',
+        entries: [
+          { key: 'x', value: numberValue(style.offset.x) },
+          { key: 'y', value: numberValue(style.offset.y) },
+        ],
+      }),
+    )
+  }
+  if (style.animation?.isEnabled) {
+    parameters.push(
+      parameter('animation', {
+        kind: 'object',
+        entries: [
+          { key: 'isEnabled', value: { kind: 'bool', value: true } },
+          { key: 'curve', value: identifier(style.animation.curve) },
+          { key: 'duration', value: numberValue(style.animation.duration) },
+          { key: 'delay', value: numberValue(style.animation.delay) },
+        ],
+      }),
+    )
+  }
   for (const name of [
     'width',
     'height',
@@ -374,9 +417,13 @@ function fieldString(value: RainbowValue): string | undefined {
     case 'int':
     case 'double':
       return String(value.value)
-    case 'array':
-      if (!value.values.every((item) => item.kind === 'string')) return undefined
-      return value.values.map((item) => (item.kind === 'string' ? item.value : '')).join(', ')
+    case 'array': {
+      const items = value.values.flatMap((item) => {
+        if (item.kind === 'string' || item.kind === 'identifier') return [item.value.replace(/^\./, '')]
+        return []
+      })
+      return items.length > 0 ? items.join(', ') : undefined
+    }
     default:
       return undefined
   }

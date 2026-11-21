@@ -99,10 +99,13 @@ function LayoutPreviewFrame({
   const Icon = definition.icon
   const scrolling = layout === 'vertical-scroll' || layout === 'horizontal-scroll'
   const childSizing = scrolling ? 'intrinsic' : sizing
-  const childrenClass =
+  const alignment = typeof values?.alignment === 'string' ? values.alignment : ''
+  const childrenClass = cn(
     layout === 'horizontal' && childSizing === 'intrinsic'
       ? 'w-max flex-row flex-nowrap items-stretch'
-      : layoutClass[layout]
+      : layoutClass[layout],
+    stackCrossAlign(layout, alignment),
+  )
 
   return (
     <div
@@ -170,6 +173,20 @@ function LayoutPreviewFrame({
       </div>
     </div>
   )
+}
+
+function stackCrossAlign(layout: PreviewLayout, alignment: string) {
+  const token = alignment.replace(/^\./, '')
+  if (!token || layout === 'layer') return ''
+  if (layout === 'horizontal' || layout === 'horizontal-scroll') {
+    if (token === 'bottom' || token.startsWith('bottom')) return 'items-end'
+    if (token === 'center' || token === 'leading' || token === 'trailing') return 'items-center'
+    return 'items-start'
+  }
+  if (token === 'trailing' || token.endsWith('Trailing')) return 'items-end'
+  if (token === 'center' || token === 'top' || token === 'bottom') return 'items-center'
+  if (token === 'leading' || token.endsWith('Leading')) return 'items-start'
+  return ''
 }
 
 function frameHeight(catalog: boolean, scrolling: boolean, canvasHeight: number) {

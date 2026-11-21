@@ -302,8 +302,10 @@ function styleFallback(fields: Record<string, string> | undefined) {
     const value = sources.map((source) => fields[source]).find(Boolean)
     if (value) picked[target] = value
   }
-  copy('style.alignment', 'style.alignment', 'alignment')
-  copy('style.spacing', 'style.spacing', 'spacing')
+  copy('style.background.color', 'style.background.color')
+  copy('style.ignoreSafeArea', 'style.ignoreSafeArea')
+  copy('style.offset.x', 'style.offset.x')
+  copy('style.offset.y', 'style.offset.y')
   copy('style.width', 'style.width', 'width')
   copy('style.height', 'style.height', 'height')
   copy('style.minWidth', 'style.minWidth', 'minWidth')

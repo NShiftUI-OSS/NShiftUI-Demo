@@ -3,13 +3,14 @@ import SwiftUI
 
 @NShiftPlugin(
     name: "HorizontalStack",
-    version: "1.0.0"
+    version: "1.0.0",
+    metadata: StackLayoutMetadata.self
 )
 struct HorizontalStackPlugin: NShiftPlugin {
     var body: some View {
         HStack(
-            alignment: .top,
-            spacing: 0
+            alignment: metadata.verticalAlignment(),
+            spacing: metadata.spacing
         ) {
             children()
         }
