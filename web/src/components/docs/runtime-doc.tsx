@@ -4,7 +4,7 @@ use Text@1.0.0
 
 Screen(
   navigationBar: (title: "Home"),
-  scroll: (enabled: false, fastRefresh: true)
+  scroll: (enabled: false, isLazy: false, fastRefresh: true)
 ) {
   VerticalStack {
     Text(

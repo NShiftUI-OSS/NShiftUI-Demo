@@ -75,7 +75,7 @@ export type RainbowDocument = {
 }
 
 export function defaultRainbowSource(screenId: string) {
-  return `use Screen@1.0.0\n\nScreen(\n  name: "${escapeString(screenId)}",\n  scroll: (enabled: false, fastRefresh: true)\n) {\n}\n`
+  return `use Screen@1.0.0\n\nScreen(\n  name: "${escapeString(screenId)}",\n  scroll: (enabled: false, isLazy: false, fastRefresh: true)\n) {\n}\n`
 }
 
 export function readRainbowDocument(parsed: unknown): RainbowDocument | null {

@@ -57,27 +57,43 @@ struct ScreenNavigationBarMetadata: Decodable, Hashable, Sendable {
 
 struct ScreenScrollMetadata: Decodable, Hashable, Sendable {
     let enabled: Bool
+    let isLazy: Bool
     let fastRefresh: Bool
+    let header: [NShiftPluginModel]
+    let footer: [NShiftPluginModel]
 
-    init(enabled: Bool = false, fastRefresh: Bool = false) {
+    init(
+        enabled: Bool = false,
+        isLazy: Bool = false,
+        fastRefresh: Bool = false,
+        header: [NShiftPluginModel] = [],
+        footer: [NShiftPluginModel] = []
+    ) {
         self.enabled = enabled
+        self.isLazy = isLazy
         self.fastRefresh = fastRefresh
+        self.header = header
+        self.footer = footer
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        isLazy = try container.decodeIfPresent(Bool.self, forKey: .isLazy) ?? false
         fastRefresh = try container.decodeIfPresent(Bool.self, forKey: .fastRefresh) ?? false
+        header = []
+        footer = []
     }
 
     private enum CodingKeys: String, CodingKey {
         case enabled
+        case isLazy
         case fastRefresh
     }
 }
 
 @NShiftMetadata
-struct ScreenMetadata: NShiftMetadata, Decodable {
+struct ScreenMetadata: NShiftMetadata, Decodable, NShiftRainbowPluginMetadata {
     let navigationBar: ScreenNavigationBarMetadata?
     let scroll: ScreenScrollMetadata?
 
@@ -101,6 +117,38 @@ struct ScreenMetadata: NShiftMetadata, Decodable {
         )
     }
 
+    func decodeRainbowMetadata(
+        with context: NShiftRainbowMetadataDecodingContext
+    ) throws -> NShiftRainbowMetadataDecodeResult {
+        var slots: [NShiftSlotName: [NShiftPluginModel]] = [:]
+        let header = try context.compilePlugins("scroll.header")
+        let footer = try context.compilePlugins("scroll.footer")
+        if header.isEmpty == false {
+            slots[.scrollHeader] = header
+        }
+        if footer.isEmpty == false {
+            slots[.scrollFooter] = footer
+        }
+        let enrichedScroll = scroll.map {
+            ScreenScrollMetadata(
+                enabled: $0.enabled,
+                isLazy: $0.isLazy,
+                fastRefresh: $0.fastRefresh,
+                header: header,
+                footer: footer
+            )
+        }
+        return NShiftRainbowMetadataDecodeResult(
+            metadata: AnyNShiftMetadata(
+                ScreenMetadata(
+                    navigationBar: navigationBar,
+                    scroll: enrichedScroll
+                )
+            ),
+            slots: slots
+        )
+    }
+
     private enum CodingKeys: String, CodingKey {
         case navigationBar
         case scroll
@@ -111,6 +159,8 @@ struct ScreenMetadata: NShiftMetadata, Decodable {
 enum ScreenSlot: NShiftSlotKey {
     case bottomSheet
     case tabBar
+    case scrollHeader
+    case scrollFooter
 }
 
 @NShiftPlugin(
@@ -218,14 +268,31 @@ struct ScreenPlugin: NShiftPluginContainer {
     @ViewBuilder
     private var screenBody: some View {
         let fastRefresh = metadata.scroll?.fastRefresh == true
-        if metadata.scroll?.enabled == true || fastRefresh {
+        let isLazy = metadata.scroll?.isLazy == true
+        if isLazy {
+            List {
+                scrollRows
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(theme.palette.background)
+            .modifier(
+                FastRefreshModifier(enabled: fastRefresh) {
+                    await viewModel.refresh()
+                }
+            )
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity
+            )
+        } else if metadata.scroll?.enabled == true || fastRefresh {
             GeometryReader { geometry in
                 ScrollView(.vertical) {
-                    pageChildren
+                    scrollPageChildren
                         .frame(
                             maxWidth: .infinity,
                             minHeight: geometry.size.height,
-                            alignment: .center
+                            alignment: .top
                         )
                 }
                 .modifier(
@@ -243,9 +310,40 @@ struct ScreenPlugin: NShiftPluginContainer {
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity,
-                    alignment: .center
+                    alignment: .top
                 )
         }
+    }
+
+    @ViewBuilder
+    private var scrollRows: some View {
+        slots(.scrollHeader) { _, view in
+            listRow(view)
+        }
+        children { model, view in
+            if model.name.rawValue != "TabBar" {
+                listRow(view)
+            }
+        }
+        slots(.scrollFooter) { _, view in
+            listRow(view)
+        }
+    }
+
+    @ViewBuilder
+    private var scrollPageChildren: some View {
+        slots(.scrollHeader)
+        pageChildren
+        slots(.scrollFooter)
+    }
+
+    @ViewBuilder
+    private func listRow(_ view: NShiftNodeView) -> some View {
+        view
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
     }
 
     @ViewBuilder

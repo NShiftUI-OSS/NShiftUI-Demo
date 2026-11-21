@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -42,8 +45,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nshiftui.NShiftMetadata
+import com.nshiftui.NShiftPluginNode
 import com.nshiftui.NShiftNodeView
 import com.nshiftui.NShiftPluginContainer
+import com.nshiftui.AnyNShiftMetadata
+import com.nshiftui.NShiftPluginModel
+import com.nshiftui.NShiftRainbowMetadataDecodeResult
+import com.nshiftui.NShiftRainbowMetadataDecodingContext
+import com.nshiftui.NShiftRainbowPluginMetadata
 import com.nshiftui.NShiftSlotKey
 import com.nshiftui.macro.NShiftPlugin
 import com.nshiftui.poc.theme.LocalSCNTheme
@@ -70,18 +79,49 @@ data class ScreenNavigationBarMetadata(
 @kotlinx.serialization.Serializable
 data class ScreenScrollMetadata(
     val enabled: Boolean = false,
+    val isLazy: Boolean = false,
     val fastRefresh: Boolean = false,
-) 
+    @kotlinx.serialization.Transient
+    val header: List<NShiftPluginModel> = emptyList(),
+    @kotlinx.serialization.Transient
+    val footer: List<NShiftPluginModel> = emptyList(),
+)
 
 @kotlinx.serialization.Serializable
 data class ScreenMetadata(
     val navigationBar: ScreenNavigationBarMetadata? = null,
     val scroll: ScreenScrollMetadata? = null,
-) : NShiftMetadata
+) : NShiftMetadata, NShiftRainbowPluginMetadata {
+    override fun decodeRainbowMetadata(
+        context: NShiftRainbowMetadataDecodingContext,
+    ): NShiftRainbowMetadataDecodeResult {
+        val slots = buildMap {
+            context.compilePlugins("scroll.header")
+                .takeIf { it.isNotEmpty() }
+                ?.let { put(ScreenSlot.ScrollHeader.slotName, it) }
+            context.compilePlugins("scroll.footer")
+                .takeIf { it.isNotEmpty() }
+                ?.let { put(ScreenSlot.ScrollFooter.slotName, it) }
+        }
+        return NShiftRainbowMetadataDecodeResult(
+            metadata = AnyNShiftMetadata(
+                copy(
+                    scroll = scroll?.copy(
+                        header = context.compilePlugins("scroll.header"),
+                        footer = context.compilePlugins("scroll.footer"),
+                    ),
+                ),
+            ),
+            slots = slots,
+        )
+    }
+}
 
 enum class ScreenSlot(override val rawValue: String) : NShiftSlotKey {
     BottomSheet("bottomSheet"),
     TabBar("tabBar"),
+    ScrollHeader("ScrollHeader"),
+    ScrollFooter("ScrollFooter"),
 }
 
 val LocalScreenBack = compositionLocalOf<(() -> Unit)?> { null }
@@ -252,13 +292,35 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         modifier: Modifier,
     ) {
         val fastRefresh = screen.scroll?.fastRefresh == true
+        val isLazy = screen.scroll?.isLazy == true
         BoxWithConstraints(
             modifier,
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.TopCenter,
         ) {
-                val scrolling = screen.scroll?.enabled == true || fastRefresh
-                val page: @Composable () -> Unit = {
-                    if (scrolling) {
+                val scrolling = screen.scroll?.enabled == true || fastRefresh || isLazy
+                val page: @Composable () -> Unit = @Composable {
+                    if (isLazy) {
+                        LazyColumn(
+                            Modifier
+                                .fillMaxSize()
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Top,
+                        ) {
+                            lazySlotItems(ScreenSlot.ScrollHeader)
+                            items(
+                                screenChildrenNodes(),
+                                key = { node -> node.renderId.rawValue },
+                            ) { node ->
+                                NShiftNodeView(
+                                    node = node,
+                                    engine = requireEngineTree(),
+                                    viewModel = parentViewModel(),
+                                )
+                            }
+                            lazySlotItems(ScreenSlot.ScrollFooter)
+                        }
+                    } else if (scrolling) {
                         Column(
                             Modifier
                                 .fillMaxSize()
@@ -266,9 +328,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                                 .heightIn(min = maxHeight)
                                 .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
+                            verticalArrangement = Arrangement.Top,
                         ) {
-                            screenChildren()
+                            scrollChildren()
                         }
                     } else {
                         screenChildren()
@@ -300,6 +362,38 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
             if (model.name.rawValue != "TabBar") {
                 NShiftNodeView(node = node, engine = requireEngineTree(), viewModel = parentViewModel())
             }
+        }
+    }
+
+    @Composable
+    private fun scrollChildren() {
+        slots(ScreenSlot.ScrollHeader)
+        screenChildren()
+        slots(ScreenSlot.ScrollFooter)
+    }
+
+    private fun screenChildrenNodes(): List<NShiftPluginNode> =
+        requireEngineTree()
+            .node(renderID)
+            ?.children
+            .orEmpty()
+            .filter { it.model.name.rawValue != "TabBar" }
+
+    private fun LazyListScope.lazySlotItems(slot: ScreenSlot) {
+        val nodes = requireEngineTree()
+            .node(renderID)
+            ?.slotChildren
+            ?.get(slot.slotName)
+            .orEmpty()
+        items(
+            nodes,
+            key = { node -> node.renderId.rawValue },
+        ) { node ->
+            NShiftNodeView(
+                node = node,
+                engine = requireEngineTree(),
+                viewModel = parentViewModel(),
+            )
         }
     }
 }

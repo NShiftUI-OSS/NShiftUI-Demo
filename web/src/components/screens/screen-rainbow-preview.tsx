@@ -10,7 +10,11 @@ import { Iphone } from '@/components/ui/iphone'
 import { renderPreview } from '@/components/screens/preview'
 import { rootItemClass } from '@/components/screens/preview/plugin-layout'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
-import { layoutFromRainbow, tabBarFromParsed } from '@/components/screens/rainbow-source'
+import {
+  layoutFromRainbow,
+  scrollFromParsed,
+  tabBarFromParsed,
+} from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { useNShift } from '@/di/nshift-provider'
 import { readScreenChrome } from '@/scn/screen-theme'
@@ -55,12 +59,14 @@ function RainbowPreviewBody({
 }) {
   const container = useNShift()
   const [nodes, setNodes] = useState<ScreenLayoutNode[] | null>(null)
+  const [scroll, setScroll] = useState<ReturnType<typeof scrollFromParsed>>(null)
   const [tabBar, setTabBar] = useState<ScreenLayoutNode | null>(null)
   const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setNodes(null)
+    setScroll(null)
     setTabBar(null)
     setInvalid(false)
     void container.parser.parse(rainbow).then((parsed) => {
@@ -71,6 +77,7 @@ function RainbowPreviewBody({
         return
       }
       setNodes(layout)
+      setScroll(scrollFromParsed(parsed))
       setTabBar(tabBarFromParsed(parsed))
     })
     return () => {
@@ -90,16 +97,31 @@ function RainbowPreviewBody({
           <PreviewMessage>Preview indisponível</PreviewMessage>
         ) : nodes === null ? (
           <PreviewMessage>Carregando…</PreviewMessage>
-        ) : nodes.length === 0 ? (
+        ) : nodes.length === 0 &&
+          scroll !== null &&
+          scroll.header.length === 0 &&
+          scroll.footer.length === 0 ? (
           <PreviewMessage>Tela vazia</PreviewMessage>
         ) : (
-          <div className="flex min-h-full w-full shrink-0 flex-col items-center justify-center">
-            {nodes.map((node) => (
+          <>
+            {scroll?.header.map((node) => (
               <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
                 <PreviewNode node={node} />
               </div>
             ))}
-          </div>
+            <div className="flex min-h-full w-full shrink-0 flex-col items-center justify-start">
+              {nodes.map((node) => (
+                <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
+                  <PreviewNode node={node} />
+                </div>
+              ))}
+            </div>
+            {scroll?.footer.map((node) => (
+              <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
+                <PreviewNode node={node} />
+              </div>
+            ))}
+          </>
         )}
       </div>
     </ScreenFrame>

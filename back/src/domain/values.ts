@@ -22,5 +22,5 @@ export function bumpPatch(version: string) {
 
 export function defaultRainbow(name: string) {
   const escaped = name.replaceAll('\\', '\\\\').replaceAll('"', '\\"')
-  return `use Screen@1.0.0\n\nScreen(\n  name: "${escaped}",\n  scroll: (enabled: false, fastRefresh: true)\n) {\n}\n`
+  return `use Screen@1.0.0\n\nScreen(\n  name: "${escaped}",\n  scroll: (enabled: false, isLazy: false, fastRefresh: true)\n) {\n}\n`
 }

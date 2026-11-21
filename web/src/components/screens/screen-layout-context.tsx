@@ -11,9 +11,11 @@ import {
 
 import {
   layoutFromRainbow,
+  scrollFromDocument,
   sheetsFromDocument,
   tabBarFromDocument,
   type PreviewSheet,
+  type ScreenScrollPreview,
 } from '@/components/screens/rainbow-source'
 import { defaultRainbowSource, readRainbowDocument } from '@/components/screens/rainbow-document'
 import { useNShift } from '@/di/nshift-provider'
@@ -33,6 +35,7 @@ type ScreenLayoutContextValue = {
   layoutNodes: ScreenLayoutNode[]
   rainbowSource: string
   previewError: boolean
+  scroll: ScreenScrollPreview
   setRainbowSource: (source: string) => void
   bindRainbowScreen: (screenId: string, source?: string) => void
   flowFocus: string | null
@@ -52,6 +55,11 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
   const [sheets, setSheets] = useState<PreviewSheet[]>([])
   const [rainbowSource, setRainbowSourceState] = useState('')
   const [previewError, setPreviewError] = useState(false)
+  const [scroll, setScroll] = useState<ScreenScrollPreview>({
+    isLazy: false,
+    header: [],
+    footer: [],
+  })
   const [flowFocus, setFlowFocus] = useState<string | null>(null)
 
   const setRainbowSource = useCallback((source: string) => {
@@ -88,6 +96,11 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
         const document = readRainbowDocument(parsed)
         setTabBarNode(document ? tabBarFromDocument(document) : null)
         setSheets(document ? sheetsFromDocument(document) : [])
+        setScroll(
+          document
+            ? scrollFromDocument(document)
+            : { isLazy: false, header: [], footer: [] },
+        )
       })
     }, 180)
 
@@ -103,6 +116,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
         layoutNodes,
         rainbowSource,
         previewError,
+        scroll,
         setRainbowSource,
         bindRainbowScreen,
         flowFocus,

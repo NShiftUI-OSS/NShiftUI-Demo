@@ -16,6 +16,12 @@ type ParseEnvelope = {
   diagnostics: { message: string }[]
 }
 
+export type ScreenScrollPreview = {
+  isLazy: boolean
+  header: ScreenLayoutNode[]
+  footer: ScreenLayoutNode[]
+}
+
 const previewIds: Record<string, string> = {
   Text: 'text',
   Image: 'image',
@@ -125,6 +131,35 @@ export function layoutFromRainbow(parsed: unknown): ScreenLayoutNode[] | null {
     nodes.push(mapped)
   }
   return nodes
+}
+
+export function scrollFromParsed(parsed: unknown): ScreenScrollPreview | null {
+  const document = readRainbowDocument(parsed)
+  return document ? scrollFromDocument(document) : null
+}
+
+export function scrollFromDocument(document: RainbowDocument): ScreenScrollPreview {
+  const screen = readFlowRoots(document).screen
+  const scroll = screen
+    ? screen.parameters.find((parameter) => parameter.name === 'scroll')?.value
+    : undefined
+  const entries = scroll?.kind === 'object' ? scroll.entries : []
+  const isLazy = entries.find((entry) => entry.key === 'isLazy')?.value
+  const header = entries.find((entry) => entry.key === 'header')?.value
+  const footer = entries.find((entry) => entry.key === 'footer')?.value
+  return {
+    isLazy: isLazy?.kind === 'bool' && isLazy.value,
+    header: pluginNodesFromValue(header, 'scroll/header'),
+    footer: pluginNodesFromValue(footer, 'scroll/footer'),
+  }
+}
+
+function pluginNodesFromValue(value: RainbowValue | undefined, path: string) {
+  if (value?.kind !== 'plugins') return []
+  return value.plugins.flatMap((node, index) => {
+    const mapped = toLayoutNode(node, `${path}/${index}`)
+    return mapped ? [mapped] : []
+  })
 }
 
 function toLayoutNode(

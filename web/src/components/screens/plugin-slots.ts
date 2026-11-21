@@ -88,6 +88,12 @@ export const screenFields: PluginField[] = [
     defaultValue: 'false',
   },
   {
+    name: 'scroll.isLazy',
+    label: 'Scroll lazy',
+    kind: 'boolean',
+    defaultValue: 'false',
+  },
+  {
     name: 'scroll.fastRefresh',
     label: 'Fast refresh',
     kind: 'boolean',

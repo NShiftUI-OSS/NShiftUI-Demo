@@ -663,7 +663,7 @@ function DevicePreview({
   device: 'iphone' | 'android'
   sheet: PreviewSheet | null
 }) {
-  const { layoutNodes, previewError, rainbowSource, tabBar } = useScreenLayout()
+  const { layoutNodes, previewError, rainbowSource, scroll, tabBar } = useScreenLayout()
   const Frame = device === 'iphone' ? Iphone : Android
 
   return (
@@ -692,18 +692,30 @@ function DevicePreview({
             </div>
           ) : (
             <>
-              {layoutNodes.length === 0 && (
+              {layoutNodes.length === 0 &&
+                scroll.header.length === 0 &&
+                scroll.footer.length === 0 && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8 text-center text-xs text-neutral-500">
                   A tela ainda não tem plugins.
                 </div>
               )}
-              <div className="pointer-events-none flex min-h-full w-full shrink-0 flex-col items-center justify-center">
+              {scroll.header.map((node) => (
+                <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
+                  <LayoutNodeView node={node} />
+                </div>
+              ))}
+              <div className="pointer-events-none flex min-h-full w-full shrink-0 flex-col items-center justify-start">
                 {layoutNodes.map((node) => (
                   <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
                     <LayoutNodeView node={node} />
                   </div>
                 ))}
               </div>
+              {scroll.footer.map((node) => (
+                <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
+                  <LayoutNodeView node={node} />
+                </div>
+              ))}
               {sheet ? <BottomSheetPreview sheet={sheet} /> : null}
             </>
           )}
