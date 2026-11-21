@@ -108,9 +108,9 @@ function LayoutPreviewFrame({
     <div
       className={cn(
         'flex flex-col bg-transparent',
-        assist && 'border-primary/70 cursor-grab border-2 border-dashed active:cursor-grabbing',
+        assist && 'preview-assist-line cursor-grab border border-dashed active:cursor-grabbing',
         sizing === 'intrinsic' && !scrolling ? 'w-max' : 'w-full',
-        assist && isDropTarget && 'ring-primary ring-2 ring-inset',
+        assist && isDropTarget && 'preview-assist-ring ring-2 ring-inset',
       )}
       style={frameHeight(catalog, scrolling, definition.size.height)}
       data-layout={layout}
@@ -131,10 +131,10 @@ function LayoutPreviewFrame({
       onDrop={onDrop}
     >
       {assist ? (
-        <div className="flex items-center gap-2 px-2 py-1 text-[10px] font-medium text-neutral-400">
+        <div className="preview-assist-label flex items-center gap-2 px-2 py-1 text-[10px] font-normal">
           <Icon className="size-3.5" />
           {definition.name}
-          <span className="text-primary/70 ml-auto text-[9px]">{badge}</span>
+          <span className="preview-assist-muted ml-auto text-[9px]">{badge}</span>
         </div>
       ) : null}
       <div
@@ -147,7 +147,7 @@ function LayoutPreviewFrame({
         <div className={cn('flex', childrenClass)} style={{ gap: styleSpacing(values) }}>
           {nodes.length === 0 ? (
             assist ? (
-            <span className="w-full py-4 text-center text-[10px] text-neutral-500">
+            <span className="preview-assist-muted w-full py-4 text-center text-[10px]">
               {emptyLabel}
             </span>
           ) : null

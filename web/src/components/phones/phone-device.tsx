@@ -174,7 +174,7 @@ export function PhoneDeviceToggle() {
   const { selection, single, toggle } = usePhoneDevice()
 
   return (
-    <div className="flex items-center gap-1 rounded-lg bg-rose-500/15 px-1 py-0.5 ring-1 ring-rose-500/35">
+    <div className="flex items-center gap-1">
       <Button
         aria-label={single ? 'iPhone' : selection.iphone ? 'Ocultar iPhone' : 'Mostrar iPhone'}
         aria-pressed={selection.iphone}

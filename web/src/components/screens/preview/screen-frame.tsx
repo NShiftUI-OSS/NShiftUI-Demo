@@ -29,7 +29,7 @@ export function ScreenFrame({
       data-preview-assist={assist ? 'debug' : 'simulation'}
       className={cn(
         'flex min-h-0 w-full flex-1 flex-col bg-transparent',
-        assist && 'border-primary/70 border-2 border-dashed',
+        assist && 'preview-assist-line border border-dashed',
       )}
       onClick={
         interactive
