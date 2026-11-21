@@ -98,11 +98,16 @@ private fun ResolvedScreen(
     val refresh = remember(builder.requestedURL) { ScreenRefreshObserver() }
     LaunchedEffect(builder.requestedURL, attempt) {
         if (phase !is Screen.Phase.Pending) return@LaunchedEffect
-        val started = if (attempt > 0) System.nanoTime() else 0L
+        if (attempt > 0) {
+            delay(RETRY_DELAY_MILLIS)
+            phase = builder.load().phase
+            retrying = false
+            return@LaunchedEffect
+        }
+        val started = System.nanoTime()
         val loaded = builder.load()
-        if (attempt > 0) holdRetryLoading(started)
+        holdFetchPresentation(started)
         phase = loaded.phase
-        retrying = false
     }
     LaunchedEffect(refresh) {
         refresh.events.collect {
@@ -143,16 +148,26 @@ private fun ScreenStartup(
     var retrying by remember(builder.requestedURL) { mutableStateOf(false) }
 
     LaunchedEffect(builder.requestedURL, attempt) {
-        val started = if (attempt > 0) System.nanoTime() else 0L
         failed = false
+        if (attempt > 0) {
+            delay(RETRY_DELAY_MILLIS)
+            val loaded = builder.load()
+            if (loaded.isLoaded) {
+                loadedBuilder = loaded
+            } else {
+                failed = true
+            }
+            retrying = false
+            return@LaunchedEffect
+        }
+        val started = System.nanoTime()
         val loaded = builder.load()
-        if (attempt > 0) holdRetryLoading(started)
+        holdFetchPresentation(started)
         if (loaded.isLoaded) {
             loadedBuilder = loaded
         } else {
             failed = true
         }
-        retrying = false
     }
 
     when {
@@ -167,9 +182,10 @@ private fun ScreenStartup(
     }
 }
 
-private const val RETRY_LOADING_NANOS = 800_000_000L
+private const val FETCH_PRESENTATION_FLOOR_NANOS = 1_000_000_000L
+private const val RETRY_DELAY_MILLIS = 1_000L
 
-private suspend fun holdRetryLoading(startedAt: Long) {
-    val wait = RETRY_LOADING_NANOS - (System.nanoTime() - startedAt)
+private suspend fun holdFetchPresentation(startedAt: Long) {
+    val wait = FETCH_PRESENTATION_FLOOR_NANOS - (System.nanoTime() - startedAt)
     if (wait > 0) delay(wait / 1_000_000)
 }

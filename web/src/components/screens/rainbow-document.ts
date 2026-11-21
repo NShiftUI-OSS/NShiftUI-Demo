@@ -83,6 +83,40 @@ export function readRainbowDocument(parsed: unknown): RainbowDocument | null {
   return envelope.document
 }
 
+export function anchorTabBar(document: RainbowDocument) {
+  const roots = visibleRoots(document)
+  const bars: RainbowNode[] = []
+  const looseTabs: RainbowNode[] = []
+  const collect = (list: RainbowNode[]) => {
+    for (let index = 0; index < list.length; ) {
+      const node = list[index]
+      if (!node) {
+        index += 1
+        continue
+      }
+      if (nodeName(node) === 'TabBar') {
+        const [bar] = list.splice(index, 1)
+        if (bar) bars.push(bar)
+        continue
+      }
+      if (nodeName(node) === 'Tab') {
+        const [tab] = list.splice(index, 1)
+        if (tab) looseTabs.push(tab)
+        continue
+      }
+      if (node.block?.children) collect(node.block.children)
+      index += 1
+    }
+  }
+  collect(roots)
+  const bar = bars[0]
+  if (!bar) return false
+  bar.block ??= { children: [] }
+  bar.block.children.push(...looseTabs)
+  roots.push(bar)
+  return true
+}
+
 export function insertPlugin(
   document: RainbowDocument,
   targetId: string | null,
@@ -90,6 +124,22 @@ export function insertPlugin(
   acceptsChildren: boolean,
   index = Number.POSITIVE_INFINITY,
 ) {
+  if (plugin.name.rawValue === 'TabBar') {
+    if (containsPlugin(document.nodes, 'TabBar')) return false
+    const roots = visibleRoots(document)
+    ensureUse(document, 'TabBar', plugin.version.rawValue)
+    roots.push(pluginToNode(plugin, true))
+    return true
+  }
+  if (plugin.name.rawValue === 'Tab') {
+    const bar = findPlugin(visibleRoots(document), 'TabBar')
+    if (!bar) return false
+    bar.block ??= { children: [] }
+    ensureUse(document, 'Tab', plugin.version.rawValue)
+    const at = Math.max(0, Math.min(index, bar.block.children.length))
+    bar.block.children.splice(at, 0, pluginToNode(plugin, false))
+    return true
+  }
   const list = childrenOf(document, targetId)
   if (!list) return false
   ensureUse(document, plugin.name.rawValue, plugin.version.rawValue)
@@ -569,6 +619,19 @@ function metadataParameters(
 
 function nodeName(node: RainbowNode) {
   return node.name.value
+}
+
+function containsPlugin(nodes: RainbowNode[], name: string) {
+  return findPlugin(nodes, name) !== null
+}
+
+function findPlugin(nodes: RainbowNode[], name: string): RainbowNode | null {
+  for (const node of nodes) {
+    if (nodeName(node) === name) return node
+    const nested = node.block ? findPlugin(node.block.children, name) : null
+    if (nested) return nested
+  }
+  return null
 }
 
 function printUse(declaration: RainbowUse) {

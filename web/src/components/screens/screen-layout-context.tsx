@@ -19,6 +19,7 @@ import {
   sheetNodesFromDocument,
 } from '@/components/screens/rainbow-source'
 import {
+  anchorTabBar,
   defaultRainbowSource,
   insertPlugin,
   moveNode,
@@ -139,6 +140,55 @@ type ScreenLayoutContextValue = {
 const ScreenLayoutContext = createContext<ScreenLayoutContextValue | null>(null)
 
 const DRAG_THRESHOLD = 5
+
+function findTabBar(nodes: ScreenLayoutNode[]): ScreenLayoutNode | null {
+  for (const node of nodes) {
+    if (node.componentId === 'tab-bar') return node
+    const nested = findTabBar(node.children)
+    if (nested) return nested
+  }
+  return null
+}
+
+function findLayoutNode(nodes: ScreenLayoutNode[], id: string): ScreenLayoutNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    const nested = findLayoutNode(node.children, id)
+    if (nested) return nested
+  }
+  return null
+}
+
+function dockTabBar(
+  componentId: string | undefined,
+  target: {
+    overCanvas: boolean
+    dropTargetId: string | null
+    dropIndex: number
+    dropGuide: DropGuide | null
+  },
+  nodes: ScreenLayoutNode[],
+) {
+  if (!target.overCanvas || !componentId) return target
+  const tabBar = findTabBar(nodes)
+  if (componentId === 'tab-bar') {
+    return { ...target, dropTargetId: null, dropIndex: Number.MAX_SAFE_INTEGER, dropGuide: null }
+  }
+  if (componentId === 'tab') {
+    if (!tabBar) return { ...target, overCanvas: false, dropGuide: null }
+    const overBar = target.dropTargetId === tabBar.id
+    return {
+      overCanvas: true,
+      dropTargetId: tabBar.id,
+      dropIndex: overBar ? target.dropIndex : tabBar.children.length,
+      dropGuide: overBar ? target.dropGuide : null,
+    }
+  }
+  if (target.dropTargetId && findLayoutNode(nodes, target.dropTargetId)?.componentId === 'tab-bar') {
+    return { ...target, dropTargetId: null, dropGuide: null }
+  }
+  return target
+}
 
 function isDirectChild(id: string, parentId: string | null) {
   if (parentId === 'sheet') {
@@ -286,6 +336,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
 
   const publishDocument = useCallback(
     async (document: RainbowDocument) => {
+      anchorTabBar(document)
       const printed = printRainbowDocument(document)
       const revision = revisionRef.current + 1
       revisionRef.current = revision
@@ -327,7 +378,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
   )
 
   const resolveDropTarget = useCallback(
-    (clientX: number, clientY: number, draggingId?: string) => {
+    (clientX: number, clientY: number, draggingId?: string, componentId?: string) => {
       const element = document.elementFromPoint(clientX, clientY)
       if (element?.closest('[data-sheet-overlay]')) {
         const sheetTarget = element.closest<HTMLElement>('[data-drop-target]')
@@ -364,14 +415,14 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
       })
       const place = insertionPlace(target, siblings, clientX, clientY)
 
-      return {
+      return dockTabBar(componentId, {
         overCanvas: true,
         dropTargetId,
         dropIndex: place.index,
         dropGuide: place.guide,
-      }
+      }, layoutNodes)
     },
-    [],
+    [layoutNodes],
   )
 
   const updateDrag = useCallback(
@@ -386,7 +437,12 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
       )
       const started =
         forceStarted || current.started || movedDistance >= DRAG_THRESHOLD
-      const target = resolveDropTarget(clientX, clientY, current.nodeId)
+      const target = resolveDropTarget(
+        clientX,
+        clientY,
+        current.nodeId,
+        current.componentId,
+      )
       const next = {
         ...current,
         pointerX: clientX,
@@ -417,6 +473,18 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    if (
+      current.started &&
+      current.overCanvas &&
+      !current.nodeId &&
+      current.componentId === 'tab-bar' &&
+      findTabBar(layoutNodes)
+    ) {
+      dragRef.current = null
+      setActiveDrag(null)
+      return
+    }
+
     if (current.started && current.overCanvas && !current.nodeId) {
       const pending = {
         componentId: current.componentId,
@@ -441,7 +509,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
 
     dragRef.current = null
     setActiveDrag(null)
-  }, [editDocument])
+  }, [editDocument, layoutNodes])
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {

@@ -55,7 +55,7 @@ class FetchScreenUseCase(
 
     private fun screenModel(rainbow: String): NShiftPluginModel {
         val model = try {
-            NShiftRainbowCompiler().compile(rainbow)
+            NShiftRainbowCompiler().compile(concreteBackNavigation(rainbow))
         } catch (_: Exception) {
             throw FetchScreenError()
         }
@@ -65,3 +65,6 @@ class FetchScreenUseCase(
         return model
     }
 }
+
+private fun concreteBackNavigation(source: String): String =
+    Regex("""BackNavigationEvent\(\s*\)""").replace(source, "BackNavigationEvent(for: 1)")

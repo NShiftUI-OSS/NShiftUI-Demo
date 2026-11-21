@@ -39,9 +39,31 @@ class AppNavigator {
     fun consumePreloaded(screenName: String): NShiftPluginModel? = preloaded.remove(screenName)
 
     fun pop() {
+        pop(steps = 1)
+    }
+
+    fun pop(steps: Int) {
+        val times = steps.coerceAtLeast(1)
         onMain {
-            controller?.popBackStack()
+            val controller = controller ?: return@onMain
+            repeat(times) {
+                if (controller.previousBackStackEntry == null) return@onMain
+                controller.popBackStack()
+            }
         }
+    }
+
+    fun popToRoot() {
+        onMain {
+            val controller = controller ?: return@onMain
+            val start = controller.graph.startDestinationRoute ?: return@onMain
+            controller.popBackStack(start, false)
+        }
+    }
+
+    fun popToScreen(name: String) {
+        val target = name.takeIf { it.isNotBlank() } ?: return
+        onMain { controller?.popBackStack(route(target), false) }
     }
 
     fun popTo(deeplink: String) {

@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import com.nshiftui.poc.sdui.plugins.scn.tabbar.LocalTabBarHosted
 import com.nshiftui.poc.theme.LocalSCNTheme
 import com.nshiftui.poc.theme.SCNSpace
 import com.nshiftui.poc.ui.SCNIcon
@@ -50,8 +51,14 @@ fun NShiftLaunchScreen() {
 fun LoadingScreen(
     onBack: (() -> Unit)?,
 ) {
-    ScreenBar(title = null, onBack = onBack) {
-        SCNSpinner()
+    if (LocalTabBarHosted.current) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            SCNSpinner()
+        }
+    } else {
+        ScreenBar(title = null, onBack = onBack) {
+            SCNSpinner()
+        }
     }
 }
 
@@ -61,7 +68,7 @@ fun ErrorScreen(
     onBack: (() -> Unit)?,
     onRetry: () -> Unit,
 ) {
-    ScreenBar(title, onBack) {
+    val message = @Composable {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -84,6 +91,15 @@ fun ErrorScreen(
                 variant = SCNButtonVariant.Outline,
                 onClick = onRetry,
             )
+        }
+    }
+    if (LocalTabBarHosted.current) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            message()
+        }
+    } else {
+        ScreenBar(title, onBack) {
+            message()
         }
     }
 }

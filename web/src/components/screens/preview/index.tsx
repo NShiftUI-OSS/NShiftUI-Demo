@@ -25,6 +25,7 @@ import { skeletonPreview } from '@/components/screens/preview/skeleton-preview'
 import { sliderPreview } from '@/components/screens/preview/slider-preview'
 import { spinnerPreview } from '@/components/screens/preview/spinner-preview'
 import { switchPreview } from '@/components/screens/preview/switch-preview'
+import { tabBarPreview, tabPreview } from '@/components/screens/preview/tab-bar-preview'
 import { tabsPreview } from '@/components/screens/preview/tabs-preview'
 import { textPreview } from '@/components/screens/preview/text-preview'
 import { textareaPreview } from '@/components/screens/preview/textarea-preview'
@@ -63,6 +64,8 @@ const previewCatalog = [
   toggleGroupPreview,
   sliderPreview,
   tabsPreview,
+  tabBarPreview,
+  tabPreview,
   alertPreview,
   avatarPreview,
   calendarPreview,

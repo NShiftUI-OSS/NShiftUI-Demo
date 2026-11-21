@@ -31,6 +31,7 @@ import { skeletonMetadata } from '@/domain/plugins/previews/skeleton-metadata'
 import { sliderMetadata } from '@/domain/plugins/previews/slider-metadata'
 import { spinnerMetadata } from '@/domain/plugins/previews/spinner-metadata'
 import { switchMetadata } from '@/domain/plugins/previews/switch-metadata'
+import { tabBarMetadata, tabMetadata } from '@/domain/plugins/previews/tab-bar-metadata'
 import { tabsMetadata } from '@/domain/plugins/previews/tabs-metadata'
 import { textMetadata } from '@/domain/plugins/previews/text-metadata'
 import { textareaMetadata } from '@/domain/plugins/previews/textarea-metadata'
@@ -62,6 +63,8 @@ const previewPlugins = [
   { previewId: 'toggle-group', metadata: toggleGroupMetadata },
   { previewId: 'slider', metadata: sliderMetadata },
   { previewId: 'tabs', metadata: tabsMetadata },
+  { previewId: 'tab-bar', metadata: tabBarMetadata },
+  { previewId: 'tab', metadata: tabMetadata },
   { previewId: 'alert', metadata: alertMetadata },
   { previewId: 'avatar', metadata: avatarMetadata },
   { previewId: 'calendar', metadata: calendarMetadata },

@@ -94,8 +94,9 @@ export function createUseCases(repos: Repositories) {
       storyboard: async () => {
         const screens = await repos.screens.list()
         const byName = new Map(screens.map((screen) => [screen.name, screen]))
+        const rootName = screens.find((screen) => screen.isRoot)?.name ?? 'home'
         const edges = screens.flatMap((screen) =>
-          navigationEdges(screen.rainbow).map((edge, index) => {
+          navigationEdges(screen.rainbow, rootName).map((edge, index) => {
             const target = byName.get(edge.screenName)
             return {
               id: `${screen.id}:${edge.event}:${index}`,
@@ -149,21 +150,39 @@ export function createUseCases(repos: Repositories) {
   }
 }
 
-function navigationEdges(source: string) {
-  const pattern =
-    /\b(NavigateEvent|AsyncNavigateEvent)\s*\(\s*screenName\s*:\s*"((?:\\.|[^"\\])*)"/g
+function navigationEdges(source: string, rootName: string) {
   const edges: { event: string; screenName: string }[] = []
-  for (const match of source.matchAll(pattern)) {
-    const rawName = match[2]
-    let screenName = rawName
-    try {
-      screenName = JSON.parse(`"${rawName}"`) as string
-    } catch {
-      // The Rainbow parser already validates the source before persistence.
+  const forward =
+    /\b(NavigateEvent|AsyncNavigateEvent)\s*\(\s*screenName\s*:\s*"((?:\\.|[^"\\])*)"/g
+  for (const match of source.matchAll(forward)) {
+    const screenName = rainbowString(match[2])
+    if (screenName.trim()) edges.push({ event: match[1], screenName })
+  }
+  const back =
+    /\bBackNavigationEvent\s*\([^)]*\bto\s*:\s*(?:\.([A-Za-z][A-Za-z0-9]*)|"((?:\\.|[^"\\])*)")/g
+  for (const match of source.matchAll(back)) {
+    const token = match[1] ?? rainbowString(match[2] ?? '')
+    const screenName = token === 'root' ? rootName : token
+    if (screenName.trim()) edges.push({ event: 'BackNavigationEvent', screenName })
+  }
+  const tabs = /\bTab\s*\(([^)]*)\)/g
+  let tabIndex = 0
+  for (const match of source.matchAll(tabs)) {
+    const body = match[1] ?? ''
+    const route = body.match(/\broute\s*:\s*(?:\.([A-Za-z][A-Za-z0-9]*)|"((?:\\.|[^"\\])*)")/)
+    const token = route?.[1] ?? (route?.[2] ? rainbowString(route[2]) : '')
+    if (tabIndex > 0 && token.trim()) {
+      edges.push({ event: 'Tab', screenName: token })
     }
-    if (screenName.trim()) {
-      edges.push({ event: match[1], screenName })
-    }
+    tabIndex += 1
   }
   return edges
+}
+
+function rainbowString(raw: string) {
+  try {
+    return JSON.parse(`"${raw}"`) as string
+  } catch {
+    return raw
+  }
 }

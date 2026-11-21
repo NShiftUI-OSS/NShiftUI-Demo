@@ -31,6 +31,8 @@ const previewIds: Record<string, string> = {
   ToggleGroup: 'toggle-group',
   Slider: 'slider',
   Tabs: 'tabs',
+  TabBar: 'tab-bar',
+  Tab: 'tab',
   Alert: 'alert',
   Avatar: 'avatar',
   Calendar: 'calendar',
@@ -159,4 +161,17 @@ function plainValue(value: RainbowValue): string | number | boolean | string[] |
 
 function nodeName(node: RainbowNode) {
   return node.name.kind === 'ident' ? node.name.value : node.name.value
+}
+
+export function separateTabBar(nodes: ScreenLayoutNode[]) {
+  let tabBar: ScreenLayoutNode | null = null
+  const strip = (list: ScreenLayoutNode[]): ScreenLayoutNode[] =>
+    list.flatMap((node) => {
+      if (node.componentId === 'tab-bar') {
+        tabBar ??= node
+        return []
+      }
+      return [{ ...node, children: strip(node.children) }]
+    })
+  return { content: strip(nodes), tabBar }
 }

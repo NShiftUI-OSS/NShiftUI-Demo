@@ -147,6 +147,7 @@
 		E7F200000000000000000052 /* SendHTTPRequestUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F200000000000000000051 /* SendHTTPRequestUseCase.swift */; };
 		E7F200000000000000000062 /* SendHTTPRequestService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F200000000000000000061 /* SendHTTPRequestService.swift */; };
 		E7F200000000000000000072 /* ScreenPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F200000000000000000071 /* ScreenPlugin.swift */; };
+		E7F2000000000000000000C3 /* TabBarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F2000000000000000000C2 /* TabBarPlugin.swift */; };
 		E7F200000000000000000082 /* ScreenViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F200000000000000000081 /* ScreenViewModel.swift */; };
 		E7F200000000000000000092 /* ScreenRefreshObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F200000000000000000091 /* ScreenRefreshObserver.swift */; };
 		E7F311000000000000000001 /* HorizontalListPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F310000000000000000001 /* HorizontalListPlugin.swift */; };
@@ -306,6 +307,7 @@
 		E7F200000000000000000051 /* SendHTTPRequestUseCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendHTTPRequestUseCase.swift; sourceTree = "<group>"; };
 		E7F200000000000000000061 /* SendHTTPRequestService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendHTTPRequestService.swift; sourceTree = "<group>"; };
 		E7F200000000000000000071 /* ScreenPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenPlugin.swift; sourceTree = "<group>"; };
+		E7F2000000000000000000C2 /* TabBarPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarPlugin.swift; sourceTree = "<group>"; };
 		E7F200000000000000000081 /* ScreenViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenViewModel.swift; sourceTree = "<group>"; };
 		E7F200000000000000000091 /* ScreenRefreshObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenRefreshObserver.swift; sourceTree = "<group>"; };
 		E7F310000000000000000001 /* HorizontalListPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalListPlugin.swift; sourceTree = "<group>"; };
@@ -952,6 +954,14 @@
 			path = NavigateEvent;
 			sourceTree = "<group>";
 		};
+		E7F2000000000000000000C1 /* TabBar */ = {
+			isa = PBXGroup;
+			children = (
+				E7F2000000000000000000C2 /* TabBarPlugin.swift */,
+			);
+			path = TabBar;
+			sourceTree = "<group>";
+		};
 		E7F2000000000000000000A1 /* Screen */ = {
 			isa = PBXGroup;
 			children = (
@@ -1043,6 +1053,7 @@
 			isa = PBXGroup;
 			children = (
 				E7F2000000000000000000A1 /* Screen */,
+				E7F2000000000000000000C1 /* TabBar */,
 				74F626BC72054AFD37708144 /* Alert */,
 				803E805586E9A4176779D73C /* Attachment */,
 				A8ECC23EE8405F525A5D3BB0 /* Avatar */,
@@ -1399,6 +1410,7 @@
 				E7F200000000000000000052 /* SendHTTPRequestUseCase.swift in Sources */,
 				E7F200000000000000000062 /* SendHTTPRequestService.swift in Sources */,
 				E7F200000000000000000072 /* ScreenPlugin.swift in Sources */,
+				E7F2000000000000000000C3 /* TabBarPlugin.swift in Sources */,
 				E7F200000000000000000082 /* ScreenViewModel.swift in Sources */,
 				E7F200000000000000000092 /* ScreenRefreshObserver.swift in Sources */,
 			);

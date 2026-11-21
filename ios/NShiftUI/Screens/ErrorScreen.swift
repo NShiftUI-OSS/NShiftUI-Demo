@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ErrorScreen: View {
     @EnvironmentObject private var theme: SCNTheme
+    @Environment(\.tabBarHosted) private var tabBarHosted
     let title: String?
     let retry: () -> Void
 
@@ -28,6 +29,6 @@ struct ErrorScreen: View {
             maxWidth: .infinity,
             maxHeight: .infinity
         )
-        .scnNavigationBar(title: title ?? "")
+        .modifier(StandaloneNavigationBar(hosted: tabBarHosted, title: title ?? ""))
     }
 }

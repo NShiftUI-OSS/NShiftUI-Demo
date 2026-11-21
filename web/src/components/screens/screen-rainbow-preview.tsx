@@ -9,7 +9,7 @@ import { Android } from '@/components/ui/android'
 import { Iphone } from '@/components/ui/iphone'
 import { renderPreview } from '@/components/screens/preview'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
-import { layoutFromRainbow } from '@/components/screens/rainbow-source'
+import { layoutFromRainbow, separateTabBar } from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { useNShift } from '@/di/nshift-provider'
 import { readScreenChrome, readScreenTheme } from '@/scn/screen-theme'
@@ -80,7 +80,12 @@ function RainbowPreviewBody({
   }, [container.parser, rainbow])
 
   return (
-    <ScreenFrame chrome={readScreenChrome(rainbow)} device={device} interactive={false}>
+    <ScreenFrame
+      chrome={readScreenChrome(rainbow)}
+      device={device}
+      tabBar={nodes ? separateTabBar(nodes).tabBar : null}
+      interactive={false}
+    >
       <div className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col">
         {invalid ? (
           <PreviewMessage>Preview indisponível</PreviewMessage>
@@ -90,7 +95,7 @@ function RainbowPreviewBody({
           <PreviewMessage>Tela vazia</PreviewMessage>
         ) : (
           <div className="flex min-h-full w-full shrink-0 flex-col items-stretch justify-center">
-            {nodes.map((node) => (
+            {separateTabBar(nodes).content.map((node) => (
               <div key={node.id} className="w-full">
                 <PreviewNode node={node} />
               </div>

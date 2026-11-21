@@ -58,7 +58,20 @@ final class AppNavigator: ObservableObject, @unchecked Sendable {
     }
 
     func pop() {
-        popToCount(entries.count - 1)
+        pop(steps: 1)
+    }
+
+    func pop(steps: Int) {
+        let times = max(steps, 1)
+        popToCount(max(1, entries.count - times))
+    }
+
+    func popToRoot() {
+        popToCount(1)
+    }
+
+    func pop(toScreen name: String) {
+        pop(to: "nshift://screen/\(name)")
     }
 
     func popToCount(_ count: Int) {

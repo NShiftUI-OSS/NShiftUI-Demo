@@ -31,7 +31,7 @@ import { Iphone } from '@/components/ui/iphone'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { renderPreview } from '@/components/screens/preview'
-import { layoutFromRainbow } from '@/components/screens/rainbow-source'
+import { layoutFromRainbow, separateTabBar } from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
 import { readScreenChrome, readScreenTheme } from '@/scn/screen-theme'
@@ -334,9 +334,10 @@ function ScreenPreview({
   }, [container.parser, screen.rainbow])
 
   const chrome = readScreenChrome(screen.rainbow)
+  const placed = nodes ? separateTabBar(nodes) : null
 
   return (
-    <ScreenFrame chrome={chrome} device={device} interactive={false}>
+    <ScreenFrame chrome={chrome} device={device} tabBar={placed?.tabBar} interactive={false}>
       <div className="phone-scroll relative flex min-h-0 w-full flex-1 flex-col">
         {missing ? (
           <div className="flex min-h-0 flex-1 items-center justify-center px-5 text-center text-[10px]">
@@ -356,7 +357,7 @@ function ScreenPreview({
           </div>
         ) : (
           <div className="flex min-h-full w-full shrink-0 flex-col items-stretch justify-center">
-            {nodes.map((node) => (
+            {separateTabBar(nodes).content.map((node) => (
               <div key={node.id} className="w-full">
                 <StoryboardLayoutNode node={node} />
               </div>

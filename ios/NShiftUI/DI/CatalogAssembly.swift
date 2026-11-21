@@ -29,6 +29,8 @@ struct CatalogAssembly: NShiftDependencyAssembly {
     SliderPlugin.self,
     SpinnerPlugin.self,
     SwitchPlugin.self,
+    TabBarPlugin.self,
+    TabPlugin.self,
     TabsPlugin.self,
     TextPlugin.self,
     TextareaPlugin.self,
@@ -49,7 +51,8 @@ struct CatalogAssembly: NShiftDependencyAssembly {
         OpenBottomSheetEvent.self,
         CloseBottomSheetEvent.self,
         NavigateEvent.self,
-        AsyncNavigateEvent.self
+        AsyncNavigateEvent.self,
+        BackNavigationEvent.self
     )
     func assembleEvents(in container: any NShiftDependencyContainer) {}
 }

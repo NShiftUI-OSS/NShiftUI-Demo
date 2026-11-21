@@ -4,6 +4,7 @@ import { changeEventMetadataEventMetadata } from '@/domain/events/previews/chang
 import { changePluginEventMetadata } from '@/domain/events/previews/change-plugin-metadata'
 import { changePluginMetadataEventMetadata } from '@/domain/events/previews/change-plugin-metadata-metadata'
 import { closeBottomSheetEventMetadata } from '@/domain/events/previews/close-bottom-sheet-metadata'
+import { backNavigationEventMetadata } from '@/domain/events/previews/back-navigation-metadata'
 import { navigateEventMetadata } from '@/domain/events/previews/navigate-metadata'
 import { openBottomSheetEventMetadata } from '@/domain/events/previews/open-bottom-sheet-metadata'
 import { sendHttpRequestEventMetadata } from '@/domain/events/previews/send-http-request-metadata'
@@ -44,16 +45,38 @@ const select = (
   defaultValue,
 })
 
+const number = (
+  name: string,
+  label: string,
+  defaultValue = '',
+): PluginField => ({
+  name,
+  label,
+  kind: 'number',
+  defaultValue,
+})
+
 const complete = ['OnComplete'] as const
 
 export const flowEvents: FlowEventDefinition[] = [
   {
     id: 'navigate',
     name: navigateEventMetadata.kind,
-    description: 'Abre, volta ou retorna a uma rota',
+    description: 'Abre uma tela na pilha',
     triggers: complete,
     metadata: navigateEventMetadata,
     fields: [text('screenName', 'Tela', '', true)],
+  },
+  {
+    id: 'back-navigation',
+    name: backNavigationEventMetadata.kind,
+    description: 'Volta uma tela, várias, ou até uma rota',
+    triggers: complete,
+    metadata: backNavigationEventMetadata,
+    fields: [
+      number('for', 'Quantidade'),
+      text('to', 'Rota ou root'),
+    ],
   },
   {
     id: 'async-navigate',

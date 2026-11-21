@@ -18,6 +18,13 @@ export type PluginField = {
   embedded?: 'JSON'
 }
 
+const icon = (name: string, label: string, defaultValue = ''): PluginField => ({
+  name,
+  label,
+  kind: 'icon',
+  defaultValue,
+})
+
 const text = (
   name: string,
   label: string,
@@ -103,6 +110,11 @@ export const pluginStyleFields: PluginField[] = [
 ]
 
 export const pluginFields: Partial<Record<PreviewPluginId, PluginField[]>> = {
+  tab: [
+    text('title', 'Nome', 'Aba', true),
+    icon('icon', 'Ícone', 'house'),
+    text('route', 'Rota', ''),
+  ],
   text: [
     text('text', 'Texto', 'Text', true),
     select('style', 'Estilo', textStyle),
@@ -185,6 +197,7 @@ export function metadataFromFieldList(
     if (field.kind === 'boolean') {
       parsed = value === 'true'
     } else if (field.kind === 'number') {
+      if (!value.trim()) continue
       const parsed = Number(value)
       if (!Number.isNaN(parsed)) {
         setNestedMetadata(metadata, field.name, parsed)

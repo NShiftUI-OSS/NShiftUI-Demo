@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -38,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nshiftui.NShiftMetadata
+import com.nshiftui.NShiftNodeView
 import com.nshiftui.NShiftPluginContainer
 import com.nshiftui.NShiftSlotKey
 import com.nshiftui.macro.NShiftPlugin
@@ -47,6 +51,10 @@ import com.nshiftui.poc.theme.SCNFont
 import com.nshiftui.poc.theme.SCNPresets
 import com.nshiftui.poc.theme.SCNTheme
 import com.nshiftui.poc.theme.SCNThemeId
+import com.nshiftui.poc.sdui.plugins.scn.tabbar.LocalTabBarHosted
+import com.nshiftui.poc.sdui.plugins.scn.tabbar.LocalTabChromeReport
+import com.nshiftui.poc.sdui.plugins.scn.tabbar.TabRouteScreen
+import com.nshiftui.poc.sdui.plugins.scn.tabbar.tabBarItems
 import com.nshiftui.poc.ui.SCNIcon
 
 @kotlinx.serialization.Serializable
@@ -95,36 +103,155 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
     override fun Content() {
         val parent = LocalSCNTheme.current
         val screen = metadata<ScreenMetadata>()
-        val navigationBar = screen.navigationBar ?: ScreenNavigationBarMetadata()
+        val hosted = LocalTabBarHosted.current
+        val tabs = tabBarItems(model.children, hosted)
+        var selected by remember { mutableStateOf(0) }
+        var chromeByRoute by remember { mutableStateOf<Map<String, ScreenNavigationBarMetadata>>(emptyMap()) }
+        val ownerBar = screen.navigationBar ?: ScreenNavigationBarMetadata()
+        val activeBar = if (!hosted && selected > 0) {
+            val tab = tabs.getOrNull(selected)
+            val route = tab?.route
+            when {
+                route != null && chromeByRoute.containsKey(route) -> chromeByRoute.getValue(route)
+                else -> ScreenNavigationBarMetadata(
+                    title = tab?.title.orEmpty(),
+                    theme = ownerBar.theme,
+                )
+            }
+        } else {
+            ownerBar
+        }
+        val report = LocalTabChromeReport.current
+        LaunchedEffect(ownerBar) {
+            report?.invoke(ownerBar)
+        }
         val preset = SCNThemeId.values().firstOrNull {
-            it.name.equals(navigationBar.theme, ignoreCase = true)
+            it.name.equals(activeBar.theme, ignoreCase = true)
         } ?: SCNThemeId.Neutral
         ProvideSCNTheme(SCNTheme(SCNPresets.named(preset), parent.dark)) {
-            ScreenScaffold(screen)
+            ScreenScaffold(
+                screen = screen,
+                tabs = tabs,
+                selected = selected,
+                onSelect = { selected = it },
+                bar = activeBar,
+                hosted = hosted,
+                onChrome = { route, chrome ->
+                    if (chromeByRoute[route] != chrome) {
+                        chromeByRoute = chromeByRoute + (route to chrome)
+                    }
+                },
+            )
         }
     }
 
     @Composable
-    private fun ScreenScaffold(screen: ScreenMetadata) {
+    private fun ScreenScaffold(
+        screen: ScreenMetadata,
+        tabs: List<com.nshiftui.poc.sdui.plugins.scn.tabbar.TabMetadata>,
+        selected: Int,
+        onSelect: (Int) -> Unit,
+        bar: ScreenNavigationBarMetadata,
+        hosted: Boolean,
+        onChrome: (String, ScreenNavigationBarMetadata) -> Unit,
+    ) {
         val theme = LocalSCNTheme.current
         val colors = theme.palette
-        val fastRefresh = screen.scroll?.fastRefresh == true
         val scope = rememberCoroutineScope()
         var refreshing by remember { mutableStateOf(false) }
         val refresh = LocalScreenRefresh.current
         LaunchedEffect(refresh) {
             viewModel.bind(refresh)
         }
+        if (hosted) {
+            ScreenPage(
+                screen = screen,
+                tabs = tabs,
+                selected = selected,
+                refreshing = refreshing,
+                onRefresh = {
+                    refreshing = true
+                    scope.launch {
+                        viewModel.refresh()
+                        refreshing = false
+                    }
+                },
+                onChrome = onChrome,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.background),
+            )
+            return
+        }
         Scaffold(
             containerColor = colors.background,
-            topBar = { AndroidNavigationBar(screen) },
+            topBar = { AndroidNavigationBar(bar) },
+            bottomBar = {
+                if (tabs.size > 1) {
+                    NavigationBar(containerColor = colors.background) {
+                        tabs.forEachIndexed { index, tab ->
+                            NavigationBarItem(
+                                selected = selected == index,
+                                onClick = { onSelect(index) },
+                                icon = {
+                                    if (tab.icon.isNotBlank()) {
+                                        SCNIcon(
+                                            name = tab.icon,
+                                            tint = if (selected == index) colors.primary else colors.mutedForeground,
+                                        )
+                                    }
+                                },
+                                label = {
+                                    Text(tab.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = colors.primary,
+                                    selectedTextColor = colors.primary,
+                                    unselectedIconColor = colors.mutedForeground,
+                                    unselectedTextColor = colors.mutedForeground,
+                                    indicatorColor = colors.muted,
+                                ),
+                            )
+                        }
+                    }
+                }
+            },
         ) { padding ->
-            BoxWithConstraints(
-                Modifier
+            ScreenPage(
+                screen = screen,
+                tabs = tabs,
+                selected = selected,
+                refreshing = refreshing,
+                onRefresh = {
+                    refreshing = true
+                    scope.launch {
+                        viewModel.refresh()
+                        refreshing = false
+                    }
+                },
+                onChrome = onChrome,
+                modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
+            )
+        }
+    }
+
+    @Composable
+    private fun ScreenPage(
+        screen: ScreenMetadata,
+        tabs: List<com.nshiftui.poc.sdui.plugins.scn.tabbar.TabMetadata>,
+        selected: Int,
+        refreshing: Boolean,
+        onRefresh: () -> Unit,
+        onChrome: (String, ScreenNavigationBarMetadata) -> Unit,
+        modifier: Modifier,
+    ) {
+        val fastRefresh = screen.scroll?.fastRefresh == true
+        BoxWithConstraints(
+            modifier,
+            contentAlignment = Alignment.Center,
+        ) {
                 val scrolling = screen.scroll?.enabled == true || fastRefresh
                 val page: @Composable () -> Unit = {
                     if (scrolling) {
@@ -137,22 +264,19 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
-                            children()
+                            screenChildren()
                         }
                     } else {
-                        children()
+                        screenChildren()
                     }
                 }
-                if (fastRefresh) {
+                if (tabs.isNotEmpty() && selected > 0) {
+                    val route = tabs[selected].route
+                    TabRouteScreen(route) { chrome -> onChrome(route, chrome) }
+                } else if (fastRefresh) {
                     PullToRefreshBox(
                         isRefreshing = refreshing,
-                        onRefresh = {
-                            refreshing = true
-                            scope.launch {
-                                viewModel.refresh()
-                                refreshing = false
-                            }
-                        },
+                        onRefresh = onRefresh,
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         page()
@@ -161,18 +285,25 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                     page()
                 }
                 slots(ScreenSlot.BottomSheet)
+        }
+    }
+
+    @Composable
+    private fun screenChildren() {
+        children { model, node ->
+            if (model.name.rawValue != "TabBar") {
+                NShiftNodeView(node = node, engine = requireEngineTree(), viewModel = parentViewModel())
             }
         }
     }
 }
 
 @Composable
-private fun AndroidNavigationBar(screen: ScreenMetadata) {
+private fun AndroidNavigationBar(navigationBar: ScreenNavigationBarMetadata) {
     val theme = LocalSCNTheme.current
-    val navigationBar = screen.navigationBar ?: ScreenNavigationBarMetadata()
     val onBack = LocalScreenBack.current
-    val leading = leadingIcon(screen, onBack)
-    val trailing = trailingIcon(screen)
+    val leading = leadingIcon(navigationBar, onBack)
+    val trailing = trailingIcon(navigationBar)
     val container = barColor(navigationBar.background, theme)
     Column(
         Modifier
@@ -243,8 +374,7 @@ private fun BarButton(icon: String, onClick: () -> Unit) {
     }
 }
 
-private fun leadingIcon(screen: ScreenMetadata, onBack: (() -> Unit)?): String? {
-    val navigationBar = screen.navigationBar ?: ScreenNavigationBarMetadata()
+private fun leadingIcon(navigationBar: ScreenNavigationBarMetadata, onBack: (() -> Unit)?): String? {
     if (navigationBar.leadingIcon.isNotBlank()) return navigationBar.leadingIcon
     return when (navigationBar.leading) {
         "none" -> null
@@ -253,8 +383,7 @@ private fun leadingIcon(screen: ScreenMetadata, onBack: (() -> Unit)?): String? 
     }
 }
 
-private fun trailingIcon(screen: ScreenMetadata): String? {
-    val navigationBar = screen.navigationBar ?: ScreenNavigationBarMetadata()
+private fun trailingIcon(navigationBar: ScreenNavigationBarMetadata): String? {
     if (navigationBar.trailingIcon.isNotBlank()) return navigationBar.trailingIcon
     return when (navigationBar.trailing) {
         "close", "button" -> "x"

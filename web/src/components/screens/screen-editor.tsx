@@ -41,9 +41,12 @@ import { usePreviewDisplay } from '@/components/phones/preview-display'
 import { PreviewFidelityNotice } from '@/components/preview-fidelity-notice'
 import { FlowCanvas } from '@/components/screens/flow/flow-canvas'
 import {
+  anchorTabBar,
+  printRainbowDocument,
   readPlacedPlugin,
   readRainbowDocument,
 } from '@/components/screens/rainbow-document'
+import { separateTabBar } from '@/components/screens/rainbow-source'
 import { RainbowEditor } from '@/components/screens/rainbow-editor'
 import { Android } from '@/components/ui/android'
 import { Iphone } from '@/components/ui/iphone'
@@ -155,7 +158,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
     if (theme) setPreset(theme)
   }, [rainbowSource, setPreset])
 
-  const publish = useCallback(() => {
+  const publish = useCallback(async () => {
     if (!visibleScreen || publishing) return
     if (frozen) {
       if (!viewedSnapshot) return
@@ -177,7 +180,8 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
       return
     }
     if (!unpublished) return
-    const source = rainbowSource
+    const source = await anchoredTabBarSource(container.parser, rainbowSource)
+    if (source !== rainbowSource) setRainbowSource(source)
     setPublishing(true)
     api
       .updateScreen(visibleScreen.id, {
@@ -231,6 +235,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
     rainbowSource,
     setRainbowSource,
     unpublished,
+    container.parser,
     viewedSnapshot,
     visibleScreen,
   ])
@@ -817,6 +822,7 @@ function DevicePreview({ device }: { device: 'iphone' | 'android' }) {
     requestSheetEdit,
   } = useScreenLayout()
   const Frame = device === 'iphone' ? Iphone : Android
+  const placed = separateTabBar(layoutNodes)
 
   return (
     <Frame
@@ -835,7 +841,7 @@ function DevicePreview({ device }: { device: 'iphone' | 'android' }) {
         handleNativeDrop(event.clientX, event.clientY)
       }}
     >
-      <ScreenFrame chrome={readScreenChrome(rainbowSource)} device={device}>
+      <ScreenFrame chrome={readScreenChrome(rainbowSource)} device={device} tabBar={placed.tabBar}>
       <div
         className="phone-scroll relative flex min-h-0 w-full flex-1 flex-col"
         data-drop-target
@@ -863,7 +869,7 @@ function DevicePreview({ device }: { device: 'iphone' | 'android' }) {
               </div>
             )}
             <div className="flex min-h-full w-full shrink-0 flex-col items-stretch justify-center">
-              {layoutNodes.map((node) => (
+              {placed.content.map((node) => (
                 <div key={node.id} className="w-full">
                   <LayoutNodeView node={node} />
                 </div>
@@ -1031,4 +1037,15 @@ function LayoutNodeView({
       handleNativeDrop(event.clientX, event.clientY)
     },
   })
+}
+
+async function anchoredTabBarSource(
+  parser: { parse: (source: string) => Promise<unknown>; format: (source: string) => Promise<{ ok: boolean; formatted?: string | null }> },
+  source: string,
+) {
+  const document = readRainbowDocument(await parser.parse(source))
+  if (!document || !anchorTabBar(document)) return source
+  const printed = printRainbowDocument(document)
+  const formatted = await parser.format(printed)
+  return formatted.ok && formatted.formatted ? formatted.formatted : printed
 }

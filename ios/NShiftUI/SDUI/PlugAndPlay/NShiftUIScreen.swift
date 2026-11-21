@@ -150,7 +150,10 @@ private struct ResolvedScreen: View {
                 guard case .pending = phase else {
                     return
                 }
-                phase = await builder.load().phase
+                let started = DispatchTime.now().uptimeNanoseconds
+                let loaded = await builder.load()
+                await holdFetchPresentation(since: started)
+                phase = loaded.phase
             }
             .onReceive(refresh.subject) { _ in
                 Task { @MainActor in
@@ -175,9 +178,8 @@ private struct ResolvedScreen: View {
                 retrying = true
                 phase = .pending
                 Task {
-                    let started = DispatchTime.now().uptimeNanoseconds
+                    await waitBeforeRetry()
                     let loaded = await builder.load()
-                    await holdRetryLoading(since: started)
                     phase = loaded.phase
                     retrying = false
                 }
@@ -217,9 +219,8 @@ private struct ScreenStartup: View {
                 retrying = true
                 failed = false
                 Task {
-                    let started = DispatchTime.now().uptimeNanoseconds
+                    await waitBeforeRetry()
                     let loaded = await builder.load()
-                    await holdRetryLoading(since: started)
                     if loaded.isLoaded {
                         loadedBuilder = loaded
                     } else {
@@ -235,7 +236,9 @@ private struct ScreenStartup: View {
 
     private func start() async {
         failed = false
+        let started = DispatchTime.now().uptimeNanoseconds
         let loaded = await builder.load()
+        await holdFetchPresentation(since: started)
         if loaded.isLoaded {
             loadedBuilder = loaded
         } else {
@@ -244,10 +247,15 @@ private struct ScreenStartup: View {
     }
 }
 
-private let retryLoadingFloorNanos: UInt64 = 800_000_000
+private let fetchPresentationFloorNanos: UInt64 = 1_000_000_000
+private let retryDelayNanos: UInt64 = 1_000_000_000
 
-private func holdRetryLoading(since start: UInt64) async {
+private func holdFetchPresentation(since start: UInt64) async {
     let elapsed = DispatchTime.now().uptimeNanoseconds &- start
-    guard elapsed < retryLoadingFloorNanos else { return }
-    try? await Task.sleep(nanoseconds: retryLoadingFloorNanos &- elapsed)
+    guard elapsed < fetchPresentationFloorNanos else { return }
+    try? await Task.sleep(nanoseconds: fetchPresentationFloorNanos &- elapsed)
+}
+
+private func waitBeforeRetry() async {
+    try? await Task.sleep(nanoseconds: retryDelayNanos)
 }

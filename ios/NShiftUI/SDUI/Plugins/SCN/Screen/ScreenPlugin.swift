@@ -122,15 +122,45 @@ struct ScreenPlugin: NShiftPluginContainer {
     @StateObject var viewModel: ScreenViewModel
     @EnvironmentObject private var theme: SCNTheme
     @Environment(\.screenRefresh) private var screenRefresh
+    @Environment(\.tabBarHosted) private var tabBarHosted
+    @Environment(\.tabChromeReport) private var tabChromeReport
+    @State private var selectedTab = 0
+    @State private var chromeByRoute: [String: ScreenNavigationBarMetadata] = [:]
 
     var body: some View {
-        styled(content)
-            .onAppear {
-                viewModel.bind(refresh: screenRefresh)
+        Group {
+            if tabBarHosted {
+                hostedBody
+            } else {
+                styled(content, bar: displayedBar)
             }
+        }
+        .onAppear {
+            viewModel.bind(refresh: screenRefresh)
+            tabChromeReport?.report(navigationBar)
+        }
+        .onChange(of: navigationBar) { bar in
+            tabChromeReport?.report(bar)
+        }
     }
 
-    private func styled<Content: View>(_ content: Content) -> some View {
+    private var hostedBody: some View {
+        content
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity
+            )
+            .background(slots(.bottomSheet))
+            .scnScreenTheme(
+                name: navigationBar.theme,
+                interfaceStyle: theme.interfaceStyle
+            )
+    }
+
+    private func styled<Content: View>(
+        _ content: Content,
+        bar: ScreenNavigationBarMetadata
+    ) -> some View {
         content
             .frame(
                 maxWidth: .infinity,
@@ -138,26 +168,56 @@ struct ScreenPlugin: NShiftPluginContainer {
             )
             .background(slots(.bottomSheet))
             .scnNavigationBar(
-                title: navigationBar.title,
-                leading: leading,
-                center: centerIcon,
-                trailing: trailing,
+                title: bar.title,
+                leading: leading(for: bar),
+                center: centerIcon(for: bar),
+                trailing: trailing(for: bar),
                 isTranslucent: true,
-                background: barBackground
+                background: barBackground(for: bar)
             )
             .scnScreenTheme(
-                name: navigationBar.theme,
+                name: bar.theme,
                 interfaceStyle: theme.interfaceStyle
             )
     }
 
     @ViewBuilder
     private var content: some View {
+        let tabs = tabBarItems(in: pluginChildren, hosted: tabBarHosted)
+        if tabs.isEmpty {
+            screenBody
+        } else {
+            TabView(selection: $selectedTab) {
+                screenBody
+                    .tabItem { tabLabel(tabs[0]) }
+                    .tag(0)
+                ForEach(Array(tabs.dropFirst().enumerated()), id: \.offset) { offset, item in
+                    TabRouteScreen(route: item.route) { bar in
+                        guard chromeByRoute[item.route] != bar else { return }
+                        chromeByRoute[item.route] = bar
+                    }
+                    .tabItem { tabLabel(item) }
+                    .tag(offset + 1)
+                }
+            }
+            .accentColor(theme.palette.primary)
+            .background(
+                NativeTabBarColors(
+                    primary: tabBarUIColor(theme.palette.primary, style: theme.interfaceStyle),
+                    muted: tabBarUIColor(theme.palette.mutedForeground, style: theme.interfaceStyle),
+                    background: tabBarUIColor(theme.palette.background, style: theme.interfaceStyle)
+                )
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         let fastRefresh = metadata.scroll?.fastRefresh == true
         if metadata.scroll?.enabled == true || fastRefresh {
             GeometryReader { geometry in
                 ScrollView(.vertical) {
-                    children()
+                    pageChildren
                         .frame(
                             maxWidth: .infinity,
                             minHeight: geometry.size.height,
@@ -175,7 +235,7 @@ struct ScreenPlugin: NShiftPluginContainer {
                 )
             }
         } else {
-            children()
+            pageChildren
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity,
@@ -184,22 +244,57 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
     }
 
+    @ViewBuilder
+    private var pageChildren: some View {
+        children { model, view in
+            if model.name.rawValue != "TabBar" {
+                view
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tabLabel(_ item: TabMetadata) -> some View {
+        let icon = tabBarIcon(item.icon)
+        return Label {
+            Text(item.title)
+        } icon: {
+            if let icon {
+                Image(uiImage: icon)
+            } else {
+                Image(systemName: "circle")
+            }
+        }
+    }
+
     private var navigationBar: ScreenNavigationBarMetadata {
         metadata.navigationBar ?? .init()
     }
 
-    private var leading: SCNNavigationBarLeading {
-        if let icon = iconNamed(navigationBar.leadingIcon) {
+    private var displayedBar: ScreenNavigationBarMetadata {
+        let tabs = tabBarItems(in: pluginChildren, hosted: tabBarHosted)
+        guard selectedTab > 0, selectedTab < tabs.count else {
+            return navigationBar
+        }
+        let tab = tabs[selectedTab]
+        return chromeByRoute[tab.route] ?? ScreenNavigationBarMetadata(
+            title: tab.title,
+            theme: navigationBar.theme
+        )
+    }
+
+    private func leading(for bar: ScreenNavigationBarMetadata) -> SCNNavigationBarLeading {
+        if let icon = iconNamed(bar.leadingIcon) {
             return .button(icon: icon, action: {})
         }
         return .none
     }
 
-    private var trailing: SCNNavigationBarTrailing {
-        if let icon = iconNamed(navigationBar.trailingIcon) {
+    private func trailing(for bar: ScreenNavigationBarMetadata) -> SCNNavigationBarTrailing {
+        if let icon = iconNamed(bar.trailingIcon) {
             return .button(icon: icon, action: {})
         }
-        switch navigationBar.trailing {
+        switch bar.trailing {
         case "close", "button":
             return .close()
         default:
@@ -212,16 +307,16 @@ struct ScreenPlugin: NShiftPluginContainer {
         return SCNIconName(rawValue: name)
     }
 
-    private var centerIcon: Image? {
-        guard navigationBar.centerIcon.isEmpty == false else {
+    private func centerIcon(for bar: ScreenNavigationBarMetadata) -> Image? {
+        guard bar.centerIcon.isEmpty == false else {
             return nil
         }
-        return Image(navigationBar.centerIcon).renderingMode(.template)
+        return Image(bar.centerIcon).renderingMode(.template)
     }
 
-    private var barBackground: Color {
-        let palette = screenPalette
-        switch navigationBar.background {
+    private func barBackground(for bar: ScreenNavigationBarMetadata) -> Color {
+        let palette = screenPalette(for: bar)
+        switch bar.background {
         case "card":
             return palette.card
         case "primary":
@@ -235,8 +330,8 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
     }
 
-    private var screenPalette: SCNThemePalette {
-        let id = SCNThemeID(rawValue: navigationBar.theme) ?? .neutral
+    private func screenPalette(for bar: ScreenNavigationBarMetadata) -> SCNThemePalette {
+        let id = SCNThemeID(rawValue: bar.theme) ?? .neutral
         let preset = SCNThemePreset.named(id)
         if theme.interfaceStyle == .dark {
             return preset.dark

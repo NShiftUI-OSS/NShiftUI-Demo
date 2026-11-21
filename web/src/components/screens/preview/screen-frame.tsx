@@ -1,7 +1,8 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 
 import { usePreviewAssist } from '@/components/phones/preview-display'
-import { useScreenLayout } from '@/components/screens/screen-layout-context'
+import { ScreenTabBar } from '@/components/screens/preview/screen-tab-bar'
+import { useScreenLayout, type ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { cn } from '@/lib/utils'
 import { ScnIconMark } from '@/scn/scn-icon'
 import {
@@ -12,17 +13,21 @@ import {
 export function ScreenFrame({
   chrome,
   device,
+  tabBar = null,
   children,
   interactive = true,
 }: {
   chrome: ScreenChrome | null
   device: 'iphone' | 'android'
+  tabBar?: ScreenLayoutNode | null
   children: ReactNode
   interactive?: boolean
 }) {
   const { openPluginAction } = useScreenLayout()
   const assist = usePreviewAssist()
-  if (!chrome) return children
+  const [tabChrome, setTabChrome] = useState<ScreenChrome | null>(null)
+  const shown = tabChrome ?? chrome
+  if (!shown && !tabBar) return children
 
   return (
     <div
@@ -40,10 +45,18 @@ export function ScreenFrame({
           : undefined
       }
     >
-      {navigationBarVisible(chrome) ? (
-        <ScreenNavBar chrome={chrome} device={device} />
+      {shown && navigationBarVisible(shown) ? (
+        <ScreenNavBar chrome={shown} device={device} />
       ) : null}
       {children}
+      {tabBar ? (
+        <ScreenTabBar
+          node={tabBar}
+          device={device}
+          interactive={interactive}
+          onChrome={setTabChrome}
+        />
+      ) : null}
     </div>
   )
 }

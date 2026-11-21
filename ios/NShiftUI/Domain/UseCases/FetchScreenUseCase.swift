@@ -53,7 +53,7 @@ struct FetchScreenUseCase: FetchScreenUseCaseProtocol {
     private func screenModel(from rainbow: String) throws -> NShiftPluginModel {
         let model: NShiftPluginModel
         do {
-            model = try NShiftRainbowCompiler().compile(source: rainbow)
+            model = try NShiftRainbowCompiler().compile(source: concreteBackNavigation(rainbow))
         } catch {
             throw FetchScreenError.unavailable
         }
@@ -62,4 +62,12 @@ struct FetchScreenUseCase: FetchScreenUseCaseProtocol {
         }
         return model
     }
+}
+
+private func concreteBackNavigation(_ source: String) -> String {
+    source.replacingOccurrences(
+        of: #"BackNavigationEvent\(\s*\)"#,
+        with: "BackNavigationEvent(for: 1)",
+        options: .regularExpression
+    )
 }

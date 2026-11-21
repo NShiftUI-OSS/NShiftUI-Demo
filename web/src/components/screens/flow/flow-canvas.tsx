@@ -408,6 +408,14 @@ function cardClass(data: FlowCard, tone: string) {
   )
 }
 
+function stairPath(sourceX: number, sourceY: number, targetX: number, targetY: number) {
+  if (Math.abs(sourceX - targetX) < 1) {
+    return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`
+  }
+  const midY = sourceY + Math.max(28, (targetY - sourceY) * 0.46)
+  return `M ${sourceX} ${sourceY} L ${sourceX} ${midY} L ${targetX} ${midY} L ${targetX} ${targetY}`
+}
+
 const TreeEdge = memo(function TreeEdge({
   sourceX,
   sourceY,
@@ -422,7 +430,7 @@ const TreeEdge = memo(function TreeEdge({
     ? Math.abs(sourceY - targetY) < 0.5
       ? `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`
       : `M ${sourceX} ${sourceY} L ${sourceX} ${targetY} L ${targetX} ${targetY}`
-    : `M ${sourceX} ${sourceY} L ${sourceX} ${targetY}`
+    : stairPath(sourceX, sourceY, targetX, targetY)
   return <BaseEdge path={path} markerEnd={markerEnd} />
 })
 

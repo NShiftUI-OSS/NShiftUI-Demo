@@ -31,20 +31,45 @@ export type FlowLink = {
   targetHandle: 'in-top' | 'in-left'
 }
 
-const PLUGIN_W = 210
-const TRIGGER_W = 124
-const EVENT_W = 200
-const GAP_X = 88
-const GAP_Y = 40
-const CARD_H = 88
+const PLUGIN_W = 220
+const SCREEN_W = 220
+const TRIGGER_W = 132
+const EVENT_W = 210
+const SIBLING_GAP = 64
+const LEVEL_GAP = 84
+const BEHAVIOR_GAP = 48
+const GAP_Y = 28
+const CARD_H = 76
+
+type Branch = {
+  node: RainbowNode
+  path: string
+  cardW: number
+  subtreeW: number
+  subtreeH: number
+  behaviorW: number
+  behaviorH: number
+  contentW: number
+  children: Branch[]
+}
 
 export function buildFlow(document: RainbowDocument, focus: string | null) {
   const cards: FlowCard[] = []
   const links: FlowLink[] = []
   const { screen, roots } = readFlowRoots(document)
-  let y = 0
+  const children = roots
+    .map((node, index) => ({ node, index }))
+    .filter(
+      ({ node }) =>
+        !isRainbowTrigger(nodeName(node)) && !isBottomSheetSlot(nodeName(node)),
+    )
+    .map(({ node, index }) => measureBranch(node, String(index), PLUGIN_W))
 
   if (screen) {
+    const screenBehavior = behaviorSize(screen)
+    const row = rowWidth(children)
+    const contentW = Math.max(SCREEN_W, row)
+    const cardX = (contentW - SCREEN_W) / 2
     pushCard(cards, {
       id: 'screen',
       kind: 'screen',
@@ -53,83 +78,157 @@ export function buildFlow(document: RainbowDocument, focus: string | null) {
       hostId: '',
       triggerName: '',
       path: 'screen',
-      x: 0,
-      y,
+      x: Math.max(0, cardX),
+      y: 0,
     })
-    y = Math.max(
-      y + CARD_H,
-      placeBehavior(screen, 'screen', PLUGIN_W + GAP_X, y, cards, links),
+    placeBehavior(
+      screen,
+      'screen',
+      Math.max(0, cardX) + SCREEN_W + BEHAVIOR_GAP,
+      0,
+      cards,
+      links,
     )
-    y += GAP_Y
-  }
-
-  for (const [index, root] of roots.entries()) {
-    if (isRainbowTrigger(nodeName(root)) || isBottomSheetSlot(nodeName(root)))
-      continue
-    const path = String(index)
-    if (screen) {
-      links.push({
-        id: `screen-${path}`,
-        source: 'screen',
-        target: path,
-        sourceHandle: 'out-bottom',
-        targetHandle: 'in-top',
-      })
-    }
-    y = placeHost(root, path, 0, y, cards, links, null) + GAP_Y
+    const childY = Math.max(CARD_H, screenBehavior.h) + LEVEL_GAP
+    placeRow(children, (contentW - row) / 2, childY, 'screen', cards, links)
+  } else {
+    placeRow(children, 0, 0, null, cards, links)
   }
 
   for (const card of cards) card.relation = relation(card.path, focus)
   return { cards, links }
 }
 
-function placeHost(
-  node: RainbowNode,
-  path: string,
+function measureBranch(node: RainbowNode, path: string, cardW: number): Branch {
+  const children = visibleChildren(node).map((child) =>
+    measureBranch(child.node, `${path}/${child.index}`, PLUGIN_W),
+  )
+  const behavior = behaviorSize(node)
+  const row = rowWidth(children)
+  const contentW = Math.max(cardW, row)
+  const trunk = Math.max(CARD_H, behavior.h)
+  return {
+    node,
+    path,
+    cardW,
+    subtreeW: contentW + (behavior.w ? BEHAVIOR_GAP + behavior.w : 0),
+    subtreeH: trunk + (children.length ? LEVEL_GAP + tallest(children) : 0),
+    behaviorW: behavior.w,
+    behaviorH: behavior.h,
+    contentW,
+    children,
+  }
+}
+
+function placeRow(
+  branches: Branch[],
   x: number,
   y: number,
+  parentId: string | null,
   cards: FlowCard[],
   links: FlowLink[],
+) {
+  let cursor = x
+  for (const branch of branches) {
+    placeBranch(branch, cursor, y, parentId, cards, links)
+    cursor += branch.subtreeW + SIBLING_GAP
+  }
+}
+
+function placeBranch(
+  branch: Branch,
+  x: number,
+  y: number,
   parentId: string | null,
-): number {
-  const name = nodeName(node)
+  cards: FlowCard[],
+  links: FlowLink[],
+) {
+  const row = rowWidth(branch.children)
+  const cardX = x + (branch.contentW - branch.cardW) / 2
+  const childX = x + (branch.contentW - row) / 2
   pushCard(cards, {
-    id: path,
+    id: branch.path,
     kind: 'plugin',
-    title: name,
-    detail: detailOf(node),
-    hostId: path,
+    title: nodeName(branch.node),
+    detail: detailOf(branch.node),
+    hostId: branch.path,
     triggerName: '',
-    path,
-    x,
+    path: branch.path,
+    x: cardX,
     y,
   })
   if (parentId) {
     links.push({
-      id: `${parentId}-${path}`,
+      id: `${parentId}-${branch.path}`,
       source: parentId,
-      target: path,
+      target: branch.path,
       sourceHandle: 'out-bottom',
       targetHandle: 'in-top',
     })
   }
-  const behaviorBottom = placeBehavior(
-    node,
-    path,
-    x + PLUGIN_W + GAP_X,
+  placeBehavior(
+    branch.node,
+    branch.path,
+    cardX + branch.cardW + BEHAVIOR_GAP,
     y,
     cards,
     links,
   )
-  let cursor = Math.max(y + CARD_H, behaviorBottom)
-  for (const [index, child] of (node.block?.children ?? []).entries()) {
-    if (isRainbowTrigger(nodeName(child)) || isBottomSheetSlot(nodeName(child)))
-      continue
-    const childPath = `${path}/${index}`
-    cursor += GAP_Y
-    cursor = placeHost(child, childPath, x, cursor, cards, links, path)
+  if (branch.children.length === 0) return
+  placeRow(
+    branch.children,
+    childX,
+    y + Math.max(CARD_H, branch.behaviorH) + LEVEL_GAP,
+    branch.path,
+    cards,
+    links,
+  )
+}
+
+function rowWidth(branches: Branch[]) {
+  return branches.reduce(
+    (sum, branch, index) => sum + branch.subtreeW + (index ? SIBLING_GAP : 0),
+    0,
+  )
+}
+
+function tallest(branches: Branch[]) {
+  return branches.reduce((max, branch) => Math.max(max, branch.subtreeH), 0)
+}
+
+function visibleChildren(node: RainbowNode) {
+  return (node.block?.children ?? [])
+    .map((child, index) => ({ node: child, index }))
+    .filter(
+      ({ node: child }) =>
+        !isRainbowTrigger(nodeName(child)) && !isBottomSheetSlot(nodeName(child)),
+    )
+}
+
+function behaviorSize(node: RainbowNode) {
+  const names = triggerNames(node)
+  if (names.length === 0) return { w: 0, h: 0 }
+  let width = 0
+  let height = 0
+  for (const triggerName of names) {
+    const events =
+      (node.events ?? []).find((item) => item.name.value === triggerName)?.events ??
+      []
+    let eventsW = 0
+    let eventsH = 0
+    for (const event of events) {
+      const nested = behaviorSize(event)
+      eventsW = Math.max(
+        eventsW,
+        EVENT_W + (nested.w ? BEHAVIOR_GAP + nested.w : 0),
+      )
+      eventsH += Math.max(CARD_H, nested.h) + GAP_Y
+    }
+    if (events.length > 0) eventsH -= GAP_Y
+    width = Math.max(width, TRIGGER_W + (events.length ? BEHAVIOR_GAP + eventsW : 0))
+    height += Math.max(CARD_H, eventsH) + GAP_Y
   }
-  return cursor
+  return { w: width, h: height - GAP_Y }
 }
 
 function placeBehavior(
@@ -167,7 +266,7 @@ function placeBehavior(
       node,
       path,
       triggerName,
-      x + TRIGGER_W + GAP_X,
+      x + TRIGGER_W + BEHAVIOR_GAP,
       cursor,
       cards,
       links,
@@ -213,7 +312,7 @@ function placeEvents(
     const nested = placeBehavior(
       event,
       eventPath,
-      x + EVENT_W + GAP_X,
+      x + EVENT_W + BEHAVIOR_GAP,
       cursor,
       cards,
       links,
