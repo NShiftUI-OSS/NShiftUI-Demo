@@ -53,7 +53,10 @@ export function createUseCases(repos: Repositories) {
           uniqueOrConflict(error, 'screen_name_taken', 'Esse nome de tela já existe')
         }
       },
-      update: async (id: string, input: ScreenInput & { revision: number }) => {
+      update: async (
+        id: string,
+        input: ScreenInput & { revision: number; restoredFrom?: string },
+      ) => {
         const current = await repos.screens.findById(id)
         if (!current) throw new NotFoundError('screen_not_found', 'Tela não existe')
         if (current.revision !== input.revision) {
@@ -66,6 +69,7 @@ export function createUseCases(repos: Repositories) {
           const row = await repos.screens.update(id, {
             ...input,
             rainbow: requireRainbow(input.rainbow),
+            restoredFrom: input.restoredFrom,
           })
           if (!row) {
             const again = await repos.screens.findById(id)
@@ -111,6 +115,14 @@ export function createUseCases(repos: Repositories) {
         const removed = await repos.screens.delete(id)
         if (!removed) throw new NotFoundError('screen_not_found', 'Tela não existe')
       },
+      versions: async (id: string) => {
+        const screen = await repos.screens.findById(id)
+        if (!screen) throw new NotFoundError('screen_not_found', 'Tela não existe')
+        return repos.screens.versions(id)
+      },
+    },
+    audit: {
+      page: (action: string, page: number) => repos.audit.page(action, page),
     },
   }
 }

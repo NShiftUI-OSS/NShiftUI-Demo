@@ -82,8 +82,10 @@ export function ScnRoot({
 
 export function ScnPresetSelect({
   onPreset,
+  disabled = false,
 }: {
   onPreset?: (preset: ScnPresetId) => void
+  disabled?: boolean
 }) {
   const { preset, setPreset } = useScnTheme()
   return (
@@ -91,7 +93,8 @@ export function ScnPresetSelect({
       <span>Tema do telefone</span>
       <select
         aria-label="Tema do telefone"
-        className="border-input bg-background h-7 rounded-md border px-2"
+        className="border-input bg-background h-7 rounded-md border px-2 disabled:opacity-50"
+        disabled={disabled}
         value={preset}
         onChange={(event) => {
           const next = event.target.value as ScnPresetId

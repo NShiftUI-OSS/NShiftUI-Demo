@@ -146,6 +146,7 @@
 
 .event-flow .react-flow__controls {
   overflow: hidden;
+  margin-bottom: 5.5rem;
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: none;
@@ -193,6 +194,7 @@
 
 .storyboard-flow .react-flow__controls {
   overflow: hidden;
+  margin-bottom: 5.5rem;
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: none;

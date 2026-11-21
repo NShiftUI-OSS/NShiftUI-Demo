@@ -25,6 +25,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { CircleXIcon } from 'lucide-react'
 
+import { PreviewFidelityNotice } from '@/components/preview-fidelity-notice'
 import { buildFlow, type FlowCard } from '@/components/screens/flow/flow-model'
 import {
   readRainbowDocument,
@@ -198,6 +199,7 @@ const FlowView = memo(function FlowView({
         <FitFocus focus={focus} hasNodes={nodes.length > 0} />
       </ReactFlow>
       <FlowLegend />
+      <PreviewFidelityNotice />
       {syntaxError ? <SyntaxErrorOverlay /> : null}
     </div>
   )

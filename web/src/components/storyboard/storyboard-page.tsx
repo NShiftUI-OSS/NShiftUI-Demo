@@ -39,6 +39,7 @@ import { ScnThemeScope } from '@/scn/theme'
 import { useNShift } from '@/di/nshift-provider'
 import { reportApiError } from '@/lib/report-api-error'
 import { cn } from '@/lib/utils'
+import { PreviewFidelityNotice } from '@/components/preview-fidelity-notice'
 import { layoutStoryboard, type LayoutPoint } from '@/components/storyboard/storyboard-layout'
 
 type StoryboardNodeData = {
@@ -96,6 +97,7 @@ export function StoryboardPage() {
       {loading ? <StoryboardLoading /> : null}
       {!loading && error ? <StoryboardError message={error} /> : null}
       {!loading && !error && data ? <StoryboardGraph data={data} /> : null}
+      <PreviewFidelityNotice />
     </main>
   )
 }

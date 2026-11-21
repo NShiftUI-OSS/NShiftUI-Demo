@@ -9,6 +9,7 @@ import type { Container } from '../../composition/container.js'
 import { DomainError, defaultRainbow } from '../../domain/values.js'
 import { openapi } from './openapi.js'
 import {
+  auditListQuery,
   idParam,
   nameParam,
   screenBody,
@@ -82,8 +83,16 @@ export function createApp(
       rainbow: body.rainbow ?? current.rainbow,
       isRoot: body.isRoot,
       revision: body.revision,
+      restoredFrom: body.restoredFrom,
     })
     return { data: updated }
+  })
+  app.get('/screens/:id/versions', async (request) => ({
+    data: await useCases.screens.versions(parse(idParam, request.params).id),
+  }))
+  app.get('/audit', async (request) => {
+    const query = parse(auditListQuery, request.query)
+    return { data: await useCases.audit.page(query.action, query.page) }
   })
   app.delete('/screens/:id', async (request) => {
     await useCases.screens.remove(parse(idParam, request.params).id)

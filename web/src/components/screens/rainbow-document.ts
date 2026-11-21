@@ -22,6 +22,7 @@ export type RainbowValue =
   | { kind: 'null' }
   | { kind: 'array'; values: RainbowValue[] }
   | { kind: 'object'; entries: { key: string; value: RainbowValue }[] }
+  | { kind: 'plugins'; plugins: RainbowNode[] }
   | {
       kind: 'tagged'
       language: string
@@ -35,10 +36,26 @@ export type RainbowParameter = {
   leading?: { comments: string[] }
 }
 
+export type RainbowTrigger = {
+  name: RainbowName
+  events: RainbowNode[]
+  leading?: { comments: string[] }
+}
+
+export type RainbowSlot = {
+  name: RainbowName
+  plugins: RainbowNode[]
+  leading?: { comments: string[] }
+}
+
 export type RainbowNode = {
   name: RainbowName
   parameters: RainbowParameter[]
   block: { children: RainbowNode[] } | null
+  id?: string | null
+  style?: RainbowParameter[]
+  events?: RainbowTrigger[]
+  slots?: RainbowSlot[]
   leading?: { comments: string[] }
 }
 
@@ -119,6 +136,10 @@ function pluginToNode(
     name: { kind: 'ident', value: plugin.name.rawValue },
     parameters: parametersFromPlugin(plugin),
     block: acceptsChildren ? { children: [] } : null,
+    id: plugin.id,
+    style: styleParameters(plugin.style),
+    events: [],
+    slots: [],
     leading: { comments: [] },
   }
 }
@@ -128,20 +149,19 @@ function parametersFromPlugin(plugin: NShiftPluginModel): RainbowParameter[] {
   const metadata = plugin.metadata?.base
   if (metadata) {
     for (const [name, value] of Object.entries(metadata)) {
+      if (name === 'id') continue
       const printed = valueToRainbow(value)
       if (printed) parameters.push(parameter(name, printed))
     }
   }
 
-  parameters.push(styleParameter(plugin.style))
-
   return parameters
 }
 
-function styleParameter(style: NShiftPluginStyle): RainbowParameter {
-  const entries: { key: string; value: RainbowValue }[] = [
-    { key: 'alignment', value: { kind: 'identifier', value: style.alignment } },
-    { key: 'spacing', value: numberValue(style.spacing) },
+function styleParameters(style: NShiftPluginStyle): RainbowParameter[] {
+  const parameters: RainbowParameter[] = [
+    parameter('alignment', { kind: 'identifier', value: style.alignment }),
+    parameter('spacing', numberValue(style.spacing)),
   ]
   for (const name of [
     'width',
@@ -152,9 +172,9 @@ function styleParameter(style: NShiftPluginStyle): RainbowParameter {
     'maxHeight',
   ] as const) {
     const value = style.frame[name]
-    if (value !== null) entries.push({ key: name, value: numberValue(value) })
+    if (value !== null) parameters.push(parameter(name, numberValue(value)))
   }
-  return parameter('style', { kind: 'object', entries })
+  return parameters
 }
 
 function parameter(name: string, value: RainbowValue): RainbowParameter {
@@ -209,25 +229,27 @@ function ensureUse(document: RainbowDocument, name: string, version: string) {
 export function ensureBottomSheet(document: RainbowDocument) {
   const screen = readFlowRoots(document).screen
   if (!screen) return false
-  screen.block ??= { children: [] }
-  let slot = screen.block.children.find((child) => isBottomSheetSlot(nodeName(child)))
+  screen.slots ??= []
+  let slot = screen.slots.find((item) => isBottomSheetSlot(item.name.value))
   if (!slot) {
     slot = {
       name: { kind: 'ident', value: BOTTOM_SHEET_SLOT },
-      parameters: [],
-      block: { children: [] },
+      plugins: [],
       leading: { comments: [] },
     }
-    screen.block.children.push(slot)
+    screen.slots.push(slot)
   }
-  slot.block ??= { children: [] }
-  const existing = slot.block.children.find((child) => nodeName(child) === SHEET_PLUGIN)
+  const existing = slot.plugins.find((child) => nodeName(child) === SHEET_PLUGIN)
   if (!existing) {
     ensureUse(document, SHEET_PLUGIN, '1.0.0')
-    slot.block.children.push({
+    slot.plugins.push({
       name: { kind: 'ident', value: SHEET_PLUGIN },
       parameters: [parameter('title', { kind: 'string', value: 'Bottom sheet' })],
       block: { children: [] },
+      id: null,
+      style: [],
+      events: [],
+      slots: [],
       leading: { comments: [] },
     })
   }
@@ -236,10 +258,10 @@ export function ensureBottomSheet(document: RainbowDocument) {
 
 export function removeBottomSheet(document: RainbowDocument) {
   const screen = readFlowRoots(document).screen
-  if (!screen?.block) return false
-  const index = screen.block.children.findIndex((child) => isBottomSheetSlot(nodeName(child)))
+  if (!screen?.slots) return false
+  const index = screen.slots.findIndex((item) => isBottomSheetSlot(item.name.value))
   if (index < 0) return false
-  screen.block.children.splice(index, 1)
+  screen.slots.splice(index, 1)
   if (!findSheet(document)) {
     document.uses = document.uses.filter(
       (declaration) =>
@@ -251,8 +273,8 @@ export function removeBottomSheet(document: RainbowDocument) {
 
 export function findSheet(document: RainbowDocument) {
   const screen = readFlowRoots(document).screen
-  const slot = screen?.block?.children.find((child) => isBottomSheetSlot(nodeName(child)))
-  return slot?.block?.children.find((child) => nodeName(child) === SHEET_PLUGIN) ?? null
+  const slot = screen?.slots?.find((item) => isBottomSheetSlot(item.name.value))
+  return slot?.plugins.find((child) => nodeName(child) === SHEET_PLUGIN) ?? null
 }
 
 function childrenOf(document: RainbowDocument, targetId: string | null) {
@@ -298,6 +320,10 @@ export function readPlacedPlugin(document: RainbowDocument, nodeId: string) {
   for (const item of node.parameters) {
     appendFieldValues(fields, item.name, item.value)
   }
+  for (const item of node.style ?? []) {
+    appendFieldValues(fields, `style.${item.name}`, item.value)
+  }
+  if (node.id) fields.id = node.id
   return { name, version: declaration?.version ?? '1.0.0', fields }
 }
 
@@ -319,13 +345,12 @@ export function updatePlacedPlugin(
     input.fieldNames.map((fieldName) => fieldName.split('.')[0]),
   )
   if (input.style) managedRoots.add('style')
-  const kept = node.parameters.filter((item) => !managedRoots.has(item.name))
+  const kept = node.parameters.filter(
+    (item) => !managedRoots.has(item.name) && item.name !== 'id',
+  )
   node.name = { kind: 'ident', value: input.name }
-  node.parameters = [
-    ...metadataParameters(input.metadata),
-    ...(input.style ? [styleParameter(input.style)] : []),
-    ...kept,
-  ]
+  node.parameters = [...metadataParameters(input.metadata), ...kept]
+  if (input.style) node.style = styleParameters(input.style)
   ensureUse(document, input.name, input.version)
   return true
 }
@@ -423,25 +448,25 @@ export function insertTriggerEvent(
 ) {
   const host = hostId ? nodeAt(document, hostId, true) : readFlowRoots(document).screen
   if (!host) return false
-  host.block ??= { children: [] }
-  let trigger = host.block.children.find(
-    (child) => nodeName(child) === triggerName,
-  )
+  host.events ??= []
+  let trigger = host.events.find((item) => item.name.value === triggerName)
   if (!trigger) {
     trigger = {
       name: { kind: 'ident', value: triggerName },
-      parameters: [],
-      block: { children: [] },
+      events: [],
       leading: { comments: [] },
     }
-    host.block.children.push(trigger)
+    host.events.push(trigger)
   }
-  trigger.block ??= { children: [] }
   ensureUse(document, event.name, event.version)
-  trigger.block.children.push({
+  trigger.events.push({
     name: { kind: 'ident', value: event.name },
     parameters: metadataParameters(event.metadata, event.jsonParameters ?? []),
     block: null,
+    id: null,
+    style: [],
+    events: [],
+    slots: [],
     leading: { comments: [] },
   })
   return true
@@ -515,13 +540,72 @@ function printNode(node: RainbowNode, indent: number): string {
   const name =
     node.name.kind === 'placeholder' ? `#{${node.name.value}}` : node.name.value
   const parameters = printParameters(node.parameters, indent)
-  const block = node.block
-    ? ` {\n${node.block.children
-        .map((child) => printNode(child, indent + 1))
-        .filter(Boolean)
-        .join('\n')}\n${pad}}`
-    : ''
-  return `${comments}${pad}${name}${parameters}${block}`
+  const header = `${comments}${pad}${name}${parameters}`
+  const lines: string[] = []
+  if (node.block) {
+    lines.push(`${header} {`)
+    for (const child of node.block.children) {
+      const printed = printNode(child, indent + 1)
+      if (printed) lines.push(printed)
+    }
+    lines.push(`${pad}}`)
+  } else {
+    lines.push(header)
+  }
+  if (node.id) lines.push(`${pad}.id("${escapeString(node.id)}")`)
+  const style = node.style ?? []
+  if (style.length > 0) {
+    lines.push(`${pad}.style(`)
+    style.forEach((item, index) => {
+      const comma = index === style.length - 1 ? '' : ','
+      lines.push(
+        `${printComments(item.leading?.comments ?? [], indent + 1)}${'  '.repeat(indent + 1)}${item.name}: ${printValue(item.value, indent + 1)}${comma}`,
+      )
+    })
+    lines.push(`${pad})`)
+  }
+  const events = node.events ?? []
+  if (events.length > 0) {
+    lines.push(`${pad}.events {`)
+    for (const trigger of events) {
+      const triggerPad = '  '.repeat(indent + 1)
+      const triggerName =
+        trigger.name.kind === 'placeholder'
+          ? `#{${trigger.name.value}}`
+          : trigger.name.value
+      lines.push(
+        `${printComments(trigger.leading?.comments ?? [], indent + 1)}${triggerPad}${triggerName} {`,
+      )
+      for (const event of trigger.events) {
+        const printed = printNode(event, indent + 2)
+        if (printed) lines.push(printed)
+      }
+      lines.push(`${triggerPad}}`)
+    }
+    lines.push(`${pad}}`)
+  }
+  if ((node.slots ?? []).length > 0) {
+    lines.push(...printSlots(node.slots ?? [], indent))
+  }
+  return lines.join('\n')
+}
+
+function printSlots(slots: RainbowSlot[], indent: number): string[] {
+  const pad = '  '.repeat(indent)
+  const lines = [`${pad}.slots {`]
+  for (const slot of slots) {
+    const slotPad = '  '.repeat(indent + 1)
+    lines.push(
+      `${printComments(slot.leading?.comments ?? [], indent + 1)}${slotPad}${slot.name.value} {`,
+    )
+    for (const plugin of slot.plugins) {
+      const printed = printNode(plugin, indent + 2)
+      if (printed) lines.push(printed)
+    }
+    lines.push(`${slotPad}}`)
+  }
+  lines.push(`${pad}}`)
+  return lines
 }
 
 function printParameters(parameters: RainbowParameter[], indent: number) {
@@ -542,7 +626,7 @@ function printComments(comments: string[], indent: number) {
   return `${comments.map((comment) => `${pad}//${comment}`).join('\n')}\n`
 }
 
-function printValue(value: RainbowValue): string {
+function printValue(value: RainbowValue, indent = 0): string {
   switch (value.kind) {
     case 'string':
       return `"${escapeString(value.value)}"`
@@ -558,11 +642,19 @@ function printValue(value: RainbowValue): string {
     case 'null':
       return 'null'
     case 'array':
-      return `[${value.values.map(printValue).join(', ')}]`
+      return `[${value.values.map((item) => printValue(item, indent)).join(', ')}]`
     case 'object':
       return `(${value.entries
-        .map((entry) => `${printKey(entry.key)}: ${printValue(entry.value)}`)
+        .map((entry) => `${printKey(entry.key)}: ${printValue(entry.value, indent)}`)
         .join(', ')})`
+    case 'plugins': {
+      const pad = '  '.repeat(indent)
+      if (value.plugins.length === 0) return '{}'
+      return `{\n${value.plugins
+        .map((plugin) => printNode(plugin, indent + 1))
+        .filter(Boolean)
+        .join('\n')}\n${pad}}`
+    }
     case 'tagged':
       return `@${value.language}(${
         value.body.kind === 'placeholder'

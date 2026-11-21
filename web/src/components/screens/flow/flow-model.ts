@@ -186,18 +186,12 @@ function placeEvents(
   cards: FlowCard[],
   links: FlowLink[],
 ): number {
-  const children = node.block?.children ?? []
-  const triggerIndex = children.findIndex(
-    (child) => nodeName(child) === triggerName,
-  )
-  const trigger = triggerIndex >= 0 ? children[triggerIndex] : null
-  const events = trigger?.block?.children ?? []
+  const trigger = (node.events ?? []).find((item) => item.name.value === triggerName)
+  const events = trigger?.events ?? []
   if (events.length === 0) return y
   let cursor = y
   for (const [index, event] of events.entries()) {
-    const eventPath = path
-      ? `${path}/${triggerIndex}/${index}`
-      : `${triggerIndex}/${index}`
+    const eventPath = `${path}>${triggerName}/${index}`
     pushCard(cards, {
       id: eventPath,
       kind: 'event',
@@ -231,8 +225,8 @@ function placeEvents(
 
 function triggerNames(node: RainbowNode) {
   const names: string[] = []
-  for (const child of node.block?.children ?? []) {
-    const name = nodeName(child)
+  for (const trigger of node.events ?? []) {
+    const name = trigger.name.value
     if (!isRainbowTrigger(name) || names.includes(name)) continue
     names.push(name)
   }

@@ -112,6 +112,7 @@ export function RainbowEditor({
   screenId,
   initialSource,
   notice,
+  readOnly = false,
   width,
   active,
   onWidthChange,
@@ -121,6 +122,7 @@ export function RainbowEditor({
   screenId: string
   initialSource: string
   notice?: string | null
+  readOnly?: boolean
   width: number
   active: boolean
   onWidthChange: (width: number) => void
@@ -360,9 +362,13 @@ export function RainbowEditor({
               'absolute inset-0 resize-none overflow-auto border-0 bg-transparent text-transparent caret-transparent outline-none',
               editorTextClass,
             )}
+            readOnly={readOnly}
             spellCheck={false}
             value={source}
-            onChange={(event) => setRainbowSource(event.target.value)}
+            onChange={(event) => {
+              if (readOnly) return
+              setRainbowSource(event.target.value)
+            }}
             onScroll={(event) => {
               const top = event.currentTarget.scrollTop
               const left = event.currentTarget.scrollLeft

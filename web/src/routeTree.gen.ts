@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as StoryboardRouteImport } from './routes/storyboard'
 import { Route as ContentsIndexRouteImport } from './routes/contents/index'
@@ -19,6 +20,11 @@ import { Route as ContentsNewRouteImport } from './routes/contents/new'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsRoute = DocsRouteImport.update({
@@ -49,6 +55,7 @@ const ContentsNewRoute = ContentsNewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/docs': typeof DocsRoute
   '/storyboard': typeof StoryboardRoute
   '/contents/$contentId': typeof ContentsContentIdRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/docs': typeof DocsRoute
   '/storyboard': typeof StoryboardRoute
   '/contents/$contentId': typeof ContentsContentIdRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/docs': typeof DocsRoute
   '/storyboard': typeof StoryboardRoute
   '/contents/$contentId': typeof ContentsContentIdRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/audit'
     | '/docs'
     | '/storyboard'
     | '/contents/$contentId'
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/audit'
     | '/docs'
     | '/storyboard'
     | '/contents/$contentId'
@@ -92,6 +103,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/audit'
     | '/docs'
     | '/storyboard'
     | '/contents/$contentId'
@@ -101,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuditRoute: typeof AuditRoute
   DocsRoute: typeof DocsRoute
   StoryboardRoute: typeof StoryboardRoute
   ContentsContentIdRoute: typeof ContentsContentIdRoute
@@ -115,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs': {
@@ -157,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuditRoute: AuditRoute,
   DocsRoute: DocsRoute,
   StoryboardRoute: StoryboardRoute,
   ContentsContentIdRoute: ContentsContentIdRoute,

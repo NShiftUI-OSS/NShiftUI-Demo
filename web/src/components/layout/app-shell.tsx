@@ -3,6 +3,7 @@ import {
   BookOpenIcon,
   HomeIcon,
   LayoutDashboardIcon,
+  ScrollTextIcon,
   WorkflowIcon,
 } from 'lucide-react'
 import { Link, useLocation } from '@tanstack/react-router'
@@ -32,6 +33,7 @@ const navigation = [
   { label: 'Início', to: '/', icon: HomeIcon },
   { label: 'Screens', to: '/contents', icon: LayoutDashboardIcon },
   { label: 'Storyboard', to: '/storyboard', icon: WorkflowIcon },
+  { label: 'Auditoria', to: '/audit', icon: ScrollTextIcon },
   { label: 'Documentação', to: '/docs', icon: BookOpenIcon },
 ]
 

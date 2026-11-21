@@ -11,6 +11,14 @@ export const screenBody = z.object({
 
 export const screenUpdateBody = screenBody.extend({
   revision: z.number().int().nonnegative(),
+  restoredFrom: z.string().trim().optional(),
+})
+
+export const auditListQuery = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  action: z
+    .enum(['', 'screen.created', 'screen.published', 'screen.deleted'])
+    .default(''),
 })
 
 export const screenListQuery = z.object({

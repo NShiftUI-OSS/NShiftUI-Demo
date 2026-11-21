@@ -113,6 +113,9 @@ function valuesOf(node: RainbowNode) {
   for (const parameter of node.parameters ?? []) {
     assignValue(values, parameter.name, parameter.value)
   }
+  for (const parameter of node.style ?? []) {
+    assignValue(values, `style.${parameter.name}`, parameter.value)
+  }
   return values
 }
 

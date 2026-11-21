@@ -24,6 +24,39 @@ export type ScreenRecord = {
   updatedAt: string
 }
 
+export type ScreenVersion = {
+  screenId: string
+  version: string
+  name: string
+  description: string
+  rainbow: string
+  isRoot: boolean
+  createdAt: string
+  current: boolean
+}
+
+export type AuditAction = 'screen.created' | 'screen.published' | 'screen.deleted'
+
+export type AuditRecord = {
+  id: string
+  createdAt: string
+  action: AuditAction
+  entityType: 'screen'
+  entityId: string | null
+  entityName: string
+  summary: string
+  version: string | null
+  payload: Record<string, unknown>
+}
+
+export type AuditPage = {
+  items: AuditRecord[]
+  page: number
+  pageSize: number
+  total: number
+  pageCount: number
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
@@ -65,6 +98,12 @@ export const api = {
   storyboard: () =>
     request<StoryboardData>('/storyboard'),
   screen: (id: string) => request<ScreenRecord>(`/screens/${id}`),
+  screenVersions: (id: string) => request<ScreenVersion[]>(`/screens/${id}/versions`),
+  audit: (page = 1, action = '') => {
+    const params = new URLSearchParams({ page: String(page) })
+    if (action) params.set('action', action)
+    return request<AuditPage>(`/audit?${params.toString()}`)
+  },
   createScreen: (input: {
     name: string
     description: string
@@ -80,6 +119,7 @@ export const api = {
       rainbow: string
       revision: number
       isRoot: boolean
+      restoredFrom?: string
     },
   ) => request<ScreenRecord>(`/screens/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
   deleteScreen: (id: string) => request<null>(`/screens/${id}`, { method: 'DELETE' }),

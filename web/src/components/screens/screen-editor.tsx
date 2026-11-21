@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom'
 import { CircleXIcon } from 'lucide-react'
 
 import { DomainRecordDialog } from '@/components/domain/domain-record-dialog'
-import { ApiError, api, type ScreenRecord } from '@/lib/api'
+import { ApiError, api, type ScreenRecord, type ScreenVersion } from '@/lib/api'
 import { displayScreenName } from '@/lib/display-screen-name'
 import { hasMergeMarkers, mergeRainbow } from '@/lib/merge-rainbow'
 import { reportApiError } from '@/lib/report-api-error'
@@ -38,6 +38,7 @@ import {
   PREVIEW_PHONE_HEIGHT_CLASS,
   type PhoneSelection,
 } from '@/components/phones/phone-device'
+import { PreviewFidelityNotice } from '@/components/preview-fidelity-notice'
 import { FlowCanvas } from '@/components/screens/flow/flow-canvas'
 import {
   readPlacedPlugin,
@@ -46,6 +47,13 @@ import {
 import { RainbowEditor } from '@/components/screens/rainbow-editor'
 import { Android } from '@/components/ui/android'
 import { Iphone } from '@/components/ui/iphone'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { renderPreview } from '@/components/screens/preview'
 import { useNShift } from '@/di/nshift-provider'
@@ -88,6 +96,8 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
   const [publishing, setPublishing] = useState(false)
   const [confirmPublish, setConfirmPublish] = useState(false)
   const [mergeNote, setMergeNote] = useState<string | null>(null)
+  const [versions, setVersions] = useState<ScreenVersion[]>([])
+  const [viewedVersion, setViewedVersion] = useState<string | null>(null)
   const [pluginEdit, setPluginEdit] = useState<{
     nodeId: string
     componentId: string
@@ -110,18 +120,32 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
   }, [sheetEditToken])
 
   const visibleScreen = screen?.id === screenId ? screen : null
+  const viewedSnapshot = versions.find((item) => item.version === viewedVersion) ?? null
+  const frozen = Boolean(
+    visibleScreen && viewedSnapshot && viewedSnapshot.version !== visibleScreen.version,
+  )
+  const restoreChanges = Boolean(
+    frozen &&
+      viewedSnapshot &&
+      visibleScreen &&
+      (viewedSnapshot.rainbow !== visibleScreen.rainbow ||
+        viewedSnapshot.name !== visibleScreen.name ||
+        viewedSnapshot.description !== visibleScreen.description ||
+        viewedSnapshot.isRoot !== visibleScreen.isRoot),
+  )
   const unpublished = Boolean(
-    visibleScreen && rainbowSource && rainbowSource !== visibleScreen.rainbow,
+    !frozen && visibleScreen && rainbowSource && rainbowSource !== visibleScreen.rainbow,
   )
 
   useEffect(() => {
     let cancelled = false
-    api
-      .screen(screenId)
-      .then((record) => {
+    Promise.all([api.screen(screenId), api.screenVersions(screenId)])
+      .then(([record, history]) => {
         if (cancelled) return
         setRainbowSource(record.rainbow)
         setScreen(record)
+        setVersions(history)
+        setViewedVersion(record.version)
         setLoadError(null)
         setMergeNote(null)
       })
@@ -141,22 +165,31 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
   }, [rainbowSource, setPreset])
 
   const publish = useCallback(() => {
-    if (!visibleScreen || !unpublished || publishing) return
-    const source = rainbowSource
+    if (!visibleScreen || publishing) return
+    if (frozen) {
+      if (!viewedSnapshot || !restoreChanges) return
+    } else if (!unpublished) {
+      return
+    }
+    const source = frozen && viewedSnapshot ? viewedSnapshot.rainbow : rainbowSource
     setPublishing(true)
     api
       .updateScreen(visibleScreen.id, {
-        name: visibleScreen.name,
-        description: visibleScreen.description,
+        name: frozen && viewedSnapshot ? viewedSnapshot.name : visibleScreen.name,
+        description:
+          frozen && viewedSnapshot ? viewedSnapshot.description : visibleScreen.description,
         rainbow: source,
         revision: visibleScreen.revision,
-        isRoot: visibleScreen.isRoot,
+        isRoot: frozen && viewedSnapshot ? viewedSnapshot.isRoot : visibleScreen.isRoot,
+        restoredFrom: frozen && viewedSnapshot ? viewedSnapshot.version : undefined,
       })
       .then((updated) => {
         setScreen(updated)
+        setViewedVersion(updated.version)
         if (updated.rainbow !== source) setRainbowSource(updated.rainbow)
         setMergeNote(null)
         setConfirmPublish(false)
+        api.screenVersions(updated.id).then(setVersions).catch(() => undefined)
       })
       .catch(async (error: unknown) => {
         if (error instanceof ApiError && error.code === 'revision_conflict') {
@@ -188,7 +221,24 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
         reportApiError(error, 'Não foi possível publicar a tela')
       })
       .finally(() => setPublishing(false))
-  }, [publishing, rainbowSource, setRainbowSource, unpublished, visibleScreen])
+  }, [
+    frozen,
+    publishing,
+    rainbowSource,
+    restoreChanges,
+    setRainbowSource,
+    unpublished,
+    viewedSnapshot,
+    visibleScreen,
+  ])
+
+  function showVersion(version: string) {
+    const snapshot = versions.find((item) => item.version === version)
+    if (!snapshot) return
+    setViewedVersion(version)
+    setRainbowSource(snapshot.rainbow)
+    setMergeNote(null)
+  }
 
   function changeEditorWidth(next: number) {
     setEvenSplit(false)
@@ -214,20 +264,38 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
           onBack={flowFocus ? closeFlow : undefined}
           subtitle={
             visibleScreen
-              ? [
-                  visibleScreen.version,
-                  mergeNote ??
-                    (unpublished ? 'Alterações ainda não publicadas' : null),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')
+              ? frozen
+                ? `Versão ${viewedVersion} publicada · não pode ser alterada`
+                : [
+                    visibleScreen.version,
+                    mergeNote ??
+                      (unpublished ? 'Alterações ainda não publicadas' : null),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
               : 'Screen editor'
           }
           actions={
             <div className="flex items-center gap-4">
+              {versions.length > 0 && viewedVersion ? (
+                <Select value={viewedVersion} onValueChange={showVersion}>
+                  <SelectTrigger aria-label="Versão da tela" className="w-36" size="sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {versions.map((item) => (
+                      <SelectItem key={item.version} value={item.version}>
+                        {item.current ? `${item.version} · atual` : item.version}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
               {visibleScreen?.isRoot && <Badge variant="destructive">Root</Badge>}
               <ScnPresetSelect
+                disabled={frozen}
                 onPreset={(preset) => {
+                  if (frozen) return
                   const next = writeScreenTheme(rainbowSource, preset)
                   if (next !== rainbowSource) setRainbowSource(next)
                 }}
@@ -243,10 +311,15 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
               </label>
               <Button
                 size="sm"
-                disabled={!unpublished || publishing || hasMergeMarkers(rainbowSource)}
+                disabled={
+                  publishing ||
+                  (frozen
+                    ? !restoreChanges
+                    : !unpublished || hasMergeMarkers(rainbowSource))
+                }
                 onClick={() => setConfirmPublish(true)}
               >
-                Publicar
+                {frozen ? 'Restaurar' : 'Publicar'}
               </Button>
             </div>
           }
@@ -256,7 +329,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
           ref={editorRowRef}
           data-editor-row
           data-split={panesEven ? 'even' : 'fixed'}
-          className="flex min-h-0 min-w-0 flex-1"
+          className="relative flex min-h-0 min-w-0 flex-1"
           style={
             {
               '--phone-reserve':
@@ -266,7 +339,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
         >
           <div
             data-phone-slot
-            className={
+            className={`${
               panesEven
                 ? flowFocus
                   ? 'flex w-1/2 min-w-0 shrink-0 grow-0 basis-1/2 items-stretch overflow-hidden p-4'
@@ -274,7 +347,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                 : flowFocus
                   ? 'flex w-0 min-w-0 grow items-stretch overflow-hidden p-4'
                   : 'flex w-0 min-w-(--phone-reserve) grow items-center justify-center overflow-hidden p-6 sm:p-10'
-            }
+            }${frozen ? ' pointer-events-none' : ''}`}
           >
             {flowFocus ? (
               <FlowCanvas focus={flowFocus} />
@@ -297,7 +370,12 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
               <RainbowEditor
                 active={editorOpen}
                 initialSource={visibleScreen.rainbow}
-                notice={mergeNote}
+                notice={
+                  frozen
+                    ? `A versão ${viewedVersion} já foi publicada. Restaurar cria uma versão nova com este Rainbow.`
+                    : mergeNote
+                }
+                readOnly={frozen}
                 screenId={visibleScreen.id}
                 width={editorWidth}
                 onClose={() => setEditorOpen(false)}
@@ -310,6 +388,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
               </p>
             )}
           </div>
+          {flowFocus ? null : <PreviewFidelityNotice />}
         </div>
       </section>
       <AlertDialog
@@ -320,11 +399,13 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Publicar esta tela?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {frozen ? 'Restaurar esta versão?' : 'Publicar esta tela?'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Publicar envia o Rainbow para o backend. O parser formata o texto,
-              o patch do SemVer aumenta e essa versão passa a ser a que o
-              aplicativo recebe.
+              {frozen
+                ? `A versão ${viewedVersion} continua intacta. Restaurar publica uma cópia nova, e essa cópia passa a ser a que o aplicativo recebe.`
+                : 'Publicar envia o Rainbow para o backend. O parser formata o texto, o patch do SemVer aumenta e essa versão passa a ser a que o aplicativo recebe. A versão anterior não é alterada.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -336,7 +417,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                 publish()
               }}
             >
-              {publishing ? 'Publicando...' : 'Publicar'}
+              {publishing ? 'Publicando...' : frozen ? 'Restaurar' : 'Publicar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
