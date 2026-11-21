@@ -1,6 +1,6 @@
-import { useTheme } from '@/components/layout/theme'
 import type { HTMLAttributes, ReactNode, Ref } from 'react'
 
+import { InsidePhone, usePhoneAppearance } from '@/components/phones/phone-appearance'
 import { appleScreenBackground } from '@/components/phones/apple-screen'
 import { useScnTheme } from '@/scn/theme'
 
@@ -31,14 +31,14 @@ export function PhoneScreen({
   style,
   ...props
 }: PhoneScreenProps) {
-  const { resolvedTheme } = useTheme()
+  const { appearance } = usePhoneAppearance()
   const { preset } = useScnTheme()
-  const appearance = resolvedTheme === 'light' ? 'light' : 'dark'
   const background = screenBackground ?? appleScreenBackground[appearance]
   const themed = screenBackground === undefined
   const lightScreen = isLightColor(background)
 
   return (
+    <InsidePhone>
     <div
       {...props}
       ref={screenRef}
@@ -71,6 +71,7 @@ export function PhoneScreen({
         }}
       />
     </div>
+    </InsidePhone>
   )
 }
 

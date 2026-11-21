@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 
 import { AppShell } from '@/components/layout/app-shell'
+import { PhoneAppearanceProvider } from '@/components/phones/phone-appearance'
 import { PhoneDeviceProvider } from '@/components/phones/phone-device'
 import { PreviewDisplayProvider } from '@/components/phones/preview-display'
 import { Toaster } from '@/components/ui/sonner'
@@ -25,7 +26,8 @@ function RootLayout() {
 
   return (
     <PhoneDeviceProvider>
-      <PreviewDisplayProvider>
+      <PhoneAppearanceProvider>
+        <PreviewDisplayProvider>
         {isLandingPage ? (
           <RouteTransition pathname={pathname}>
             <Outlet />
@@ -38,7 +40,8 @@ function RootLayout() {
           </AppShell>
         )}
         <Toaster />
-      </PreviewDisplayProvider>
+        </PreviewDisplayProvider>
+      </PhoneAppearanceProvider>
     </PhoneDeviceProvider>
   )
 }

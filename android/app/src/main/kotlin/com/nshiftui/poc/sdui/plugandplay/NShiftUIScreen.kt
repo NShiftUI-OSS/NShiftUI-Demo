@@ -19,6 +19,7 @@ import com.nshiftui.poc.sdui.observers.LocalScreenRefresh
 import com.nshiftui.poc.sdui.observers.ScreenRefreshObserver
 import com.nshiftui.poc.sdui.plugins.scn.screen.LocalScreenBack
 import com.nshiftui.resolveOrThrow
+import kotlinx.coroutines.delay
 
 class Screen private constructor(
     internal val requestedURL: String?,
@@ -93,11 +94,15 @@ private fun ResolvedScreen(
 ) {
     var attempt by remember(builder.requestedURL) { mutableIntStateOf(0) }
     var phase by remember(builder.requestedURL) { mutableStateOf(builder.phase) }
+    var retrying by remember(builder.requestedURL) { mutableStateOf(false) }
     val refresh = remember(builder.requestedURL) { ScreenRefreshObserver() }
     LaunchedEffect(builder.requestedURL, attempt) {
-        if (phase is Screen.Phase.Pending) {
-            phase = builder.load().phase
-        }
+        if (phase !is Screen.Phase.Pending) return@LaunchedEffect
+        val started = if (attempt > 0) System.nanoTime() else 0L
+        val loaded = builder.load()
+        if (attempt > 0) holdRetryLoading(started)
+        phase = loaded.phase
+        retrying = false
     }
     LaunchedEffect(refresh) {
         refresh.events.collect {
@@ -111,6 +116,8 @@ private fun ResolvedScreen(
     when (val current = phase) {
         Screen.Phase.Pending -> LoadingScreen(onBack)
         Screen.Phase.Failed -> ErrorScreen(builder.screenTitle, onBack) {
+            if (retrying) return@ErrorScreen
+            retrying = true
             phase = Screen.Phase.Pending
             attempt += 1
         }
@@ -133,20 +140,36 @@ private fun ScreenStartup(
         mutableStateOf<Screen?>(null)
     }
     var failed by remember(builder.requestedURL) { mutableStateOf(false) }
+    var retrying by remember(builder.requestedURL) { mutableStateOf(false) }
 
     LaunchedEffect(builder.requestedURL, attempt) {
+        val started = if (attempt > 0) System.nanoTime() else 0L
         failed = false
         val loaded = builder.load()
+        if (attempt > 0) holdRetryLoading(started)
         if (loaded.isLoaded) {
             loadedBuilder = loaded
         } else {
             failed = true
         }
+        retrying = false
     }
 
     when {
         loadedBuilder != null -> loadedBuilder!!.resolve(onBack)
-        failed -> ErrorScreen(builder.screenTitle, onBack) { attempt += 1 }
+        failed -> ErrorScreen(builder.screenTitle, onBack) {
+            if (retrying) return@ErrorScreen
+            retrying = true
+            failed = false
+            attempt += 1
+        }
         else -> NShiftLaunchScreen()
     }
+}
+
+private const val RETRY_LOADING_NANOS = 800_000_000L
+
+private suspend fun holdRetryLoading(startedAt: Long) {
+    val wait = RETRY_LOADING_NANOS - (System.nanoTime() - startedAt)
+    if (wait > 0) delay(wait / 1_000_000)
 }

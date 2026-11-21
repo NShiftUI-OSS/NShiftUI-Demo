@@ -1,4 +1,4 @@
-import { useTheme } from '@/components/layout/theme'
+import { useResolvedScnAppearance } from '@/components/phones/phone-appearance'
 import {
   createContext,
   useContext,
@@ -66,8 +66,7 @@ export function ScnRoot({
   className?: string
 }) {
   const { preset } = useScnTheme()
-  const { resolvedTheme } = useTheme()
-  const appearance = resolvedTheme === 'light' ? 'light' : 'dark'
+  const appearance = useResolvedScnAppearance()
 
   return (
     <div
@@ -90,9 +89,9 @@ export function ScnPresetSelect({
   const { preset, setPreset } = useScnTheme()
   return (
     <label className="flex items-center gap-2 text-xs">
-      <span>Tema do telefone</span>
+      <span>Tema do Design System</span>
       <select
-        aria-label="Tema do telefone"
+        aria-label="Tema do Design System"
         className="border-input bg-background h-7 rounded-md border px-2 disabled:opacity-50"
         disabled={disabled}
         value={preset}

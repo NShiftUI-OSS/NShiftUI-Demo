@@ -2,6 +2,7 @@ import { Link, useLocation } from '@tanstack/react-router'
 
 import { NShiftMark } from '@/components/layout/nshift-mark'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
+import { PhoneAppearanceToggle } from '@/components/phones/phone-appearance'
 import { PhoneDeviceToggle } from '@/components/phones/phone-device'
 import { PreviewDisplayToggle } from '@/components/phones/preview-display'
 
@@ -26,6 +27,8 @@ export function AppHeader() {
             <PhoneDeviceToggle />
             <div className="bg-border h-6 w-px" />
             <PreviewDisplayToggle />
+            <div className="bg-border h-6 w-px" />
+            <PhoneAppearanceToggle />
             <div className="bg-border h-6 w-px" />
           </div>
         ) : null}

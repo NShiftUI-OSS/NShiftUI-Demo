@@ -65,13 +65,18 @@ type StoryboardFlowEdge = Edge<StoryboardEdgeData, 'gutter'>
 const nodeTypes = { screen: StoryboardScreenNode }
 const edgeTypes = { gutter: StoryboardGutterEdge }
 
+const RETRY_LOADING_MS = 800
+
 export function StoryboardPage() {
   const [data, setData] = useState<StoryboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const [retrying, setRetrying] = useState(false)
 
   useEffect(() => {
     let cancelled = false
+    const started = Date.now()
     setLoading(true)
     setError(null)
     api
@@ -81,21 +86,42 @@ export function StoryboardPage() {
       })
       .catch((reason: unknown) => {
         if (cancelled) return
+        setData(null)
         setError('Não foi possível montar o Storyboard.')
         reportApiError(reason, 'Não foi possível carregar o Storyboard')
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        const finish = () => {
+          if (cancelled) return
+          setLoading(false)
+          setRetrying(false)
+        }
+        if (attempt === 0) {
+          finish()
+          return
+        }
+        const wait = RETRY_LOADING_MS - (Date.now() - started)
+        window.setTimeout(finish, Math.max(0, wait))
       })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [attempt])
+
+  function retryStoryboard() {
+    if (retrying) return
+    setRetrying(true)
+    setLoading(true)
+    setError(null)
+    setAttempt((current) => current + 1)
+  }
 
   return (
     <main className="relative h-full min-h-0 w-full flex-1 overflow-hidden">
       {loading ? <StoryboardLoading /> : null}
-      {!loading && error ? <StoryboardError message={error} /> : null}
+      {!loading && error ? (
+        <StoryboardError message={error} disabled={retrying} onRetry={retryStoryboard} />
+      ) : null}
       {!loading && !error && data ? <StoryboardGraph data={data} /> : null}
       <PreviewFidelityNotice />
     </main>
@@ -116,12 +142,20 @@ function StoryboardLoading() {
   )
 }
 
-function StoryboardError({ message }: { message: string }) {
+function StoryboardError({
+  message,
+  disabled,
+  onRetry,
+}: {
+  message: string
+  disabled: boolean
+  onRetry: () => void
+}) {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
       <AlertCircleIcon className="text-destructive size-10" />
       <p className="font-semibold">{message}</p>
-      <Button variant="outline" onClick={() => window.location.reload()}>
+      <Button variant="outline" disabled={disabled} onClick={onRetry}>
         Tentar novamente
       </Button>
     </div>

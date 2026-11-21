@@ -118,7 +118,7 @@ private struct StableNShiftScreen: View, Equatable {
     let token: String
     let model: NShiftPluginModel
 
-    static func == (
+    nonisolated static func == (
         lhs: StableNShiftScreen,
         rhs: StableNShiftScreen
     ) -> Bool {
@@ -136,6 +136,7 @@ private struct ResolvedScreen: View {
     @StateObject private var refresh = ScreenRefreshObserver()
     @State private var phase: Screen.Phase
     @State private var generation = 0
+    @State private var retrying = false
 
     init(builder: Screen, onBack: (() -> Void)?) {
         self.builder = builder
@@ -170,8 +171,15 @@ private struct ResolvedScreen: View {
             LoadingScreen()
         case .failed:
             ErrorScreen(title: builder.screenTitle) {
+                guard !retrying else { return }
+                retrying = true
+                phase = .pending
                 Task {
-                    phase = await builder.load().phase
+                    let started = DispatchTime.now().uptimeNanoseconds
+                    let loaded = await builder.load()
+                    await holdRetryLoading(since: started)
+                    phase = loaded.phase
+                    retrying = false
                 }
             }
         case .loaded(let model):
@@ -190,6 +198,7 @@ private struct ScreenStartup: View {
     let onBack: (() -> Void)?
     @State private var loadedBuilder: Screen?
     @State private var failed = false
+    @State private var retrying = false
 
     var body: some View {
         content
@@ -204,8 +213,19 @@ private struct ScreenStartup: View {
             loadedBuilder.resolve(onBack: onBack)
         } else if failed {
             ErrorScreen(title: builder.screenTitle) {
+                guard !retrying else { return }
+                retrying = true
+                failed = false
                 Task {
-                    await start()
+                    let started = DispatchTime.now().uptimeNanoseconds
+                    let loaded = await builder.load()
+                    await holdRetryLoading(since: started)
+                    if loaded.isLoaded {
+                        loadedBuilder = loaded
+                    } else {
+                        failed = true
+                    }
+                    retrying = false
                 }
             }
         } else {
@@ -222,4 +242,12 @@ private struct ScreenStartup: View {
             failed = true
         }
     }
+}
+
+private let retryLoadingFloorNanos: UInt64 = 800_000_000
+
+private func holdRetryLoading(since start: UInt64) async {
+    let elapsed = DispatchTime.now().uptimeNanoseconds &- start
+    guard elapsed < retryLoadingFloorNanos else { return }
+    try? await Task.sleep(nanoseconds: retryLoadingFloorNanos &- elapsed)
 }

@@ -264,3 +264,37 @@
     @apply font-sans;
   }
 }
+
+html[data-theme-reveal='center']::view-transition-group(root) {
+  animation: none;
+}
+
+html[data-theme-reveal='center']::view-transition-old(root),
+html[data-theme-reveal='center']::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html[data-theme-reveal='center']::view-transition-old(root) {
+  z-index: 1;
+}
+
+html[data-theme-reveal='center']::view-transition-new(root) {
+  z-index: 2;
+  animation: theme-circle 1.7s cubic-bezier(0.22, 0.08, 0.18, 1) both;
+}
+
+@keyframes theme-circle {
+  from {
+    clip-path: circle(0 at 50% 50%);
+  }
+  to {
+    clip-path: circle(150vmax at 50% 50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme-reveal='center']::view-transition-new(root) {
+    animation: none;
+  }
+}
