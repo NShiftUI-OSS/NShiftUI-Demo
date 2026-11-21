@@ -90,7 +90,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
   const editorRowRef = useRef<HTMLDivElement>(null)
   const [editorOpen, setEditorOpen] = useState(true)
   const [editorWidth, setEditorWidth] = useState(448)
-  const [evenSplit, setEvenSplit] = useState(false)
+  const [evenSplit, setEvenSplit] = useState(true)
   const [screen, setScreen] = useState<ScreenRecord | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
