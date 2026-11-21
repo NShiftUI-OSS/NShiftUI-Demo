@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { TypeIcon } from 'lucide-react'
 
+import { textAlignment } from '@/components/screens/preview/plugin-layout'
 import { PreviewFrame } from '@/components/screens/preview/preview-frame'
 import type { PreviewModule, PreviewRenderProps } from '@/components/screens/preview/types'
 import { ScnText } from '@/scn/widgets'
@@ -20,7 +21,7 @@ export function TextPreview(props: PreviewRenderProps) {
   const color = textColor(props.values?.color)
   return (
     <PreviewFrame definition={definition} {...props}>
-      <ScnText align="center" color={color} style={style} weight={weight}>
+      <ScnText align={textAlignment(props.values?.alignment)} color={color} style={style} weight={weight}>
         {text}
       </ScnText>
     </PreviewFrame>

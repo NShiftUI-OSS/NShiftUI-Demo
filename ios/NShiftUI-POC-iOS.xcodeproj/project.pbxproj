@@ -97,6 +97,7 @@
 		E7E100000000000000001012 /* OpenBottomSheetEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E100000000000000001011 /* OpenBottomSheetEvent.swift */; };
 		E7E100000000000000001112 /* CloseBottomSheetEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E100000000000000001111 /* CloseBottomSheetEvent.swift */; };
 		E7E100000000000000001212 /* NavigateEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E100000000000000001211 /* NavigateEvent.swift */; };
+		E7E100000000000000001312 /* ChangeDSTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E100000000000000001311 /* ChangeDSTheme.swift */; };
 		68C8B78CD764347C514513D9 /* AlertPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB58BF532BA6B3EE4F33E95 /* AlertPlugin.swift */; };
 		E70CE951D6F1F18BB45377C3 /* AttachmentPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 690EC13CC4E0A99B2CFCA698 /* AttachmentPlugin.swift */; };
 		6127E258B944904D527943FB /* AvatarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF9BCFADFB5D0DEDC40C5C11 /* AvatarPlugin.swift */; };
@@ -253,6 +254,7 @@
 		E7E100000000000000001011 /* OpenBottomSheetEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenBottomSheetEvent.swift; sourceTree = "<group>"; };
 		E7E100000000000000001111 /* CloseBottomSheetEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseBottomSheetEvent.swift; sourceTree = "<group>"; };
 		E7E100000000000000001211 /* NavigateEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigateEvent.swift; sourceTree = "<group>"; };
+		E7E100000000000000001311 /* ChangeDSTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangeDSTheme.swift; sourceTree = "<group>"; };
 		D10000000000000000000011 /* SwinjectNShiftContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwinjectNShiftContainer.swift; sourceTree = "<group>"; };
 		D10000000000000000000021 /* CatalogAssembly.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogAssembly.swift; sourceTree = "<group>"; };
 		D10000000000000000000031 /* ServicesAssembly.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServicesAssembly.swift; sourceTree = "<group>"; };
@@ -954,6 +956,14 @@
 			path = NavigateEvent;
 			sourceTree = "<group>";
 		};
+		C4A0E5D5E000000000000001 /* ChangeDSTheme */ = {
+			isa = PBXGroup;
+			children = (
+				E7E100000000000000001311 /* ChangeDSTheme.swift */,
+			);
+			path = ChangeDSTheme;
+			sourceTree = "<group>";
+		};
 		E7F2000000000000000000C1 /* TabBar */ = {
 			isa = PBXGroup;
 			children = (
@@ -1104,6 +1114,7 @@
 				35A1B05902380FFD07A5046C /* OpenBottomSheetEvent */,
 				18FB7F1FEF6613AB6E1622C0 /* CloseBottomSheetEvent */,
 				4DF2683CD2FB61BB5FA0EF76 /* NavigateEvent */,
+				C4A0E5D5E000000000000001 /* ChangeDSTheme */,
 			);
 			path = SCN;
 			sourceTree = "<group>";
@@ -1304,6 +1315,7 @@
 				E7E100000000000000001012 /* OpenBottomSheetEvent.swift in Sources */,
 				E7E100000000000000001112 /* CloseBottomSheetEvent.swift in Sources */,
 				E7E100000000000000001212 /* NavigateEvent.swift in Sources */,
+				E7E100000000000000001312 /* ChangeDSTheme.swift in Sources */,
 				E7F311000000000000000001 /* HorizontalListPlugin.swift in Sources */,
 				E7F311000000000000000002 /* HorizontalScrollPlugin.swift in Sources */,
 				E7F311000000000000000003 /* HorizontalStackPlugin.swift in Sources */,

@@ -7,6 +7,7 @@ struct TextMetadata: NShiftMetadata, Decodable {
     let style: String
     let weight: String
     let color: String
+    let alignment: String
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -14,6 +15,8 @@ struct TextMetadata: NShiftMetadata, Decodable {
         style = try container.decodeIfPresent(String.self, forKey: .style) ?? "sm"
         weight = try container.decodeIfPresent(String.self, forKey: .weight) ?? "regular"
         color = try container.decodeIfPresent(String.self, forKey: .color) ?? "foreground"
+        let rawAlignment = try container.decodeIfPresent(String.self, forKey: .alignment) ?? "leading"
+        alignment = rawAlignment.hasPrefix(".") ? String(rawAlignment.dropFirst()) : rawAlignment
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -21,6 +24,29 @@ struct TextMetadata: NShiftMetadata, Decodable {
         case style
         case weight
         case color
+        case alignment
+    }
+
+    func textAlignment() -> TextAlignment {
+        switch alignment {
+        case "center":
+            return .center
+        case "trailing":
+            return .trailing
+        default:
+            return .leading
+        }
+    }
+
+    func frameAlignment() -> Alignment {
+        switch alignment {
+        case "center":
+            return .center
+        case "trailing":
+            return .trailing
+        default:
+            return .leading
+        }
     }
 
     func scnStyle() -> SCNText.Style {
@@ -65,11 +91,22 @@ struct TextMetadata: NShiftMetadata, Decodable {
 )
 struct TextPlugin: NShiftPlugin {
     var body: some View {
-        SCNText(
+        let text = SCNText(
             metadata.text,
             style: metadata.scnStyle(),
             weight: metadata.scnWeight(),
             color: metadata.scnColor()
         )
+        .multilineTextAlignment(metadata.textAlignment())
+
+        if style.frame.hasFixedWidth || style.frame.hasFixedHeight {
+            text.frame(
+                maxWidth: style.frame.hasFixedWidth ? .infinity : nil,
+                maxHeight: style.frame.hasFixedHeight ? .infinity : nil,
+                alignment: metadata.frameAlignment()
+            )
+        } else {
+            text
+        }
     }
 }

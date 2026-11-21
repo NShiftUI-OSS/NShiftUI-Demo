@@ -29,4 +29,12 @@ enum SCNThemeID: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var title: String { SCNThemePreset.named(self).title }
+
+    static func resolve(_ raw: String) -> SCNThemeID? {
+        let key = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard key.isEmpty == false else { return nil }
+        return allCases.first {
+            $0.rawValue.lowercased() == key || $0.title.lowercased() == key
+        }
+    }
 }

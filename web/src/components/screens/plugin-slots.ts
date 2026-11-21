@@ -1,4 +1,3 @@
-import { scnPresets } from '@/scn/presets'
 import type { PluginField } from '@/scn/plugin-fields'
 
 export type PluginSlot = {
@@ -13,6 +12,11 @@ const slotsByPlugin: Record<string, PluginSlot[]> = {
       id: 'bottomSheet',
       name: 'Bottom sheet',
       description: 'Conteúdo apresentado por cima desta tela.',
+    },
+    {
+      id: 'tabBar',
+      name: 'Tab bar',
+      description: 'Barra fixa no rodapé. As abas vivem neste slot, fora do conteúdo.',
     },
   ],
 }
@@ -37,13 +41,6 @@ export const screenFields: PluginField[] = [
     label: 'Título',
     kind: 'text',
     defaultValue: '',
-  },
-  {
-    name: 'navigationBar.theme',
-    label: 'Tema',
-    kind: 'select',
-    options: scnPresets.map((preset) => preset.id),
-    defaultValue: 'neutral',
   },
   {
     name: 'navigationBar.leading',

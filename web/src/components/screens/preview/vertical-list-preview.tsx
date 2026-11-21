@@ -23,7 +23,7 @@ export function VerticalListPreview(props: PreviewRenderProps) {
       definition={definition}
       layout="vertical-scroll"
       badge="Lista vertical"
-      emptyLabel="Solte componentes aqui"
+      emptyLabel=""
       {...props}
     />
   )

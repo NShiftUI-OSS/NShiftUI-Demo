@@ -77,7 +77,7 @@ function HomePage() {
               icon={Layers3Icon}
               index="01"
               title="Monte a screen"
-              body="Arraste plugins para o telefone. Stacks, textos, botões e eventos ficam no desenho da tela, não num catálogo solto do banco."
+              body="A tela é o texto Rainbow. A sidebar documenta cada plugin, com um exemplo para colar no editor."
             />
             <Step
               icon={Code2Icon}

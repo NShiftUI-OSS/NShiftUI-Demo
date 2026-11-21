@@ -100,7 +100,7 @@ export function renderPreview(id: string, props: PreviewRenderProps) {
   const Preview = preview.Preview
   return (
     <ScnRoot>
-      <PluginChrome values={props.values} measure={Boolean(props.interactive && props.dropTargetId)}>
+      <PluginChrome componentId={id} values={props.values}>
         <Preview {...props} />
       </PluginChrome>
     </ScnRoot>

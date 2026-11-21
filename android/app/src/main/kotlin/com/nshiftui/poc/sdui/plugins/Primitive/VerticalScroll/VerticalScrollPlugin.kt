@@ -3,6 +3,8 @@ package com.nshiftui.poc.sdui.plugins.primitive.verticalscroll
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
@@ -22,6 +24,7 @@ class VerticalScrollPlugin : NShiftPluginWithViewModel(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = 240.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
             children()

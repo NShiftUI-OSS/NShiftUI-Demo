@@ -30,7 +30,7 @@ export function CardPreview({
       <ChildSlot
         className="scn-card"
         dropTargetId={dropTargetId}
-        emptyLabel="Solte componentes aqui"
+        emptyLabel=""
         isDropTarget={isDropTarget}
         nodes={nodes}
         renderNode={renderNode}

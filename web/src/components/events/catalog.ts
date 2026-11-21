@@ -1,4 +1,5 @@
 import { asyncNavigateEventMetadata } from '@/domain/events/previews/async-navigate-metadata'
+import { changeDsThemeMetadata } from '@/domain/events/previews/change-ds-theme-metadata'
 import { changeEventEventMetadata } from '@/domain/events/previews/change-event-metadata'
 import { changeEventMetadataEventMetadata } from '@/domain/events/previews/change-event-metadata-metadata'
 import { changePluginEventMetadata } from '@/domain/events/previews/change-plugin-metadata'
@@ -9,6 +10,7 @@ import { navigateEventMetadata } from '@/domain/events/previews/navigate-metadat
 import { openBottomSheetEventMetadata } from '@/domain/events/previews/open-bottom-sheet-metadata'
 import { sendHttpRequestEventMetadata } from '@/domain/events/previews/send-http-request-metadata'
 import type { PluginField } from '@/scn/plugin-fields'
+import { scnPresets } from '@/scn/presets'
 
 export type FlowEventDefinition = {
   id: string
@@ -66,6 +68,21 @@ export const flowEvents: FlowEventDefinition[] = [
     triggers: complete,
     metadata: navigateEventMetadata,
     fields: [text('screenName', 'Tela', '', true)],
+  },
+  {
+    id: 'change-ds-theme',
+    name: changeDsThemeMetadata.kind,
+    description: 'Troca o tema global do aplicativo',
+    triggers: complete,
+    metadata: changeDsThemeMetadata,
+    fields: [
+      select(
+        'theme',
+        'Tema',
+        scnPresets.map((preset) => preset.id),
+        'neutral',
+      ),
+    ],
   },
   {
     id: 'back-navigation',

@@ -41,6 +41,19 @@ struct ButtonMetadata: NShiftMetadata, Decodable {
 )
 struct ButtonPlugin: NShiftPlugin {
     var body: some View {
+        let control = labeledButton
+        if style.frame.hasFixedWidth || style.frame.hasFixedHeight {
+            control.frame(
+                maxWidth: style.frame.hasFixedWidth ? .infinity : nil,
+                maxHeight: style.frame.hasFixedHeight ? .infinity : nil
+            )
+        } else {
+            control
+        }
+    }
+
+    @ViewBuilder
+    private var labeledButton: some View {
         if let icon = metadata.icon.flatMap(SCNIconName.init(rawValue:)) {
             SCNButton(
                 icon: icon,

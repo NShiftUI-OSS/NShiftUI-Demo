@@ -23,7 +23,7 @@ export function HorizontalScrollPreview(props: PreviewRenderProps) {
       definition={definition}
       layout="horizontal-scroll"
       badge="Scroll horizontal"
-      emptyLabel="Solte componentes aqui"
+      emptyLabel=""
       {...props}
     />
   )

@@ -23,7 +23,7 @@ export function LayerStackPreview(props: PreviewRenderProps) {
       definition={definition}
       layout="layer"
       badge="Camadas"
-      emptyLabel="Solte componentes aqui"
+      emptyLabel=""
       {...props}
     />
   )

@@ -15,7 +15,7 @@ export function ScnText({
   style?: TextStyle
   weight?: 'medium' | 'semibold'
   color?: 'muted' | 'primary' | 'destructive'
-  align?: 'center'
+  align?: 'leading' | 'center' | 'trailing'
 }) {
   return (
     <p

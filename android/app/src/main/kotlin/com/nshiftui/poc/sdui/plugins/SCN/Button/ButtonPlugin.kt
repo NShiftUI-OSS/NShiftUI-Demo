@@ -1,5 +1,8 @@
 package com.nshiftui.poc.sdui.plugins.scn.button
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.rememberCoroutineScope
 import com.nshiftui.NShiftMetadata
 import com.nshiftui.NShiftPluginWithMetadata
@@ -53,12 +56,17 @@ class ButtonPlugin : NShiftPluginWithMetadata<ButtonMetadata>(
     @Composable
     override fun Content() {
         val scope = rememberCoroutineScope()
+        val frame = model.style.frame
+        var modifier: Modifier = Modifier
+        if (frame.hasFixedWidth) modifier = modifier.fillMaxWidth()
+        if (frame.hasFixedHeight) modifier = modifier.fillMaxHeight()
         SCNButton(
             title = metadata.title,
             icon = metadata.icon,
             variant = metadata.scnVariant(),
             size = metadata.scnSize(),
             enabled = metadata.isEnabled,
+            modifier = modifier,
             onClick = { fire(NShiftTrigger.onTap, scope) },
         )
     }

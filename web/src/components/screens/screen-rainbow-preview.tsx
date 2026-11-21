@@ -8,12 +8,12 @@ import {
 import { Android } from '@/components/ui/android'
 import { Iphone } from '@/components/ui/iphone'
 import { renderPreview } from '@/components/screens/preview'
+import { rootItemClass } from '@/components/screens/preview/plugin-layout'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
-import { layoutFromRainbow, separateTabBar } from '@/components/screens/rainbow-source'
+import { layoutFromRainbow, tabBarFromParsed } from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { useNShift } from '@/di/nshift-provider'
-import { readScreenChrome, readScreenTheme } from '@/scn/screen-theme'
-import { ScnThemeScope } from '@/scn/theme'
+import { readScreenChrome } from '@/scn/screen-theme'
 
 export const SCREEN_PREVIEW_PHONE_CLASS = `${PREVIEW_PHONE_HEIGHT_CLASS} w-auto shrink-0`
 
@@ -24,11 +24,8 @@ export function ScreenRainbowPreview({
   rainbow: string
   className?: string
 }) {
-  const preset = readScreenTheme(rainbow) ?? 'neutral'
-
   return (
-    <ScnThemeScope preset={preset}>
-      <PhoneSelectionView>
+    <PhoneSelectionView>
         {(selection) => {
           const device = selectedDevice(selection)
           if (!device) return null
@@ -40,7 +37,6 @@ export function ScreenRainbowPreview({
           )
         }}
       </PhoneSelectionView>
-    </ScnThemeScope>
   )
 }
 
@@ -59,11 +55,13 @@ function RainbowPreviewBody({
 }) {
   const container = useNShift()
   const [nodes, setNodes] = useState<ScreenLayoutNode[] | null>(null)
+  const [tabBar, setTabBar] = useState<ScreenLayoutNode | null>(null)
   const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setNodes(null)
+    setTabBar(null)
     setInvalid(false)
     void container.parser.parse(rainbow).then((parsed) => {
       if (cancelled) return
@@ -73,6 +71,7 @@ function RainbowPreviewBody({
         return
       }
       setNodes(layout)
+      setTabBar(tabBarFromParsed(parsed))
     })
     return () => {
       cancelled = true
@@ -83,7 +82,7 @@ function RainbowPreviewBody({
     <ScreenFrame
       chrome={readScreenChrome(rainbow)}
       device={device}
-      tabBar={nodes ? separateTabBar(nodes).tabBar : null}
+      tabBar={tabBar}
       interactive={false}
     >
       <div className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col">
@@ -94,9 +93,9 @@ function RainbowPreviewBody({
         ) : nodes.length === 0 ? (
           <PreviewMessage>Tela vazia</PreviewMessage>
         ) : (
-          <div className="flex min-h-full w-full shrink-0 flex-col items-stretch justify-center">
-            {separateTabBar(nodes).content.map((node) => (
-              <div key={node.id} className="w-full">
+          <div className="flex min-h-full w-full shrink-0 flex-col items-center justify-center">
+            {nodes.map((node) => (
+              <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
                 <PreviewNode node={node} />
               </div>
             ))}

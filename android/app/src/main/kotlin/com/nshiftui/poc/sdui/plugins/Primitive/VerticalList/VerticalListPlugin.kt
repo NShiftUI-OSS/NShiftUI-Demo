@@ -2,6 +2,8 @@ package com.nshiftui.poc.sdui.plugins.primitive.verticallist
 
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Modifier
@@ -21,7 +23,9 @@ class VerticalListPlugin : NShiftPluginWithViewModel(
     override fun Content() {
         val nodes = requireEngineTree().node(renderID)?.children.orEmpty()
         LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 240.dp),
         ) {
             items(
                 items = nodes,

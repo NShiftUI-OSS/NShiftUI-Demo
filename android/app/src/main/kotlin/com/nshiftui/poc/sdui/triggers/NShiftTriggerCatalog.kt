@@ -53,6 +53,7 @@ fun NShiftPlugin.store(
     val current = engine ?: return
     val pluginID = model.id ?: renderID.rawValue
     scope.launch {
+        current.replaceMetadata(pluginID, AnyNShiftMetadata(metadata))
         current.handle(trigger, pluginID)
     }
 }

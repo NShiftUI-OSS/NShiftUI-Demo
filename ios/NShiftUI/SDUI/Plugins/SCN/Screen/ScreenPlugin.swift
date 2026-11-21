@@ -110,6 +110,7 @@ struct ScreenMetadata: NShiftMetadata, Decodable {
 @NShiftSlotKey
 enum ScreenSlot: NShiftSlotKey {
     case bottomSheet
+    case tabBar
 }
 
 @NShiftPlugin(
@@ -151,10 +152,10 @@ struct ScreenPlugin: NShiftPluginContainer {
                 maxHeight: .infinity
             )
             .background(slots(.bottomSheet))
-            .scnScreenTheme(
-                name: navigationBar.theme,
-                interfaceStyle: theme.interfaceStyle
-            )
+            .background {
+                theme.palette.background
+                    .ignoresSafeArea()
+            }
     }
 
     private func styled<Content: View>(
@@ -175,15 +176,18 @@ struct ScreenPlugin: NShiftPluginContainer {
                 isTranslucent: true,
                 background: barBackground(for: bar)
             )
-            .scnScreenTheme(
-                name: bar.theme,
-                interfaceStyle: theme.interfaceStyle
-            )
+            .background {
+                theme.palette.background
+                    .ignoresSafeArea()
+            }
     }
 
     @ViewBuilder
     private var content: some View {
-        let tabs = tabBarItems(in: pluginChildren, hosted: tabBarHosted)
+        let slotTabs = tabBarItems(in: slotModels(.tabBar), hosted: tabBarHosted)
+        let tabs = slotTabs.isEmpty
+            ? tabBarItems(in: pluginChildren, hosted: tabBarHosted)
+            : slotTabs
         if tabs.isEmpty {
             screenBody
         } else {
@@ -272,7 +276,10 @@ struct ScreenPlugin: NShiftPluginContainer {
     }
 
     private var displayedBar: ScreenNavigationBarMetadata {
-        let tabs = tabBarItems(in: pluginChildren, hosted: tabBarHosted)
+        let slotTabs = tabBarItems(in: slotModels(.tabBar), hosted: tabBarHosted)
+        let tabs = slotTabs.isEmpty
+            ? tabBarItems(in: pluginChildren, hosted: tabBarHosted)
+            : slotTabs
         guard selectedTab > 0, selectedTab < tabs.count else {
             return navigationBar
         }
@@ -287,7 +294,17 @@ struct ScreenPlugin: NShiftPluginContainer {
         if let icon = iconNamed(bar.leadingIcon) {
             return .button(icon: icon, action: {})
         }
-        return .none
+        switch bar.leading {
+        case "none":
+            return .none
+        case "back", "button":
+            if selectedTab > 0 {
+                return .back(action: { selectedTab = 0 })
+            }
+            return .back()
+        default:
+            return .none
+        }
     }
 
     private func trailing(for bar: ScreenNavigationBarMetadata) -> SCNNavigationBarTrailing {
@@ -315,28 +332,18 @@ struct ScreenPlugin: NShiftPluginContainer {
     }
 
     private func barBackground(for bar: ScreenNavigationBarMetadata) -> Color {
-        let palette = screenPalette(for: bar)
         switch bar.background {
         case "card":
-            return palette.card
+            return theme.palette.card
         case "primary":
-            return palette.primary
+            return theme.palette.primary
         case "muted":
-            return palette.muted
+            return theme.palette.muted
         case "secondary":
-            return palette.secondary
+            return theme.palette.secondary
         default:
-            return palette.background
+            return theme.palette.background
         }
-    }
-
-    private func screenPalette(for bar: ScreenNavigationBarMetadata) -> SCNThemePalette {
-        let id = SCNThemeID(rawValue: bar.theme) ?? .neutral
-        let preset = SCNThemePreset.named(id)
-        if theme.interfaceStyle == .dark {
-            return preset.dark
-        }
-        return preset.light
     }
 }
 

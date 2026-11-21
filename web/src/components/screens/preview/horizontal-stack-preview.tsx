@@ -23,7 +23,7 @@ export function HorizontalStackPreview(props: PreviewRenderProps) {
       definition={definition}
       layout="horizontal"
       badge="Horizontal"
-      emptyLabel="Solte componentes aqui"
+      emptyLabel=""
       {...props}
     />
   )

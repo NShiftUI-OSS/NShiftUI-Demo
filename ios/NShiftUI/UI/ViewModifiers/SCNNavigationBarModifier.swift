@@ -90,8 +90,13 @@ extension SCNNavigationBarModifier {
                 .navigationTitle(title)
         )
         let placed = barItems(titled)
+        hideNativeBackButton(centered(placed))
+    }
+
+    @ViewBuilder
+    private func centered<V: View>(_ view: V) -> some View {
         if let center {
-            placed.toolbar {
+            view.toolbar {
                 ToolbarItem(placement: .principal) {
                     center
                         .renderingMode(.template)
@@ -101,8 +106,16 @@ extension SCNNavigationBarModifier {
                 }
             }
         } else {
-            placed
+            view
         }
+    }
+
+    /// The design-system bar already draws the back control. Hide the system
+    /// one without adding a SwiftUI toolbar back item.
+    private func hideNativeBackButton<V: View>(_ view: V) -> some View {
+        view
+            .navigationBarBackButtonHidden(true)
+            .background(SCNNavigationBarBackButtonHider())
     }
 
     @ViewBuilder
@@ -210,7 +223,9 @@ private struct SCNNavigationBarAppearance: UIViewControllerRepresentable {
             install(appearance, on: bar)
             if let item = bar.topItem {
                 install(appearance, on: item)
+                scnHideNativeBackButton(item)
             }
+            scnHideNativeBackButton(from: self)
         }
 
         private func install(
@@ -340,6 +355,95 @@ extension SCNNavigationBarModifier {
             UIImage(named: icon.rawValue)?.draw(in: CGRect(origin: .zero, size: canvas))
         }
         return rendered.withRenderingMode(.alwaysTemplate)
+    }
+}
+
+/// Keeps `UINavigationItem.hidesBackButton` set while our bar is on screen.
+private struct SCNNavigationBarBackButtonHider: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller {
+        Controller()
+    }
+
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.hideNativeBackButton()
+    }
+
+    final class Controller: UIViewController {
+        private var reapplied = false
+
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            view.isUserInteractionEnabled = false
+            view.backgroundColor = .clear
+        }
+
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            hideNativeBackButton()
+        }
+
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            hideNativeBackButton()
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            hideNativeBackButton()
+            guard reapplied == false else { return }
+            reapplied = true
+            Task { @MainActor [weak self] in
+                self?.hideNativeBackButton()
+            }
+        }
+
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            hideNativeBackButton()
+        }
+
+        func hideNativeBackButton() {
+            scnHideNativeBackButton(from: self)
+        }
+    }
+}
+
+@MainActor
+private func scnHideNativeBackButton(_ item: UINavigationItem) {
+    let supplemented = item.leftItemsSupplementBackButton
+    if supplemented {
+        item.leftItemsSupplementBackButton = false
+    }
+    guard supplemented || item.hidesBackButton == false else { return }
+    item.hidesBackButton = true
+    item.setHidesBackButton(true, animated: false)
+}
+
+@MainActor
+private func scnHideNativeBackButton(from controller: UIViewController) {
+    var current: UIViewController? = controller
+    var navigationController: UINavigationController?
+    while let node = current {
+        if let navigation = node.navigationController {
+            navigationController = navigation
+            break
+        }
+        current = node.parent
+    }
+    guard
+        let navigationController,
+        let top = navigationController.topViewController
+    else { return }
+    var ancestor: UIViewController? = controller
+    while let node = ancestor {
+        if node === top {
+            if let item = navigationController.navigationBar.topItem {
+                scnHideNativeBackButton(item)
+            }
+            scnHideNativeBackButton(top.navigationItem)
+            return
+        }
+        ancestor = node.parent
     }
 }
 

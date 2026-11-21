@@ -31,11 +31,11 @@ import { Iphone } from '@/components/ui/iphone'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { renderPreview } from '@/components/screens/preview'
-import { layoutFromRainbow, separateTabBar } from '@/components/screens/rainbow-source'
+import { rootItemClass } from '@/components/screens/preview/plugin-layout'
+import { layoutFromRainbow, tabBarFromParsed } from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
-import { readScreenChrome, readScreenTheme } from '@/scn/screen-theme'
-import { ScnThemeScope } from '@/scn/theme'
+import { readScreenChrome } from '@/scn/screen-theme'
 import { useNShift } from '@/di/nshift-provider'
 import { reportApiError } from '@/lib/report-api-error'
 import { cn } from '@/lib/utils'
@@ -281,24 +281,21 @@ function StoryboardPhone({
   phoneHeight: number
   missing?: boolean
 }) {
-  const preset = readScreenTheme(screen.rainbow) ?? 'neutral'
   if (!selection.iphone && !selection.android) return null
   const device = selection.iphone ? 'iphone' : 'android'
 
   return (
-    <ScnThemeScope preset={preset}>
-      <div className="flex items-start justify-center" style={{ width: phoneWidth, height: phoneHeight }}>
-        {device === 'iphone' ? (
-          <Iphone className={`${PREVIEW_PHONE_HEIGHT_CLASS} w-auto shrink-0`}>
-            <ScreenPreview screen={screen} device={device} missing={missing} />
-          </Iphone>
-        ) : (
-          <Android className={`${PREVIEW_PHONE_HEIGHT_CLASS} w-auto shrink-0`}>
-            <ScreenPreview screen={screen} device={device} missing={missing} />
-          </Android>
-        )}
-      </div>
-    </ScnThemeScope>
+    <div className="flex items-start justify-center" style={{ width: phoneWidth, height: phoneHeight }}>
+      {device === 'iphone' ? (
+        <Iphone className={`${PREVIEW_PHONE_HEIGHT_CLASS} w-auto shrink-0`}>
+          <ScreenPreview screen={screen} device={device} missing={missing} />
+        </Iphone>
+      ) : (
+        <Android className={`${PREVIEW_PHONE_HEIGHT_CLASS} w-auto shrink-0`}>
+          <ScreenPreview screen={screen} device={device} missing={missing} />
+        </Android>
+      )}
+    </div>
   )
 }
 
@@ -313,11 +310,13 @@ function ScreenPreview({
 }) {
   const container = useNShift()
   const [nodes, setNodes] = useState<ScreenLayoutNode[] | null>(null)
+  const [tabBar, setTabBar] = useState<ScreenLayoutNode | null>(null)
   const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setNodes(null)
+    setTabBar(null)
     setInvalid(false)
     void container.parser.parse(screen.rainbow).then((parsed) => {
       if (cancelled) return
@@ -327,6 +326,7 @@ function ScreenPreview({
         return
       }
       setNodes(layout)
+      setTabBar(tabBarFromParsed(parsed))
     })
     return () => {
       cancelled = true
@@ -334,10 +334,8 @@ function ScreenPreview({
   }, [container.parser, screen.rainbow])
 
   const chrome = readScreenChrome(screen.rainbow)
-  const placed = nodes ? separateTabBar(nodes) : null
-
   return (
-    <ScreenFrame chrome={chrome} device={device} tabBar={placed?.tabBar} interactive={false}>
+    <ScreenFrame chrome={chrome} device={device} tabBar={tabBar} interactive={false}>
       <div className="phone-scroll relative flex min-h-0 w-full flex-1 flex-col">
         {missing ? (
           <div className="flex min-h-0 flex-1 items-center justify-center px-5 text-center text-[10px]">
@@ -356,9 +354,9 @@ function ScreenPreview({
             Tela vazia
           </div>
         ) : (
-          <div className="flex min-h-full w-full shrink-0 flex-col items-stretch justify-center">
-            {separateTabBar(nodes).content.map((node) => (
-              <div key={node.id} className="w-full">
+          <div className="flex min-h-full w-full shrink-0 flex-col items-center justify-center">
+            {nodes.map((node) => (
+              <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
                 <StoryboardLayoutNode node={node} />
               </div>
             ))}

@@ -1,6 +1,14 @@
-import { useResolvedScnAppearance } from '@/components/phones/phone-appearance'
+import { usePhoneAppearance, useResolvedScnAppearance } from '@/components/phones/phone-appearance'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
   useState,
@@ -18,10 +26,21 @@ type ScnThemeValue = {
 }
 
 const ScnThemeContext = createContext<ScnThemeValue | null>(null)
+const previewStorageKey = 'scn.preview.preset'
+
+function readPreviewPreset(): ScnPresetId {
+  if (typeof window === 'undefined') return 'neutral'
+  const raw = window.localStorage.getItem(previewStorageKey)
+  return scnPresets.some((item) => item.id === raw) ? (raw as ScnPresetId) : 'neutral'
+}
 
 export function ScnThemeProvider({ children }: { children: ReactNode }) {
-  const [preset, setPreset] = useState<ScnPresetId>('neutral')
-  const value = useMemo(() => ({ preset, setPreset }), [preset])
+  const [preset, setPresetState] = useState<ScnPresetId>(readPreviewPreset)
+  const setPreset = useCallback((next: ScnPresetId) => {
+    setPresetState(next)
+    window.localStorage.setItem(previewStorageKey, next)
+  }, [])
+  const value = useMemo(() => ({ preset, setPreset }), [preset, setPreset])
   return (
     <ScnThemeContext.Provider value={value}>{children}</ScnThemeContext.Provider>
   )
@@ -82,31 +101,63 @@ export function ScnRoot({
 export function ScnPresetSelect({
   onPreset,
   disabled = false,
+  label = 'Tema do Design System',
 }: {
   onPreset?: (preset: ScnPresetId) => void
   disabled?: boolean
+  label?: string
 }) {
   const { preset, setPreset } = useScnTheme()
+  const { appearance } = usePhoneAppearance()
+  const current = scnPresets.find((item) => item.id === preset) ?? scnPresets[0]
+
   return (
     <label className="flex items-center gap-2 text-xs">
-      <span>Tema do Design System</span>
-      <select
-        aria-label="Tema do Design System"
-        className="border-input bg-background h-7 rounded-md border px-2 disabled:opacity-50"
+      <span className="text-muted-foreground">{label}</span>
+      <Select
         disabled={disabled}
-        value={preset}
-        onChange={(event) => {
-          const next = event.target.value as ScnPresetId
-          setPreset(next)
-          onPreset?.(next)
+        value={current.id}
+        onValueChange={(next) => {
+          const id = next as ScnPresetId
+          setPreset(id)
+          onPreset?.(id)
         }}
       >
-        {scnPresets.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.title}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger aria-label="Tema do Design System" className="w-32" size="sm">
+          <SelectValue />
+        </SelectTrigger>
+          <SelectContent
+            align="end"
+            className="scn-theme-menu max-h-72"
+            position="popper"
+          >
+            {scnPresets.map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                <ThemeSwatch appearance={appearance} id={item.id} />
+                {item.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
     </label>
+  )
+}
+
+function ThemeSwatch({
+  id,
+  appearance,
+}: {
+  id: ScnPresetId
+  appearance: 'light' | 'dark'
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className="scn scn-theme-swatch-host"
+      data-scn-appearance={appearance}
+      data-scn-preset={id}
+    >
+      <span className="scn-theme-swatch" />
+    </span>
   )
 }

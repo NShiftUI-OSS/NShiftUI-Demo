@@ -17,19 +17,13 @@ const definition = {
 export function TabBarPreview({
   nodes = [],
   renderNode,
-  ...props
 }: PreviewRenderProps) {
   return (
     <div
-      className="bg-background flex w-full border-t"
+      className="bg-background pointer-events-none flex w-full border-t"
       data-layout="horizontal"
-      data-layout-node={props.dropTargetId}
     >
-      {nodes.length === 0 ? (
-        <span className="text-muted-foreground w-full py-3 text-center text-[10px]">
-          Solte as abas aqui
-        </span>
-      ) : (
+      {nodes.length === 0 ? null : (
         nodes.map((node, index) => (
           <div
             key={node.id}

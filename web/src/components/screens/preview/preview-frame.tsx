@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { heightMode, widthMode } from '@/components/screens/preview/plugin-layout'
 import type {
   PreviewRenderProps,
   ScreenComponentDefinition,
@@ -15,48 +16,29 @@ export function PreviewFrame({
   definition,
   sizing = 'fill',
   ghost = false,
-  position,
+  values,
   className,
-  interactive = false,
-  draggable = false,
-  onPointerDown,
-  onDragStart,
-  onDragEnd,
-  dropTargetId,
   children,
 }: PreviewFrameProps) {
-  const floating = Boolean(ghost || position)
-  const intrinsic = sizing === 'intrinsic'
+  const canvas = ghost || (sizing === 'intrinsic' && !values)
+  const hug = !canvas && (definition.id === 'text' || widthMode(definition.id, values) === 'hug')
+  const fixedHeight = !canvas && heightMode(values) === 'fixed'
 
   return (
     <div
       className={cn(
-        'flex min-w-0 flex-col items-stretch overflow-clip select-none',
-        floating ? 'scn-pad w-max rounded-lg' : 'w-full [&>*]:w-full',
+        'pointer-events-none relative flex min-w-0 flex-col overflow-clip select-none',
+        canvas && 'scn-pad w-max rounded-lg',
+        !canvas && hug && 'w-fit max-w-full',
+        !canvas && !hug && 'w-full [&>*]:w-full',
+        fixedHeight && 'h-full',
         className,
       )}
-      data-layout-node={dropTargetId}
-      role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      aria-label={interactive ? definition.name : undefined}
-      style={{
-        ...(position
-          ? {
-              left: position.x,
-              top: position.y,
-              transform: ghost ? 'translate(-50%, -50%)' : undefined,
-            }
-          : {}),
-        width: floating || intrinsic ? definition.size.width : '100%',
-        height: floating || intrinsic ? definition.size.height : undefined,
-        position: ghost ? 'fixed' : position ? 'absolute' : 'relative',
-        touchAction: 'none',
-        zIndex: ghost ? 60 : undefined,
-      }}
-      onPointerDown={onPointerDown}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      style={
+        canvas
+          ? { width: definition.size.width, height: definition.size.height }
+          : undefined
+      }
     >
       {children}
     </div>

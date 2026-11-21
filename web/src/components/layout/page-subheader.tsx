@@ -47,7 +47,7 @@ export function PageSubheader({
           </p>
         ) : null}
       </div>
-      {actions ? <div className="ml-auto flex shrink-0 items-center gap-4">{actions}</div> : null}
+      {actions ? <div className="ml-auto flex shrink-0 items-center gap-3">{actions}</div> : null}
     </header>
   )
 }

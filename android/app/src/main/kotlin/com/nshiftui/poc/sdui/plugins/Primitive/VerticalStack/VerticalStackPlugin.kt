@@ -2,7 +2,9 @@ package com.nshiftui.poc.sdui.plugins.primitive.verticalstack
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nshiftui.NShiftPluginWithMetadata
 import com.nshiftui.macro.NShiftPlugin
@@ -21,6 +23,7 @@ class VerticalStackPlugin : NShiftPluginWithMetadata<StackLayoutMetadata>(
     @Composable
     override fun Content() {
         Column(
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(metadata.spacing.dp),
             horizontalAlignment = metadata.horizontalAlignment(),
         ) {

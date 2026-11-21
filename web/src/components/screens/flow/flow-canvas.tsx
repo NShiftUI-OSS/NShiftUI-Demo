@@ -232,7 +232,7 @@ function FitFocus({ focus, hasNodes }: { focus: string; hasNodes: boolean }) {
 function FlowLegend() {
   return (
     <div className="bg-card/95 pointer-events-none absolute top-3 left-3 z-10 flex items-center gap-3 rounded-lg border px-3 py-2 text-[11px] shadow-sm">
-      <span className="font-semibold">Tree inspector</span>
+      <span className="font-semibold">Inspetor da árvore</span>
       <LegendSwatch className="bg-card border-border" label="Tela e plugin" />
       <LegendSwatch
         className="border-rose-400 bg-rose-500/15"

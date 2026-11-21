@@ -3,7 +3,11 @@ import type { NShiftPluginStyle } from '@/domain/plugins/style/nshift-plugin-sty
 import {
   BOTTOM_SHEET_SLOT,
   SHEET_PLUGIN,
+  TAB_BAR_PLUGIN,
+  TAB_BAR_SLOT,
   isBottomSheetSlot,
+  isTabBarSlot,
+  isTabPlugin,
 } from '@/domain/triggers/rainbow-trigger'
 import type { PluginMetadataValue } from '@/scn/plugin-fields'
 
@@ -84,7 +88,9 @@ export function readRainbowDocument(parsed: unknown): RainbowDocument | null {
 }
 
 export function anchorTabBar(document: RainbowDocument) {
-  const roots = visibleRoots(document)
+  const screen = readFlowRoots(document).screen
+  if (!screen) return false
+  screen.block ??= { children: [] }
   const bars: RainbowNode[] = []
   const looseTabs: RainbowNode[] = []
   const collect = (list: RainbowNode[]) => {
@@ -94,12 +100,12 @@ export function anchorTabBar(document: RainbowDocument) {
         index += 1
         continue
       }
-      if (nodeName(node) === 'TabBar') {
+      if (isTabBarSlot(nodeName(node))) {
         const [bar] = list.splice(index, 1)
         if (bar) bars.push(bar)
         continue
       }
-      if (nodeName(node) === 'Tab') {
+      if (isTabPlugin(nodeName(node))) {
         const [tab] = list.splice(index, 1)
         if (tab) looseTabs.push(tab)
         continue
@@ -108,13 +114,88 @@ export function anchorTabBar(document: RainbowDocument) {
       index += 1
     }
   }
-  collect(roots)
-  const bar = bars[0]
-  if (!bar) return false
-  bar.block ??= { children: [] }
-  bar.block.children.push(...looseTabs)
-  roots.push(bar)
+  collect(screen.block.children)
+  if (bars.length === 0 && looseTabs.length === 0) return false
+  const slotted = slottedTabBar(screen)
+  const target = slotted ?? bars.shift()
+  if (!target) return false
+  target.block ??= { children: [] }
+  for (const extra of bars) {
+    target.block.children.push(...(extra.block?.children ?? []))
+  }
+  target.block.children.push(...looseTabs)
+  if (!slotted) {
+    screen.slots ??= []
+    screen.slots.push({
+      name: { kind: 'ident', value: TAB_BAR_SLOT },
+      plugins: [target],
+      leading: { comments: [] },
+    })
+    ensureUse(document, TAB_BAR_PLUGIN, '1.0.0')
+  }
   return true
+}
+
+export function ensureTabBar(document: RainbowDocument) {
+  if (findTabBarNode(document)) return true
+  const screen = readFlowRoots(document).screen
+  if (!screen) return false
+  screen.slots ??= []
+  ensureUse(document, TAB_BAR_PLUGIN, '1.0.0')
+  screen.slots.push({
+    name: { kind: 'ident', value: TAB_BAR_SLOT },
+    plugins: [
+      {
+        name: { kind: 'ident', value: TAB_BAR_PLUGIN },
+        parameters: [],
+        block: { children: [] },
+        id: null,
+        style: [],
+        events: [],
+        slots: [],
+        leading: { comments: [] },
+      },
+    ],
+    leading: { comments: [] },
+  })
+  return true
+}
+
+export function removeTabBar(document: RainbowDocument) {
+  const screen = readFlowRoots(document).screen
+  if (!screen) return false
+  const before = findTabBarNode(document)
+  if (screen.slots) {
+    const index = screen.slots.findIndex((item) => isTabBarSlot(item.name.value))
+    if (index >= 0) screen.slots.splice(index, 1)
+  }
+  if (screen.block?.children) {
+    const collect = (list: RainbowNode[]) => {
+      for (let index = 0; index < list.length; ) {
+        const node = list[index]
+        if (!node) {
+          index += 1
+          continue
+        }
+        if (isTabBarSlot(nodeName(node)) || isTabPlugin(nodeName(node))) {
+          list.splice(index, 1)
+          continue
+        }
+        if (node.block?.children) collect(node.block.children)
+        index += 1
+      }
+    }
+    collect(screen.block.children)
+  }
+  if (!before) return false
+  return true
+}
+
+export function findTabBarNode(document: RainbowDocument) {
+  const screen = readFlowRoots(document).screen
+  const slotted = screen ? slottedTabBar(screen) : null
+  if (slotted) return slotted
+  return findPlugin(visibleRoots(document), TAB_BAR_PLUGIN)
 }
 
 export function insertPlugin(
@@ -125,14 +206,26 @@ export function insertPlugin(
   index = Number.POSITIVE_INFINITY,
 ) {
   if (plugin.name.rawValue === 'TabBar') {
-    if (containsPlugin(document.nodes, 'TabBar')) return false
-    const roots = visibleRoots(document)
+    if (findTabBarNode(document)) return false
+    const screen = readFlowRoots(document).screen
+    if (!screen) return false
+    screen.slots ??= []
     ensureUse(document, 'TabBar', plugin.version.rawValue)
-    roots.push(pluginToNode(plugin, true))
+    const slot = screen.slots.find((item) => isTabBarSlot(item.name.value))
+    const bar = pluginToNode(plugin, true)
+    if (slot) {
+      slot.plugins = [bar]
+    } else {
+      screen.slots.push({
+        name: { kind: 'ident', value: TAB_BAR_SLOT },
+        plugins: [bar],
+        leading: { comments: [] },
+      })
+    }
     return true
   }
   if (plugin.name.rawValue === 'Tab') {
-    const bar = findPlugin(visibleRoots(document), 'TabBar')
+    const bar = findTabBarNode(document)
     if (!bar) return false
     bar.block ??= { children: [] }
     ensureUse(document, 'Tab', plugin.version.rawValue)
@@ -390,6 +483,10 @@ function childrenOf(document: RainbowDocument, targetId: string | null) {
   if (targetId?.startsWith('sheet/')) {
     return walkChildren(sheetChildren(document), targetId.slice('sheet/'.length))
   }
+  if (targetId === 'tabBar') return tabBarChildren(document)
+  if (targetId?.startsWith('tabBar/')) {
+    return walkChildren(tabBarChildren(document), targetId.slice('tabBar/'.length))
+  }
   if (targetId === null) return visibleRoots(document)
   return walkChildren(visibleRoots(document), targetId)
 }
@@ -414,6 +511,18 @@ function sheetChildren(document: RainbowDocument) {
   if (!sheet) return null
   sheet.block ??= { children: [] }
   return sheet.block.children
+}
+
+function tabBarChildren(document: RainbowDocument) {
+  const bar = findTabBarNode(document)
+  if (!bar) return null
+  bar.block ??= { children: [] }
+  return bar.block.children
+}
+
+function slottedTabBar(screen: RainbowNode) {
+  const slot = screen.slots?.find((item) => isTabBarSlot(item.name.value))
+  return slot?.plugins.find((child) => isTabBarSlot(nodeName(child))) ?? null
 }
 
 export function readPlacedPlugin(document: RainbowDocument, nodeId: string) {
@@ -464,6 +573,7 @@ export function updatePlacedPlugin(
 }
 
 export function removePlacedPlugin(document: RainbowDocument, nodeId: string) {
+  if (nodeId === 'tabBar') return removeTabBar(document)
   if (nodeId === 'screen') return false
   const source = parentList(document, nodeId)
   if (!source) return false
@@ -510,15 +620,19 @@ function appendFieldValues(
 }
 
 function parentList(document: RainbowDocument, nodeId: string) {
-  if (nodeId === 'sheet') return null
-  const sheetPath = nodeId.startsWith('sheet/')
-  const indexes = (sheetPath ? nodeId.slice('sheet/'.length) : nodeId).split('/').map(Number)
+  if (nodeId === 'sheet' || nodeId === 'tabBar') return null
+  const rooted = nodeId.startsWith('sheet/')
+    ? 'sheet'
+    : nodeId.startsWith('tabBar/')
+      ? 'tabBar'
+      : null
+  const indexes = (rooted ? nodeId.slice(rooted.length + 1) : nodeId).split('/').map(Number)
   const index = indexes.at(-1)
   if (index === undefined || indexes.some((item) => Number.isNaN(item))) return null
-  const parentId = sheetPath
+  const parentId = rooted
     ? indexes.length === 1
-      ? 'sheet'
-      : `sheet/${indexes.slice(0, -1).join('/')}`
+      ? rooted
+      : `${rooted}/${indexes.slice(0, -1).join('/')}`
     : indexes.length === 1
       ? null
       : indexes.slice(0, -1).join('/')
@@ -590,12 +704,21 @@ function nodeAt(
   ensureBlock: boolean,
 ) {
   if (nodeId === 'sheet') return findSheet(document)
-  const sheetPath = nodeId.startsWith('sheet/')
-  const indexes = (sheetPath ? nodeId.slice('sheet/'.length) : nodeId).split('/').map(Number)
+  if (nodeId === 'tabBar') return findTabBarNode(document)
+  const rooted = nodeId.startsWith('sheet/')
+    ? 'sheet'
+    : nodeId.startsWith('tabBar/')
+      ? 'tabBar'
+      : null
+  const indexes = (rooted ? nodeId.slice(rooted.length + 1) : nodeId).split('/').map(Number)
   if (indexes.length === 0 || indexes.some((index) => Number.isNaN(index))) {
     return null
   }
-  let list = sheetPath ? sheetChildren(document) : visibleRoots(document)
+  let list = rooted === 'sheet'
+    ? sheetChildren(document)
+    : rooted === 'tabBar'
+      ? tabBarChildren(document)
+      : visibleRoots(document)
   if (!list) return null
   let node: RainbowNode | undefined
   for (let depth = 0; depth < indexes.length; depth += 1) {
@@ -634,10 +757,6 @@ function metadataParameters(
 
 function nodeName(node: RainbowNode) {
   return node.name.value
-}
-
-function containsPlugin(nodes: RainbowNode[], name: string) {
-  return findPlugin(nodes, name) !== null
 }
 
 function findPlugin(nodes: RainbowNode[], name: string): RainbowNode | null {

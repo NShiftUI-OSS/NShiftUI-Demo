@@ -14,11 +14,38 @@ enum class SCNThemeId(val title: String) {
     Neutral("Neutral"),
     Stone("Stone"),
     Zinc("Zinc"),
+    Mauve("Mauve"),
+    Olive("Olive"),
+    Mist("Mist"),
+    Taupe("Taupe"),
+    Amber("Amber"),
     Blue("Blue"),
-    Red("Red"),
-    Orange("Orange"),
+    Cyan("Cyan"),
+    Emerald("Emerald"),
+    Fuchsia("Fuchsia"),
     Green("Green"),
+    Indigo("Indigo"),
+    Lime("Lime"),
+    Orange("Orange"),
+    Pink("Pink"),
+    Purple("Purple"),
+    Red("Red"),
+    Rose("Rose"),
+    Sky("Sky"),
+    Teal("Teal"),
     Violet("Violet"),
+    Yellow("Yellow"),
+    ;
+
+    companion object {
+        fun resolve(raw: String): SCNThemeId? {
+            val key = raw.trim()
+            if (key.isEmpty()) return null
+            return entries.firstOrNull { id ->
+                id.name.equals(key, ignoreCase = true) || id.title.equals(key, ignoreCase = true)
+            }
+        }
+    }
 }
 
 data class SCNPalette(
@@ -186,11 +213,27 @@ object SCNPresets {
         neutral,
         preset(SCNThemeId.Stone, null),
         preset(SCNThemeId.Zinc, null),
+        preset(SCNThemeId.Mauve, 322f),
+        preset(SCNThemeId.Olive, 107f),
+        preset(SCNThemeId.Mist, 224f),
+        preset(SCNThemeId.Taupe, 43f),
+        preset(SCNThemeId.Amber, 49f),
         preset(SCNThemeId.Blue, 221f),
-        preset(SCNThemeId.Red, 0f),
-        preset(SCNThemeId.Orange, 25f),
+        preset(SCNThemeId.Cyan, 223f),
+        preset(SCNThemeId.Emerald, 166f),
+        preset(SCNThemeId.Fuchsia, 324f),
         preset(SCNThemeId.Green, 142f),
+        preset(SCNThemeId.Indigo, 277f),
+        preset(SCNThemeId.Lime, 129f),
+        preset(SCNThemeId.Orange, 25f),
+        preset(SCNThemeId.Pink, 4f),
+        preset(SCNThemeId.Purple, 302f),
+        preset(SCNThemeId.Red, 0f),
+        preset(SCNThemeId.Rose, 347f),
+        preset(SCNThemeId.Sky, 243f),
+        preset(SCNThemeId.Teal, 186f),
         preset(SCNThemeId.Violet, 262f),
+        preset(SCNThemeId.Yellow, 48f),
     )
 
     fun named(id: SCNThemeId): SCNPreset = all.first { it.id == id }

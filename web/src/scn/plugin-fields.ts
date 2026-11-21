@@ -126,6 +126,7 @@ export const pluginFields: Partial<Record<PreviewPluginId, PluginField[]>> = {
     select('style', 'Estilo', textStyle),
     select('weight', 'Peso', textWeight),
     select('color', 'Cor', textColor),
+    select('alignment', 'Alinhamento', ['leading', 'center', 'trailing'], 'leading'),
   ],
   button: [
     text('title', 'Título', 'Button', true),

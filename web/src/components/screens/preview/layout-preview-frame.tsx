@@ -1,9 +1,10 @@
-import type { PointerEvent as ReactPointerEvent, DragEvent as ReactDragEvent } from 'react'
+import type { CSSProperties } from 'react'
 
-import { usePreviewAssist } from '@/components/phones/preview-display'
 import { styleSpacing } from '@/components/screens/preview/plugin-chrome'
+import { widthMode } from '@/components/screens/preview/plugin-layout'
 import type {
   PreviewLayout,
+  PreviewNode,
   PreviewRenderProps,
   ScreenComponentDefinition,
 } from '@/components/screens/preview/types'
@@ -18,12 +19,12 @@ type LayoutPreviewFrameProps = PreviewRenderProps & {
   emptyLabel: string
 }
 
-const layoutClass: Record<PreviewLayout, string> = {
-  vertical: 'w-full flex-col items-stretch',
-  horizontal: 'w-full flex-row items-center',
-  layer: 'relative min-h-28 w-full',
-  'vertical-scroll': 'w-max min-w-full flex-col items-stretch',
-  'horizontal-scroll': 'w-max flex-row flex-nowrap items-stretch',
+const trackClass: Record<PreviewLayout, string> = {
+  vertical: 'w-full flex-col',
+  horizontal: 'w-fit max-w-full flex-row',
+  layer: 'grid w-full grid-cols-1',
+  'vertical-scroll': 'w-full flex-col',
+  'horizontal-scroll': 'w-max flex-row flex-nowrap',
 }
 
 export function LayoutPreview({
@@ -31,39 +32,10 @@ export function LayoutPreview({
   layout,
   badge,
   emptyLabel,
-  ghost = false,
-  position,
-  className,
   sizing = 'fill',
+  className,
   ...props
 }: LayoutPreviewFrameProps) {
-  if (ghost || position) {
-    const Icon = definition.icon
-    return (
-      <div
-        className={cn(
-          'border-primary/70 bg-primary/10 text-foreground pointer-events-none flex w-max items-center gap-2 rounded-md border-2 border-dashed px-3 py-2 text-xs font-medium shadow-lg',
-          className,
-        )}
-        style={
-          position
-            ? {
-                position: 'fixed',
-                left: position.x,
-                top: position.y,
-                zIndex: 80,
-                transform: 'translate(-50%, -50%)',
-              }
-            : undefined
-        }
-      >
-        <Icon className="size-3.5 shrink-0" />
-        {definition.name}
-        <span className="text-primary/80 text-[10px]">{badge}</span>
-      </div>
-    )
-  }
-
   return (
     <LayoutPreviewFrame
       definition={definition}
@@ -71,138 +43,128 @@ export function LayoutPreview({
       badge={badge}
       emptyLabel={emptyLabel}
       sizing={sizing}
+      className={className}
       {...props}
     />
   )
 }
 
 function LayoutPreviewFrame({
-  definition,
   layout,
-  badge,
-  emptyLabel,
   sizing = 'fill',
   nodes = [],
   renderNode,
-  dropTargetId,
   values,
   catalog = false,
-  isDropTarget = false,
-  onDragOver,
-  onDrop,
-  onPointerDown,
-  draggable = true,
-  onDragStart,
-  onDragEnd,
+  definition,
 }: LayoutPreviewFrameProps) {
-  const assist = usePreviewAssist(catalog)
-  const Icon = definition.icon
   const scrolling = layout === 'vertical-scroll' || layout === 'horizontal-scroll'
-  const childSizing = scrolling ? 'intrinsic' : sizing
   const alignment = typeof values?.alignment === 'string' ? values.alignment : ''
-  const childrenClass = cn(
-    layout === 'horizontal' && childSizing === 'intrinsic'
-      ? 'w-max flex-row flex-nowrap items-stretch'
-      : layoutClass[layout],
-    stackCrossAlign(layout, alignment),
-  )
+  const layered = layout === 'layer'
 
   return (
     <div
       className={cn(
-        'flex flex-col bg-transparent',
-        assist && 'preview-assist-line cursor-grab border border-dashed active:cursor-grabbing',
-        sizing === 'intrinsic' && !scrolling ? 'w-max' : 'w-full',
-        assist && isDropTarget && 'preview-assist-ring ring-2 ring-inset',
+        'pointer-events-none bg-transparent',
+        layout === 'horizontal' ? 'flex w-fit max-w-full' : 'flex w-full min-w-0 flex-col',
       )}
       style={frameHeight(catalog, scrolling, definition.size.height)}
       data-layout={layout}
-      data-layout-node={dropTargetId}
-      data-drop-target
-      data-drop-target-id={dropTargetId}
-      draggable={assist && draggable}
-      onPointerDown={(event) => {
-        if (!ownsFrame(event)) return
-        onPointerDown?.(event)
-      }}
-      onDragStart={(event) => {
-        if (!ownsFrame(event)) return
-        onDragStart?.(event)
-      }}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
     >
-      {assist ? (
-        <div className="preview-assist-label flex items-center gap-2 px-2 py-1 text-[10px] font-normal">
-          <Icon className="size-3.5" />
-          {definition.name}
-          <span className="preview-assist-muted ml-auto text-[9px]">{badge}</span>
-        </div>
-      ) : null}
       <div
         className={cn(
           'min-h-0',
-          layout === 'vertical-scroll' && 'flex-1 overflow-y-auto',
-          layout === 'horizontal-scroll' && 'flex-1 overflow-x-auto',
+          layout === 'vertical-scroll' && 'w-full flex-1 overflow-y-auto',
+          layout === 'horizontal-scroll' && 'w-full flex-1 overflow-x-auto',
+          layered && 'w-full',
         )}
       >
-        <div className={cn('flex', childrenClass)} style={{ gap: styleSpacing(values) }}>
-          {nodes.length === 0 ? (
-            assist ? (
-            <span className="preview-assist-muted w-full py-4 text-center text-[10px]">
-              {emptyLabel}
-            </span>
-          ) : null
-          ) : (
-            nodes.map((node) => (
-              <div
-                key={node.id}
-                className={childFrameClass(layout, childSizing)}
-                style={
-                  layout === 'horizontal' && childSizing === 'fill'
-                    ? { width: `${100 / nodes.length}%` }
-                    : undefined
-                }
-              >
-                {renderNode?.(node, childSizing)}
-              </div>
-            ))
-          )}
+        <div
+          className={cn(layered ? '' : 'flex', trackClass[layout], crossAlign(layout, alignment))}
+          style={{ gap: layered ? undefined : styleSpacing(values) }}
+        >
+          {nodes.map((node) => (
+            <div
+              key={node.id}
+              className={childFrameClass(layout, alignment, node)}
+              style={lineStyle(layout, alignment)}
+            >
+              {layout === 'vertical' || layout === 'vertical-scroll' ? (
+                <div
+                  className={
+                    widthMode(node.componentId, node.props) === 'hug'
+                      ? 'w-fit max-w-full'
+                      : 'w-full min-w-0'
+                  }
+                >
+                  {renderNode?.(node, sizing)}
+                </div>
+              ) : (
+                renderNode?.(node, sizing)
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>
   )
 }
 
-function stackCrossAlign(layout: PreviewLayout, alignment: string) {
+function crossAlign(layout: PreviewLayout, alignment: string) {
   const token = alignment.replace(/^\./, '')
-  if (!token || layout === 'layer') return ''
+  if (layout === 'layer') return ''
   if (layout === 'horizontal' || layout === 'horizontal-scroll') {
+    if (!token) return 'items-start'
     if (token === 'bottom' || token.startsWith('bottom')) return 'items-end'
     if (token === 'center' || token === 'leading' || token === 'trailing') return 'items-center'
     return 'items-start'
   }
-  if (token === 'trailing' || token.endsWith('Trailing')) return 'items-end'
-  if (token === 'center' || token === 'top' || token === 'bottom') return 'items-center'
-  if (token === 'leading' || token.endsWith('Leading')) return 'items-start'
   return ''
+}
+
+function childFrameClass(layout: PreviewLayout, alignment: string, node: PreviewNode) {
+  if (layout === 'layer') {
+    const hug = widthMode(node.componentId, node.props) === 'hug'
+    return cn('col-start-1 row-start-1 max-w-full', hug ? 'w-fit' : 'w-full', layerPlace(alignment))
+  }
+  if (layout === 'horizontal' || layout === 'horizontal-scroll') return 'w-fit shrink-0'
+  return cn('flex w-full min-w-0', lineJustify(alignment))
+}
+
+function lineStyle(layout: PreviewLayout, alignment: string): CSSProperties | undefined {
+  if (layout !== 'vertical' && layout !== 'vertical-scroll') return undefined
+  const token = alignment.replace(/^\./, '')
+  if (token === 'trailing' || token.endsWith('Trailing')) return { justifyContent: 'flex-end' }
+  if (token === 'center' || token === 'top' || token === 'bottom') return { justifyContent: 'center' }
+  return { justifyContent: 'flex-start' }
+}
+
+function lineJustify(alignment: string) {
+  const token = alignment.replace(/^\./, '')
+  if (token === 'trailing' || token.endsWith('Trailing')) return 'justify-end'
+  if (token === 'center' || token === 'top' || token === 'bottom') return 'justify-center'
+  return 'justify-start'
+}
+
+function layerPlace(alignment: string) {
+  const token = alignment.replace(/^\./, '') || 'topLeading'
+  const justify =
+    token === 'top' || token === 'center' || token === 'bottom'
+      ? 'justify-self-center'
+      : token.endsWith('Trailing') || token === 'trailing'
+        ? 'justify-self-end'
+        : 'justify-self-start'
+  const items =
+    token.startsWith('bottom')
+      ? 'self-end'
+      : token === 'leading' || token === 'center' || token === 'trailing'
+        ? 'self-center'
+        : 'self-start'
+  return `${justify} ${items}`
 }
 
 function frameHeight(catalog: boolean, scrolling: boolean, canvasHeight: number) {
   if (catalog) return { height: libraryFrameHeight }
   if (scrolling) return { height: canvasHeight }
   return undefined
-}
-
-function ownsFrame(event: ReactPointerEvent<HTMLElement> | ReactDragEvent<HTMLElement>) {
-  const owner = (event.target as HTMLElement).closest('[data-layout-node]')
-  return !owner || owner === event.currentTarget
-}
-
-function childFrameClass(layout: PreviewLayout, sizing: 'fill' | 'intrinsic') {
-  if (layout === 'layer') return 'absolute inset-0 w-full'
-  if (layout === 'horizontal' && sizing === 'fill') return 'min-w-0 shrink-0'
-  if (sizing === 'intrinsic') return 'w-max shrink-0'
-  return 'w-full min-w-0'
 }

@@ -1,8 +1,7 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
-import { usePreviewAssist } from '@/components/phones/preview-display'
 import { ScreenTabBar } from '@/components/screens/preview/screen-tab-bar'
-import { useScreenLayout, type ScreenLayoutNode } from '@/components/screens/screen-layout-context'
+import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { cn } from '@/lib/utils'
 import { ScnIconMark } from '@/scn/scn-icon'
 import {
@@ -15,7 +14,6 @@ export function ScreenFrame({
   device,
   tabBar = null,
   children,
-  interactive = true,
 }: {
   chrome: ScreenChrome | null
   device: 'iphone' | 'android'
@@ -23,40 +21,25 @@ export function ScreenFrame({
   children: ReactNode
   interactive?: boolean
 }) {
-  const { openPluginAction } = useScreenLayout()
-  const assist = usePreviewAssist()
-  const [tabChrome, setTabChrome] = useState<ScreenChrome | null>(null)
-  const shown = tabChrome ?? chrome
-  if (!shown && !tabBar) return children
+  if (!chrome && !tabBar) return children
 
   return (
     <div
-      data-preview-assist={assist ? 'debug' : 'simulation'}
-      className={cn(
-        'flex min-h-0 w-full flex-1 flex-col bg-transparent',
-        assist && 'preview-assist-line border border-dashed',
-      )}
-      onClick={
-        interactive
-          ? (event) => {
-              if ((event.target as HTMLElement).closest('[data-layout-node]')) return
-              openPluginAction({ nodeId: 'screen', componentId: 'nshift-screen' })
-            }
-          : undefined
-      }
+      data-preview-assist="simulation"
+      className="relative flex min-h-0 w-full flex-1 flex-col bg-transparent"
     >
-      {shown && navigationBarVisible(shown) ? (
-        <ScreenNavBar chrome={shown} device={device} />
+      {chrome && navigationBarVisible(chrome) ? (
+        <ScreenNavBar chrome={chrome} device={device} />
       ) : null}
-      {children}
-      {tabBar ? (
-        <ScreenTabBar
-          node={tabBar}
-          device={device}
-          interactive={interactive}
-          onChrome={setTabChrome}
-        />
-      ) : null}
+      <div
+        className={cn(
+          'flex min-h-0 min-w-0 flex-1 flex-col',
+          device === 'iphone' && tabBar && '[&>.phone-scroll]:pb-16',
+        )}
+      >
+        {children}
+      </div>
+      {tabBar ? <ScreenTabBar node={tabBar} device={device} /> : null}
     </div>
   )
 }

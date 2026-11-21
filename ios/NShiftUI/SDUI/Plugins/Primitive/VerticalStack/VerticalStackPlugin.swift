@@ -87,5 +87,12 @@ struct VerticalStackPlugin: NShiftPlugin {
         ) {
             children()
         }
+        .frame(
+            maxWidth: .infinity,
+            alignment: Alignment(
+                horizontal: metadata.horizontalAlignment(),
+                vertical: .top
+            )
+        )
     }
 }

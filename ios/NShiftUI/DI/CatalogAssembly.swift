@@ -52,7 +52,8 @@ struct CatalogAssembly: NShiftDependencyAssembly {
         CloseBottomSheetEvent.self,
         NavigateEvent.self,
         AsyncNavigateEvent.self,
-        BackNavigationEvent.self
+        BackNavigationEvent.self,
+        ChangeDSTheme.self
     )
     func assembleEvents(in container: any NShiftDependencyContainer) {}
 }

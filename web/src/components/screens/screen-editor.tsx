@@ -4,12 +4,9 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type DragEvent,
 } from 'react'
-import { createPortal } from 'react-dom'
-import { CircleXIcon } from 'lucide-react'
+import { CircleXIcon, GitBranchIcon } from 'lucide-react'
 
-import { DomainRecordDialog } from '@/components/domain/domain-record-dialog'
 import { ApiError, api, type ScreenRecord, type ScreenVersion } from '@/lib/api'
 import { displayScreenName } from '@/lib/display-screen-name'
 import { hasMergeMarkers, mergeRainbow } from '@/lib/merge-rainbow'
@@ -25,28 +22,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { PluginActionDialog } from '@/components/screens/plugin-action-dialog'
+import { Button } from '@/components/ui/button'
 import { styleSpacing } from '@/components/screens/preview/plugin-chrome'
+import { rootItemClass } from '@/components/screens/preview/plugin-layout'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
-import { readScreenChrome, readScreenTheme, writeScreenTheme } from '@/scn/screen-theme'
-import { ScnPresetSelect, useScnTheme } from '@/scn/theme'
+import { readScreenChrome } from '@/scn/screen-theme'
+import { ScnPresetSelect } from '@/scn/theme'
 import {
   PhoneSelectionView,
   PREVIEW_PHONE_HEIGHT_CLASS,
   type PhoneSelection,
 } from '@/components/phones/phone-device'
-import { usePreviewDisplay } from '@/components/phones/preview-display'
 import { PreviewFidelityNotice } from '@/components/preview-fidelity-notice'
 import { FlowCanvas } from '@/components/screens/flow/flow-canvas'
 import {
   anchorTabBar,
   printRainbowDocument,
-  readPlacedPlugin,
   readRainbowDocument,
 } from '@/components/screens/rainbow-document'
-import { separateTabBar } from '@/components/screens/rainbow-source'
 import { RainbowEditor } from '@/components/screens/rainbow-editor'
 import { Android } from '@/components/ui/android'
 import { Iphone } from '@/components/ui/iphone'
@@ -60,36 +54,23 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { renderPreview } from '@/components/screens/preview'
 import { useNShift } from '@/di/nshift-provider'
-import { fieldsFor } from '@/scn/plugin-fields'
-import { screenFields, sheetFields } from '@/components/screens/plugin-slots'
-import { previewPluginName, type PreviewPluginId } from '@/di/registrations'
 import type { PreviewSizing } from '@/components/screens/preview/types'
 import {
   useScreenLayout,
-  type DropGuide,
+  type PreviewSheet,
   type ScreenLayoutNode,
 } from '@/components/screens/screen-layout-context'
 
 export function ScreenEditor({ screenId }: { screenId: string }) {
   const {
-    pendingPlacement,
-    commitPlacement,
-    cancelPlacement,
     rainbowSource,
     setRainbowSource,
     flowFocus,
     closeFlow,
-    pluginAction,
-    closePluginAction,
     openFlow,
-    savePlacedPlugin,
-    removePlaced,
-    sheet,
-    sheetEditToken,
+    sheets,
   } = useScreenLayout()
   const container = useNShift()
-  const { setPreset } = useScnTheme()
-  const previewId = pendingPlacement?.componentId as PreviewPluginId | undefined
   const editorRowRef = useRef<HTMLDivElement>(null)
   const [editorOpen, setEditorOpen] = useState(true)
   const [editorWidth, setEditorWidth] = useState(448)
@@ -101,26 +82,8 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
   const [mergeNote, setMergeNote] = useState<string | null>(null)
   const [versions, setVersions] = useState<ScreenVersion[]>([])
   const [viewedVersion, setViewedVersion] = useState<string | null>(null)
-  const [pluginEdit, setPluginEdit] = useState<{
-    nodeId: string
-    componentId: string
-    name: string
-    version: string
-    fields: Record<string, string>
-  } | null>(null)
-  const sheetRef = useRef(sheet)
-  sheetRef.current = sheet
-  useEffect(() => {
-    const current = sheetRef.current
-    if (!sheetEditToken || !current) return
-    setPluginEdit({
-      nodeId: 'sheet',
-      componentId: 'sheet',
-      name: 'Sheet',
-      version: '1.0.0',
-      fields: current.fields,
-    })
-  }, [sheetEditToken])
+  const [selectedSheetId, setSelectedSheetId] = useState<string | null>(null)
+  const selectedSheet = sheets.find((item) => item.id === selectedSheetId) ?? null
 
   const visibleScreen = screen?.id === screenId ? screen : null
   const viewedSnapshot = versions.find((item) => item.version === viewedVersion) ?? null
@@ -142,6 +105,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
         setViewedVersion(record.version)
         setLoadError(null)
         setMergeNote(null)
+        setSelectedSheetId(null)
       })
       .catch((error: unknown) => {
         if (cancelled) return
@@ -152,11 +116,6 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
       cancelled = true
     }
   }, [screenId, setRainbowSource])
-
-  useEffect(() => {
-    const theme = readScreenTheme(rainbowSource)
-    if (theme) setPreset(theme)
-  }, [rainbowSource, setPreset])
 
   const publish = useCallback(async () => {
     if (!visibleScreen || publishing) return
@@ -280,41 +239,57 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
               : 'Screen editor'
           }
           actions={
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 text-xs">
               {versions.length > 0 && viewedVersion ? (
-                <Select value={viewedVersion} onValueChange={showVersion}>
-                  <SelectTrigger aria-label="Versão da tela" className="w-44" size="sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {versions.map((item) => (
-                      <SelectItem key={item.version} value={item.version}>
-                        {item.current ? `${item.version} · no app` : item.version}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Versão</span>
+                  <Select value={viewedVersion} onValueChange={showVersion}>
+                    <SelectTrigger aria-label="Versão da tela" className="w-40" size="sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {versions.map((item) => (
+                        <SelectItem key={item.version} value={item.version}>
+                          {item.current ? `${item.version} · no app` : item.version}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
               ) : null}
-              {visibleScreen?.isRoot && <Badge variant="destructive">Root</Badge>}
-              <ScnPresetSelect
-                disabled={frozen}
-                onPreset={(preset) => {
-                  if (frozen) return
-                  const next = writeScreenTheme(rainbowSource, preset)
-                  if (next !== rainbowSource) setRainbowSource(next)
-                }}
+              {visibleScreen?.isRoot ? <Badge variant="outline">Root</Badge> : null}
+              <span aria-hidden className="bg-border h-6 w-px" />
+              <BottomSheetSelect
+                sheets={sheets}
+                value={selectedSheet?.id ?? 'none'}
+                onChange={setSelectedSheetId}
               />
-              <label className="flex items-center gap-2 text-xs">
-                <span>Editor Rainbow</span>
+              <Button
+                aria-pressed={Boolean(flowFocus)}
+                data-tree-inspector=""
+                size="sm"
+                type="button"
+                variant={flowFocus ? 'secondary' : 'ghost'}
+                onClick={() => (flowFocus ? closeFlow() : openFlow('screen'))}
+              >
+                <GitBranchIcon />
+                Árvore
+              </Button>
+              <span aria-hidden className="bg-border h-6 w-px" />
+              <ScnPresetSelect label="Tema" />
+              <span aria-hidden className="bg-border h-6 w-px" />
+              <label className="flex items-center gap-2">
+                <span className="text-muted-foreground">Editor</span>
                 <Switch
                   aria-label="Mostrar editor Rainbow"
                   checked={editorOpen}
                   onCheckedChange={setEditorOpen}
                 />
               </label>
+              <span aria-hidden className="bg-border h-6 w-px" />
               <Button
-                size="sm"
                 disabled={publishing || (!frozen && (!unpublished || hasMergeMarkers(rainbowSource)))}
+                size="sm"
                 onClick={() => setConfirmPublish(true)}
               >
                 {frozen ? 'Usar no app' : 'Publicar'}
@@ -376,7 +351,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
             {flowFocus ? (
               <FlowCanvas focus={flowFocus} />
             ) : (
-              <PhonePreview />
+              <PhonePreview sheet={selectedSheet} />
             )}
           </div>
           <div
@@ -446,145 +421,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <DragGhost />
-      <DomainRecordDialog
-        kind="plugin"
-        open={Boolean(pendingPlacement)}
-        title="Dados do plugin"
-        description="Nome, versão e o metadata do plugin. O preview muda com esses campos."
-        initial={{
-          name: previewId ? previewPluginName(previewId) : '',
-          version: '1.0.0',
-          trigger: '',
-        }}
-        previewId={previewId}
-        onOpenChange={(open) => {
-          if (!open) cancelPlacement()
-        }}
-        onSubmit={(result) => {
-          if (result.plugin) commitPlacement(result.plugin)
-        }}
-      />
-      <PluginActionDialog
-        action={pluginAction}
-        onOpenChange={(open) => {
-          if (!open) closePluginAction()
-        }}
-        onFlow={openFlow}
-        onEdit={(action) => {
-          void container.parser.parse(rainbowSource).then((parsed) => {
-            const placed = readPlacedPlugin(readRainbowDocument(parsed) ?? { uses: [], nodes: [] }, action.nodeId)
-            closePluginAction()
-            if (!placed) return
-            setPluginEdit({
-              nodeId: action.nodeId,
-              componentId: action.componentId,
-              name: placed.name,
-              version: placed.version,
-              fields: placed.fields,
-            })
-          })
-        }}
-        onRemove={(action) => removePlaced(action.nodeId)}
-      />
-      <DomainRecordDialog
-        kind="plugin"
-        open={Boolean(pluginEdit)}
-        title={pluginEdit?.componentId === 'sheet' ? 'Editar bottom sheet' : 'Editar plugin'}
-        description={
-          pluginEdit?.componentId === 'sheet'
-            ? 'Título e estilo da bottom sheet. O preview mostra a sheet aberta.'
-            : 'Altere os parâmetros. O preview usa esses valores.'
-        }
-        initial={{
-          name: pluginEdit?.name ?? '',
-          version: pluginEdit?.version ?? '1.0.0',
-          trigger: '',
-        }}
-        initialMetadata={pluginEdit?.fields}
-        fields={
-          pluginEdit?.componentId === 'nshift-screen'
-            ? screenFields
-            : pluginEdit?.componentId === 'sheet'
-              ? sheetFields
-              : undefined
-        }
-        previewId={
-          pluginEdit &&
-          pluginEdit.componentId !== 'nshift-screen' &&
-          pluginEdit.componentId !== 'sheet'
-            ? (pluginEdit.componentId as PreviewPluginId)
-            : undefined
-        }
-        showDelete={
-          pluginEdit?.componentId !== 'nshift-screen' &&
-          pluginEdit?.componentId !== 'sheet'
-        }
-        onOpenChange={(open) => {
-          if (!open) setPluginEdit(null)
-        }}
-        onDelete={() => {
-          if (!pluginEdit) return
-          removePlaced(pluginEdit.nodeId)
-          setPluginEdit(null)
-        }}
-        onSubmit={(result) => {
-          if (!pluginEdit || !result.metadata) return
-          const fieldNames = (
-            pluginEdit.componentId === 'nshift-screen'
-              ? screenFields
-              : pluginEdit.componentId === 'sheet'
-                ? sheetFields
-                : fieldsFor(pluginEdit.componentId)
-          ).map((field) => field.name)
-          const sheetIdentity = pluginEdit.componentId === 'sheet'
-          savePlacedPlugin(pluginEdit.nodeId, {
-            name: sheetIdentity ? 'Sheet' : result.values.name,
-            version: sheetIdentity ? '1.0.0' : result.values.version,
-            metadata: result.metadata,
-            fieldNames,
-            style: result.style,
-          })
-          setPluginEdit(null)
-        }}
-      />
     </main>
-  )
-}
-
-function DragGhost() {
-  const { activeDrag } = useScreenLayout()
-  if (!activeDrag?.started) return null
-
-  return createPortal(
-    <>
-      {renderPreview(activeDrag.componentId, {
-        ghost: true,
-        position: { x: activeDrag.pointerX, y: activeDrag.pointerY },
-        className: 'pointer-events-none z-[60] opacity-90',
-      })}
-      {activeDrag.dropGuide && <InsertionLine guide={activeDrag.dropGuide} />}
-    </>,
-    document.body,
-  )
-}
-
-function InsertionLine({ guide }: { guide: DropGuide }) {
-  const horizontal = guide.axis === 'x'
-
-  return (
-    <div
-      className="pointer-events-none fixed z-[80]"
-      style={{
-        left: guide.x,
-        top: guide.y,
-        width: horizontal ? guide.length : 3,
-        height: horizontal ? 3 : guide.length,
-        transform: horizontal ? 'translateY(-50%)' : 'translateX(-50%)',
-        background: '#f43f5e',
-        boxShadow: '0 0 0 1px rgba(0,0,0,0.45)',
-      }}
-    />
   )
 }
 
@@ -595,15 +432,21 @@ const PHONE_GAP = 32
 const WHEEL_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 const WHEEL_MOTION = `transform 1100ms ${WHEEL_EASE}, filter 1100ms ${WHEEL_EASE}`
 
-function PhonePreview() {
+function PhonePreview({ sheet }: { sheet: PreviewSheet | null }) {
   return (
     <PhoneSelectionView>
-      {(selection) => <PhoneStage selection={selection} />}
+      {(selection) => <PhoneStage selection={selection} sheet={sheet} />}
     </PhoneSelectionView>
   )
 }
 
-function PhoneStage({ selection }: { selection: PhoneSelection }) {
+function PhoneStage({
+  selection,
+  sheet,
+}: {
+  selection: PhoneSelection
+  sheet: PreviewSheet | null
+}) {
   const stageRef = useRef<HTMLDivElement>(null)
   const [sideBySide, setSideBySide] = useState(false)
   const devices = [
@@ -655,17 +498,23 @@ function PhoneStage({ selection }: { selection: PhoneSelection }) {
       ) : devices.length === 1 || sideBySide ? (
         <div className="flex items-center justify-center gap-8">
           {devices.map((device) => (
-            <DevicePreview key={device} device={device} />
+            <DevicePreview key={device} device={device} sheet={sheet} />
           ))}
         </div>
       ) : (
-        <PhoneWheel devices={devices} />
+        <PhoneWheel devices={devices} sheet={sheet} />
       )}
     </div>
   )
 }
 
-function PhoneWheel({ devices }: { devices: Array<'iphone' | 'android'> }) {
+function PhoneWheel({
+  devices,
+  sheet,
+}: {
+  devices: Array<'iphone' | 'android'>
+  sheet: PreviewSheet | null
+}) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const indexRef = useRef(0)
   const lockRef = useRef(false)
@@ -741,7 +590,7 @@ function PhoneWheel({ devices }: { devices: Array<'iphone' | 'android'> }) {
                 transition: `transform 1100ms ${WHEEL_EASE}`,
               }}
             >
-              <DevicePreview device={device} />
+              <DevicePreview device={device} sheet={sheet} />
             </div>
           )
         })}
@@ -807,127 +656,72 @@ function wheelOffset(position: number, active: number, count: number) {
   return raw < 0 ? raw + count : raw
 }
 
-function DevicePreview({ device }: { device: 'iphone' | 'android' }) {
-  const {
-    activeDrag,
-    layoutNodes,
-    previewError,
-    rainbowSource,
-    registerCanvas,
-    handleNativeDragOver,
-    handleNativeDrop,
-    sheet,
-    sheetEditor,
-    closeSheetEditor,
-    requestSheetEdit,
-  } = useScreenLayout()
+function DevicePreview({
+  device,
+  sheet,
+}: {
+  device: 'iphone' | 'android'
+  sheet: PreviewSheet | null
+}) {
+  const { layoutNodes, previewError, rainbowSource, tabBar } = useScreenLayout()
   const Frame = device === 'iphone' ? Iphone : Android
-  const placed = separateTabBar(layoutNodes)
 
   return (
     <Frame
       data-device-preview
       className={`${PHONE_HEIGHT_CLASS} w-auto shrink-0`}
-      screenRef={registerCanvas}
-      data-drop-target
-      data-drop-target-id="root"
-      onDragOver={(event) => {
-        event.preventDefault()
-        event.dataTransfer.dropEffect = activeDrag?.nodeId ? 'move' : 'copy'
-        handleNativeDragOver(event.clientX, event.clientY)
-      }}
-      onDrop={(event) => {
-        event.preventDefault()
-        handleNativeDrop(event.clientX, event.clientY)
-      }}
     >
-      <ScreenFrame chrome={readScreenChrome(rainbowSource)} device={device} tabBar={placed.tabBar}>
-      <div
-        className="phone-scroll relative flex min-h-0 w-full flex-1 flex-col"
-        data-drop-target
-        data-drop-target-id="root"
-      >
-        {hasMergeMarkers(rainbowSource) ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8 text-center text-xs text-neutral-500">
-            O merge está no editor de texto. O preview volta quando os marcadores forem resolvidos.
-          </div>
-        ) : previewError ? (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
-            <CircleXIcon
-              className="size-10 fill-red-500 text-white"
-              strokeWidth={1.75}
-            />
-            <p className="text-[15px] font-semibold text-current">
-              Preview Error
-            </p>
-          </div>
-        ) : (
-          <>
-            {layoutNodes.length === 0 && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8 text-center text-xs text-neutral-500">
-                Arraste um componente para começar
-              </div>
-            )}
-            <div className="flex min-h-full w-full shrink-0 flex-col items-stretch justify-center">
-              {placed.content.map((node) => (
-                <div key={node.id} className="w-full">
-                  <LayoutNodeView node={node} />
-                </div>
-              ))}
+      <ScreenFrame chrome={readScreenChrome(rainbowSource)} device={device} tabBar={tabBar}>
+        <div
+          className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col select-none"
+          data-preview-static=""
+        >
+          {hasMergeMarkers(rainbowSource) ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8 text-center text-xs text-neutral-500">
+              O merge está no editor de texto. O preview volta quando os marcadores forem resolvidos.
             </div>
-            {sheetEditor && sheet ? (
-              <BottomSheetPreview
-                sheet={sheet}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  handleNativeDragOver(event.clientX, event.clientY)
-                }}
-                onDrop={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  handleNativeDrop(event.clientX, event.clientY)
-                }}
-                onClose={closeSheetEditor}
-                onEdit={requestSheetEdit}
+          ) : previewError ? (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
+              <CircleXIcon
+                className="size-10 fill-red-500 text-white"
+                strokeWidth={1.75}
               />
-            ) : null}
-          </>
-        )}
-      </div>
+              <p className="text-[15px] font-semibold text-current">
+                Preview Error
+              </p>
+            </div>
+          ) : (
+            <>
+              {layoutNodes.length === 0 && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-8 text-center text-xs text-neutral-500">
+                  A tela ainda não tem plugins.
+                </div>
+              )}
+              <div className="pointer-events-none flex min-h-full w-full shrink-0 flex-col items-center justify-center">
+                {layoutNodes.map((node) => (
+                  <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
+                    <LayoutNodeView node={node} />
+                  </div>
+                ))}
+              </div>
+              {sheet ? <BottomSheetPreview sheet={sheet} /> : null}
+            </>
+          )}
+        </div>
       </ScreenFrame>
     </Frame>
   )
 }
 
-function BottomSheetPreview({
-  sheet,
-  onDragOver,
-  onDrop,
-  onClose,
-  onEdit,
-}: {
-  sheet: { title: string; fields: Record<string, string>; nodes: ScreenLayoutNode[] }
-  onDragOver: (event: DragEvent<HTMLDivElement>) => void
-  onDrop: (event: DragEvent<HTMLDivElement>) => void
-  onClose: () => void
-  onEdit: () => void
-}) {
+function BottomSheetPreview({ sheet }: { sheet: PreviewSheet }) {
   const spacing = styleSpacing(sheet.fields)
   const frame = sheetFrame(sheet.fields)
   return (
-    <div
-      className="absolute inset-0 z-30 flex flex-col justify-end bg-black/40"
-      data-sheet-overlay
-      onClick={(event) => event.stopPropagation()}
-    >
+    <div className="pointer-events-none absolute inset-0 z-30 flex flex-col justify-end bg-black/40">
       <div
         className="flex max-h-[78%] min-h-[42%] w-full flex-col rounded-t-[10px] bg-[var(--scn-background)] text-[var(--scn-foreground)] shadow-[0_-12px_40px_rgba(0,0,0,0.28)]"
         style={frame}
-        data-drop-target
-        data-drop-target-id="sheet"
-        onDragOver={onDragOver}
-        onDrop={onDrop}
+        data-preview-sheet={sheet.id}
       >
         <div className="flex justify-center pt-2">
           <span className="h-1 w-9 rounded-full bg-[var(--scn-muted-foreground)] opacity-60" />
@@ -936,39 +730,32 @@ function BottomSheetPreview({
           {sheet.title}
         </p>
         <div
-          className="phone-scroll flex min-h-0 flex-1 flex-col px-4 pt-3 pb-2"
+          className="flex min-h-0 flex-1 flex-col items-start overflow-hidden px-4 pt-3 pb-6"
           style={{ gap: spacing ?? 12 }}
         >
           {sheet.nodes.length === 0 ? (
             <p className="py-8 text-center text-xs text-[var(--scn-muted-foreground)]">
-              Arraste componentes para a bottom sheet
+              Esta bottom sheet não tem conteúdo.
             </p>
           ) : (
             sheet.nodes.map((node) => (
-              <div key={node.id} className="w-full">
+              <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
                 <LayoutNodeView node={node} />
               </div>
             ))
           )}
-        </div>
-        <div className="flex items-center justify-between px-4 pt-1 pb-3">
-          <button type="button" className="text-xs font-medium" onClick={onEdit}>
-            Editar
-          </button>
-          <button type="button" className="text-xs font-medium" onClick={onClose}>
-            Concluir
-          </button>
         </div>
       </div>
     </div>
   )
 }
 
-function sheetFrame(fields: Record<string, string>): CSSProperties {
+function sheetFrame(fields: PreviewSheet['fields']): CSSProperties {
   const style: CSSProperties = {}
   const px = (key: string) => {
-    const raw = fields[key]?.trim()
-    if (!raw) return null
+    const raw = fields[key]
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+    if (typeof raw !== 'string' || !raw.trim()) return null
     const value = Number(raw)
     return Number.isFinite(value) ? value : null
   }
@@ -995,48 +782,54 @@ function LayoutNodeView({
   node: ScreenLayoutNode
   sizing?: PreviewSizing
 }) {
-  const {
-    activeDrag,
-    startComponentDrag,
-    startNativeComponentDrag,
-    handleNativeDragEnd,
-    handleNativeDragOver,
-    handleNativeDrop,
-  } = useScreenLayout()
-
-  const { mode } = usePreviewDisplay()
-  const assist = mode === 'debug'
-
   return renderPreview(node.componentId, {
     sizing,
     values: node.props,
     nodes: node.children,
-    dropTargetId: node.id,
-    isDropTarget: activeDrag?.dropTargetId === node.id && activeDrag.overCanvas,
-    className: assist ? 'cursor-grab active:cursor-grabbing' : undefined,
-    interactive: true,
-    draggable: assist,
+    interactive: false,
+    className: 'pointer-events-none',
     renderNode: (child, childSizing) => (
       <LayoutNodeView node={child} sizing={childSizing} />
     ),
-    onPointerDown: (event) => startComponentDrag(node, event),
-    onDragStart: (event) => {
-      event.dataTransfer.effectAllowed = 'move'
-      startNativeComponentDrag(node, event.nativeEvent)
-    },
-    onDragEnd: handleNativeDragEnd,
-    onDragOver: (event) => {
-      event.preventDefault()
-      event.stopPropagation()
-      event.dataTransfer.dropEffect = activeDrag?.nodeId ? 'move' : 'copy'
-      handleNativeDragOver(event.clientX, event.clientY)
-    },
-    onDrop: (event) => {
-      event.preventDefault()
-      event.stopPropagation()
-      handleNativeDrop(event.clientX, event.clientY)
-    },
   })
+}
+
+function BottomSheetSelect({
+  sheets,
+  value,
+  onChange,
+}: {
+  sheets: PreviewSheet[]
+  value: string
+  onChange: (id: string | null) => void
+}) {
+  return (
+    <label className="flex items-center gap-2">
+      <span className="text-muted-foreground">Sheet</span>
+      <Select
+        value={value}
+        onValueChange={(next) => onChange(next === 'none' ? null : next)}
+      >
+        <SelectTrigger aria-label="Bottom sheet no preview" className="w-40" size="sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Nenhuma</SelectItem>
+          {sheets.map((sheet) => (
+            <SelectItem key={sheet.id} value={sheet.id}>
+              {sheetLabel(sheet, sheets)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
+  )
+}
+
+function sheetLabel(sheet: PreviewSheet, sheets: PreviewSheet[]) {
+  const same = sheets.filter((item) => item.title === sheet.title)
+  if (same.length < 2) return sheet.title
+  return `${sheet.title} · ${same.findIndex((item) => item.id === sheet.id) + 1}`
 }
 
 async function anchoredTabBarSource(

@@ -6,7 +6,11 @@ import com.nshiftui.macro.NShiftPlugin
 import com.nshiftui.poc.ui.components.SCNText
 import com.nshiftui.poc.ui.components.SCNTextColor
 import com.nshiftui.poc.ui.components.SCNTextStyle
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 
 @kotlinx.serialization.Serializable
 data class TextMetadata(
@@ -14,6 +18,7 @@ data class TextMetadata(
     val style: String = "sm",
     val weight: String = "regular",
     val color: String = "foreground",
+    val alignment: String = "leading",
 ) : NShiftMetadata {
     fun scnStyle(): SCNTextStyle = when (style) {
         "xs" -> SCNTextStyle.Xs
@@ -54,11 +59,23 @@ class TextPlugin : NShiftPluginWithMetadata<TextMetadata>(
 ) {
     @Composable
     override fun Content() {
+        val alignment = metadata.alignment.removePrefix(".").ifEmpty { "leading" }
+        val textAlign = when (alignment) {
+            "center" -> TextAlign.Center
+            "trailing" -> TextAlign.End
+            else -> TextAlign.Start
+        }
+        val frame = model.style.frame
+        var modifier: Modifier = Modifier
+        if (frame.hasFixedWidth) modifier = modifier.fillMaxWidth()
+        if (frame.hasFixedHeight) modifier = modifier.fillMaxHeight()
         SCNText(
             text = metadata.text,
             style = metadata.scnStyle(),
             weight = metadata.scnWeight(),
             color = metadata.scnColor(),
+            modifier = modifier,
+            align = textAlign,
         )
     }
 }

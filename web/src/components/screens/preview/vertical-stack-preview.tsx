@@ -23,7 +23,7 @@ export function VerticalStackPreview(props: PreviewRenderProps) {
       definition={definition}
       layout="vertical"
       badge="Vertical"
-      emptyLabel="Solte componentes aqui"
+      emptyLabel=""
       {...props}
     />
   )

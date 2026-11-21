@@ -1,5 +1,5 @@
 ---
-description: Layout estável do preview do telefone. Não alterar alinhamento nem a divisão de largura.
+description: Layout do preview do telefone. Largura, altura e alinhamento seguem o iOS e o Android.
 alwaysApply: true
 ---
 
@@ -7,15 +7,15 @@ alwaysApply: true
 
 O canvas do telefone imita o comportamento padrão do SwiftUI e do Jetpack Compose. Não mude estas regras ao ajustar visual, tema ou arraste.
 
-- O plugin Text ocupa a largura da tela e o texto fica centralizado. É o alinhamento padrão do SwiftUI e do Jetpack Compose.
+- Sem `style.width` ou `style.height`, o plugin abraça o conteúdo naquele eixo. Um valor definido é tamanho fixo. Texto, botão, badge e avatar não esticam até as bordas. Card, campo, separador e os outros que já preenchem a linha no iOS e no Android continuam preenchendo.
+- O texto segue `leading`, `center` e `trailing`. O padrão é `leading`. `leading` e `trailing` respeitam a direção do layout (`start` / `end`). Uma stack vertical cheia alinha os filhos nesses três lados. Uma stack horizontal não divide a largura: os filhos abraçam o conteúdo.
 - O texto do preview, nos dois telefones, usa Geist. É a mesma família do SCN no iOS e no Android. Isso não altera a fonte do restante do CMS.
 - A tela é o container `Screen`: moldura pontilhada, sem fundo. A barra segue o metadata e fica sempre inline. Sem título e sem botões, ela não aparece. `navigationLeading: auto` não desenha o voltar, porque o preview é uma tela raiz.
 - iPhone: 44px. O título tem 17px semibold e fica centralizado na barra inteira. Os ícones têm 20px e ficam a 16px da borda. O título continua no centro mesmo com botão de um só lado.
 - Android: 64px. O título tem 22px regular e começa no início. Sem ícone, o texto fica a 16px da borda. Com ícone, o alvo tem 48px e o texto começa depois dele.
-- Só uma stack horizontal divide a largura entre os filhos: 1 = 100%, 2 = 50%, 3 = um terço, 4 = 25%. A fração é `100% / quantidade de irmãos`.
 - Não colocar os plugins da raiz lado a lado. Isso quebra o preview.
 - Scroll horizontal não comprime os filhos: eles mantêm a largura do conteúdo e a faixa rola.
 - A linha pontilhada dos plugins primitivos não tem cor de fundo. O fundo do tema fica só na superfície do telefone (`.scn-screen`).
-- Não reintroduzir `min-height` de catálogo nem padding em volta do preview para “preencher” o slot. O plugin ocupa a caixa da fração de largura, na altura do próprio componente.
+- Não reintroduzir `min-height` de catálogo nem padding em volta do preview para “preencher” o slot. Sem tamanho no style, a altura é a do próprio componente.
 - Na sidebar, as stacks, scrolls e lists primitivas têm a mesma altura fixa. Na tela, a altura cresce com o que for colocado dentro.
 - O arraste de uma stack começa em qualquer ponto da moldura. Um filho dentro dela continua sendo o alvo do arraste e do clique.

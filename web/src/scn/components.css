@@ -5,10 +5,13 @@
 }
 
 .scn-text {
+  width: fit-content;
+  max-width: 100%;
   margin: 0;
   color: var(--scn-foreground);
   font-family: inherit;
   line-height: 1.35;
+  text-align: start;
 }
 
 .scn-text[data-style='xs'] { font-size: 12px; }
@@ -19,7 +22,9 @@
 .scn-text[data-style='xl2'] { font-size: 24px; }
 .scn-text[data-weight='medium'] { font-weight: 500; }
 .scn-text[data-weight='semibold'] { font-weight: 600; }
+.scn-text[data-align='leading'] { text-align: start; }
 .scn-text[data-align='center'] { text-align: center; }
+.scn-text[data-align='trailing'] { text-align: end; }
 .scn-text[data-color='muted'] { color: var(--scn-muted-foreground); }
 .scn-text[data-color='primary'] { color: var(--scn-primary); }
 .scn-text[data-color='destructive'] { color: var(--scn-destructive); }
@@ -503,7 +508,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   padding: 8px 10px;
   border-radius: var(--scn-radius-lg);
   background: var(--scn-card);

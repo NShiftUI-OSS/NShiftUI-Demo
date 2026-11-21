@@ -16,9 +16,9 @@ import com.nshiftui.poc.navigation.AppNavigator
 import com.nshiftui.poc.navigation.NavigationHost
 import com.nshiftui.poc.theme.LocalSCNTheme
 import com.nshiftui.poc.theme.ProvideSCNTheme
+import com.nshiftui.poc.theme.SCNAppTheme
 import com.nshiftui.poc.theme.SCNPresets
 import com.nshiftui.poc.theme.SCNTheme
-import com.nshiftui.poc.theme.SCNThemeId
 import com.nshiftui.resolveOrThrow
 
 class MainActivity : ComponentActivity() {
@@ -32,7 +32,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun SCNPocApp() {
     val dark = isSystemInDarkTheme()
-    ProvideSCNTheme(SCNTheme(SCNPresets.named(SCNThemeId.Neutral), dark)) {
+    val themeId = SCNAppTheme.id
+    ProvideSCNTheme(SCNTheme(SCNPresets.named(themeId), dark)) {
         val colors = LocalSCNTheme.current.palette
         val view = LocalView.current
         SideEffect {

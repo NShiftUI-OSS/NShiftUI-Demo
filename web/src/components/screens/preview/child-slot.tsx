@@ -1,6 +1,5 @@
 import type { DragEventHandler, ReactNode } from 'react'
 
-import { usePreviewAssist } from '@/components/phones/preview-display'
 import type {
   PreviewNode,
   PreviewSizing,
@@ -26,37 +25,19 @@ export function ChildSlot({
   renderNode,
   sizing = 'fill',
   dropTargetId,
-  isDropTarget = false,
-  onDragOver,
-  onDrop,
   sample,
-  emptyLabel = 'Solte componentes aqui',
 }: ChildSlotProps) {
   const placed = Boolean(dropTargetId)
-  const assist = usePreviewAssist()
 
   return (
-    <div
-      className={cn(className)}
-      data-drop={placed && isDropTarget ? 'true' : undefined}
-      data-drop-target={placed ? '' : undefined}
-      data-drop-target-id={placed ? dropTargetId : undefined}
-      onDragOver={placed ? onDragOver : undefined}
-      onDrop={placed ? onDrop : undefined}
-    >
+    <div className={cn(className)}>
       {nodes.length > 0 ? (
         nodes.map((node) => (
-          <div key={node.id} className="w-full min-w-0">
+          <div key={node.id} className="flex w-full min-w-0 justify-start">
             {renderNode?.(node, sizing)}
           </div>
         ))
-      ) : placed ? (
-        assist ? (
-          <span className="scn-text w-full py-2 text-center" data-color="muted" data-style="xs">
-            {emptyLabel}
-          </span>
-        ) : null
-      ) : (
+      ) : placed ? null : (
         sample
       )}
     </div>

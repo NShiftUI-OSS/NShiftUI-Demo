@@ -6,6 +6,8 @@ import { readFlowRoots } from '@/components/screens/rainbow-document'
 import {
   isBottomSheetSlot,
   isRainbowTrigger,
+  isTabBarSlot,
+  isTabPlugin,
 } from '@/domain/triggers/rainbow-trigger'
 
 export type FlowRelation = 'focus' | 'ancestor' | 'dim'
@@ -35,8 +37,9 @@ const PLUGIN_W = 220
 const SCREEN_W = 220
 const TRIGGER_W = 132
 const EVENT_W = 210
-const SIBLING_GAP = 64
-const LEVEL_GAP = 84
+const INDENT = 40
+const SIBLING_GAP = 36
+const LEVEL_GAP = 56
 const BEHAVIOR_GAP = 48
 const GAP_Y = 28
 const CARD_H = 76
@@ -45,11 +48,8 @@ type Branch = {
   node: RainbowNode
   path: string
   cardW: number
-  subtreeW: number
   subtreeH: number
-  behaviorW: number
   behaviorH: number
-  contentW: number
   children: Branch[]
 }
 
@@ -61,15 +61,15 @@ export function buildFlow(document: RainbowDocument, focus: string | null) {
     .map((node, index) => ({ node, index }))
     .filter(
       ({ node }) =>
-        !isRainbowTrigger(nodeName(node)) && !isBottomSheetSlot(nodeName(node)),
+        !isRainbowTrigger(nodeName(node)) &&
+        !isBottomSheetSlot(nodeName(node)) &&
+        !isTabBarSlot(nodeName(node)) &&
+        !isTabPlugin(nodeName(node)),
     )
     .map(({ node, index }) => measureBranch(node, String(index), PLUGIN_W))
 
   if (screen) {
     const screenBehavior = behaviorSize(screen)
-    const row = rowWidth(children)
-    const contentW = Math.max(SCREEN_W, row)
-    const cardX = (contentW - SCREEN_W) / 2
     pushCard(cards, {
       id: 'screen',
       kind: 'screen',
@@ -78,21 +78,21 @@ export function buildFlow(document: RainbowDocument, focus: string | null) {
       hostId: '',
       triggerName: '',
       path: 'screen',
-      x: Math.max(0, cardX),
+      x: 0,
       y: 0,
     })
     placeBehavior(
       screen,
       'screen',
-      Math.max(0, cardX) + SCREEN_W + BEHAVIOR_GAP,
+      SCREEN_W + BEHAVIOR_GAP,
       0,
       cards,
       links,
     )
     const childY = Math.max(CARD_H, screenBehavior.h) + LEVEL_GAP
-    placeRow(children, (contentW - row) / 2, childY, 'screen', cards, links)
+    placeColumn(children, INDENT, childY, 'screen', cards, links)
   } else {
-    placeRow(children, 0, 0, null, cards, links)
+    placeColumn(children, 0, 0, null, cards, links)
   }
 
   for (const card of cards) card.relation = relation(card.path, focus)
@@ -104,23 +104,22 @@ function measureBranch(node: RainbowNode, path: string, cardW: number): Branch {
     measureBranch(child.node, `${path}/${child.index}`, PLUGIN_W),
   )
   const behavior = behaviorSize(node)
-  const row = rowWidth(children)
-  const contentW = Math.max(cardW, row)
   const trunk = Math.max(CARD_H, behavior.h)
+  const childrenH = children.reduce(
+    (sum, child, index) => sum + child.subtreeH + (index ? SIBLING_GAP : 0),
+    0,
+  )
   return {
     node,
     path,
     cardW,
-    subtreeW: contentW + (behavior.w ? BEHAVIOR_GAP + behavior.w : 0),
-    subtreeH: trunk + (children.length ? LEVEL_GAP + tallest(children) : 0),
-    behaviorW: behavior.w,
+    subtreeH: trunk + (children.length ? LEVEL_GAP + childrenH : 0),
     behaviorH: behavior.h,
-    contentW,
     children,
   }
 }
 
-function placeRow(
+function placeColumn(
   branches: Branch[],
   x: number,
   y: number,
@@ -128,10 +127,10 @@ function placeRow(
   cards: FlowCard[],
   links: FlowLink[],
 ) {
-  let cursor = x
+  let cursor = y
   for (const branch of branches) {
-    placeBranch(branch, cursor, y, parentId, cards, links)
-    cursor += branch.subtreeW + SIBLING_GAP
+    placeBranch(branch, x, cursor, parentId, cards, links)
+    cursor += branch.subtreeH + SIBLING_GAP
   }
 }
 
@@ -143,9 +142,6 @@ function placeBranch(
   cards: FlowCard[],
   links: FlowLink[],
 ) {
-  const row = rowWidth(branch.children)
-  const cardX = x + (branch.contentW - branch.cardW) / 2
-  const childX = x + (branch.contentW - row) / 2
   pushCard(cards, {
     id: branch.path,
     kind: 'plugin',
@@ -154,7 +150,7 @@ function placeBranch(
     hostId: branch.path,
     triggerName: '',
     path: branch.path,
-    x: cardX,
+    x,
     y,
   })
   if (parentId) {
@@ -169,15 +165,15 @@ function placeBranch(
   placeBehavior(
     branch.node,
     branch.path,
-    cardX + branch.cardW + BEHAVIOR_GAP,
+    x + branch.cardW + BEHAVIOR_GAP,
     y,
     cards,
     links,
   )
   if (branch.children.length === 0) return
-  placeRow(
+  placeColumn(
     branch.children,
-    childX,
+    x + INDENT,
     y + Math.max(CARD_H, branch.behaviorH) + LEVEL_GAP,
     branch.path,
     cards,
@@ -185,23 +181,15 @@ function placeBranch(
   )
 }
 
-function rowWidth(branches: Branch[]) {
-  return branches.reduce(
-    (sum, branch, index) => sum + branch.subtreeW + (index ? SIBLING_GAP : 0),
-    0,
-  )
-}
-
-function tallest(branches: Branch[]) {
-  return branches.reduce((max, branch) => Math.max(max, branch.subtreeH), 0)
-}
-
 function visibleChildren(node: RainbowNode) {
   return (node.block?.children ?? [])
     .map((child, index) => ({ node: child, index }))
     .filter(
       ({ node: child }) =>
-        !isRainbowTrigger(nodeName(child)) && !isBottomSheetSlot(nodeName(child)),
+        !isRainbowTrigger(nodeName(child)) &&
+        !isBottomSheetSlot(nodeName(child)) &&
+        !isTabBarSlot(nodeName(child)) &&
+        !isTabPlugin(nodeName(child)),
     )
 }
 

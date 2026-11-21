@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -46,11 +47,8 @@ import com.nshiftui.NShiftPluginContainer
 import com.nshiftui.NShiftSlotKey
 import com.nshiftui.macro.NShiftPlugin
 import com.nshiftui.poc.theme.LocalSCNTheme
-import com.nshiftui.poc.theme.ProvideSCNTheme
 import com.nshiftui.poc.theme.SCNFont
-import com.nshiftui.poc.theme.SCNPresets
 import com.nshiftui.poc.theme.SCNTheme
-import com.nshiftui.poc.theme.SCNThemeId
 import com.nshiftui.poc.sdui.plugins.scn.tabbar.LocalTabBarHosted
 import com.nshiftui.poc.sdui.plugins.scn.tabbar.LocalTabChromeReport
 import com.nshiftui.poc.sdui.plugins.scn.tabbar.TabRouteScreen
@@ -83,6 +81,7 @@ data class ScreenMetadata(
 
 enum class ScreenSlot(override val rawValue: String) : NShiftSlotKey {
     BottomSheet("bottomSheet"),
+    TabBar("tabBar"),
 }
 
 val LocalScreenBack = compositionLocalOf<(() -> Unit)?> { null }
@@ -101,10 +100,10 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
 ) {
     @Composable
     override fun Content() {
-        val parent = LocalSCNTheme.current
         val screen = metadata<ScreenMetadata>()
         val hosted = LocalTabBarHosted.current
-        val tabs = tabBarItems(model.children, hosted)
+        val slotTabs = tabBarItems(model.slots[ScreenSlot.TabBar.slotName].orEmpty(), hosted)
+        val tabs = if (slotTabs.isNotEmpty()) slotTabs else tabBarItems(model.children, hosted)
         var selected by remember { mutableStateOf(0) }
         var chromeByRoute by remember { mutableStateOf<Map<String, ScreenNavigationBarMetadata>>(emptyMap()) }
         val ownerBar = screen.navigationBar ?: ScreenNavigationBarMetadata()
@@ -125,24 +124,19 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         LaunchedEffect(ownerBar) {
             report?.invoke(ownerBar)
         }
-        val preset = SCNThemeId.values().firstOrNull {
-            it.name.equals(activeBar.theme, ignoreCase = true)
-        } ?: SCNThemeId.Neutral
-        ProvideSCNTheme(SCNTheme(SCNPresets.named(preset), parent.dark)) {
-            ScreenScaffold(
-                screen = screen,
-                tabs = tabs,
-                selected = selected,
-                onSelect = { selected = it },
-                bar = activeBar,
-                hosted = hosted,
-                onChrome = { route, chrome ->
-                    if (chromeByRoute[route] != chrome) {
-                        chromeByRoute = chromeByRoute + (route to chrome)
-                    }
-                },
-            )
-        }
+        ScreenScaffold(
+            screen = screen,
+            tabs = tabs,
+            selected = selected,
+            onSelect = { selected = it },
+            bar = activeBar,
+            hosted = hosted,
+            onChrome = { route, chrome ->
+                if (chromeByRoute[route] != chrome) {
+                    chromeByRoute = chromeByRoute + (route to chrome)
+                }
+            },
+        )
     }
 
     @Composable
@@ -185,7 +179,17 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         }
         Scaffold(
             containerColor = colors.background,
-            topBar = { AndroidNavigationBar(bar) },
+            topBar = {
+                val outerBack = LocalScreenBack.current
+                val back: (() -> Unit)? = if (selected > 0) {
+                    { onSelect(0) }
+                } else {
+                    outerBack
+                }
+                CompositionLocalProvider(LocalScreenBack provides back) {
+                    AndroidNavigationBar(bar)
+                }
+            },
             bottomBar = {
                 if (tabs.size > 1) {
                     NavigationBar(containerColor = colors.background) {
@@ -272,7 +276,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                 }
                 if (tabs.isNotEmpty() && selected > 0) {
                     val route = tabs[selected].route
-                    TabRouteScreen(route) { chrome -> onChrome(route, chrome) }
+                    androidx.compose.runtime.key(route) {
+                        TabRouteScreen(route) { chrome -> onChrome(route, chrome) }
+                    }
                 } else if (fastRefresh) {
                     PullToRefreshBox(
                         isRefreshing = refreshing,

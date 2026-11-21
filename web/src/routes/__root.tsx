@@ -9,7 +9,6 @@ import {
 import { AppShell } from '@/components/layout/app-shell'
 import { PhoneAppearanceProvider } from '@/components/phones/phone-appearance'
 import { PhoneDeviceProvider } from '@/components/phones/phone-device'
-import { PreviewDisplayProvider } from '@/components/phones/preview-display'
 import { Toaster } from '@/components/ui/sonner'
 
 type RouterContext = {
@@ -27,7 +26,6 @@ function RootLayout() {
   return (
     <PhoneDeviceProvider>
       <PhoneAppearanceProvider>
-        <PreviewDisplayProvider>
         {isLandingPage ? (
           <RouteTransition pathname={pathname}>
             <Outlet />
@@ -40,7 +38,6 @@ function RootLayout() {
           </AppShell>
         )}
         <Toaster />
-        </PreviewDisplayProvider>
       </PhoneAppearanceProvider>
     </PhoneDeviceProvider>
   )

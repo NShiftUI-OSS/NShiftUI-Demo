@@ -1,7 +1,10 @@
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
-import { isBottomSheetSlot, isRainbowTrigger } from '@/domain/triggers/rainbow-trigger'
+import { isBottomSheetSlot, isRainbowTrigger, isTabBarSlot, isTabPlugin } from '@/domain/triggers/rainbow-trigger'
 import {
   findSheet,
+  findTabBarNode,
+  readFlowRoots,
+  readRainbowDocument,
   type RainbowDocument,
   type RainbowNode,
   type RainbowValue,
@@ -64,6 +67,42 @@ export function sheetNodesFromDocument(document: RainbowDocument): ScreenLayoutN
   return nodes
 }
 
+export type PreviewSheet = {
+  id: string
+  title: string
+  fields: Record<string, string | number | boolean | string[]>
+  nodes: ScreenLayoutNode[]
+}
+
+export function sheetsFromDocument(document: RainbowDocument): PreviewSheet[] {
+  const screen = readFlowRoots(document).screen
+  const slot = screen?.slots?.find((item) => isBottomSheetSlot(item.name.value))
+  if (!slot) return []
+  return slot.plugins.map((plugin, index) => {
+    const fields = valuesOf(plugin)
+    const rawTitle = fields.title
+    const title =
+      typeof rawTitle === 'string' && rawTitle.trim()
+        ? rawTitle.trim()
+        : nodeName(plugin) || `Bottom sheet ${index + 1}`
+    const nodes: ScreenLayoutNode[] = []
+    for (const [childIndex, child] of (plugin.block?.children ?? []).entries()) {
+      const name = nodeName(child)
+      if (
+        isRainbowTrigger(name) ||
+        isBottomSheetSlot(name) ||
+        isTabBarSlot(name) ||
+        isTabPlugin(name)
+      ) {
+        continue
+      }
+      const mapped = toLayoutNode(child, `sheet/${index}/${childIndex}`)
+      if (mapped) nodes.push(mapped)
+    }
+    return { id: `sheet:${index}`, title, fields, nodes }
+  })
+}
+
 export function layoutFromRainbow(parsed: unknown): ScreenLayoutNode[] | null {
   const envelope = parsed as ParseEnvelope
   if (!envelope.ok || !envelope.document) return null
@@ -78,7 +117,9 @@ export function layoutFromRainbow(parsed: unknown): ScreenLayoutNode[] | null {
 
   const nodes: ScreenLayoutNode[] = []
   for (const [index, node] of visible.entries()) {
-    if (isBottomSheetSlot(nodeName(node))) continue
+    if (isBottomSheetSlot(nodeName(node)) || isTabBarSlot(nodeName(node)) || isTabPlugin(nodeName(node))) {
+      continue
+    }
     const mapped = toLayoutNode(node, String(index))
     if (!mapped) return null
     nodes.push(mapped)
@@ -95,7 +136,13 @@ function toLayoutNode(
 
   const children: ScreenLayoutNode[] = []
   for (const [index, child] of (node.block?.children ?? []).entries()) {
-    if (isRainbowTrigger(nodeName(child)) || isBottomSheetSlot(nodeName(child))) continue
+    if (
+      isRainbowTrigger(nodeName(child)) ||
+      isBottomSheetSlot(nodeName(child)) ||
+      (nodeName(node) !== 'TabBar' && (isTabBarSlot(nodeName(child)) || isTabPlugin(nodeName(child))))
+    ) {
+      continue
+    }
     const mapped = toLayoutNode(child, `${path}/${index}`)
     if (!mapped) return null
     children.push(mapped)
@@ -163,15 +210,12 @@ function nodeName(node: RainbowNode) {
   return node.name.kind === 'ident' ? node.name.value : node.name.value
 }
 
-export function separateTabBar(nodes: ScreenLayoutNode[]) {
-  let tabBar: ScreenLayoutNode | null = null
-  const strip = (list: ScreenLayoutNode[]): ScreenLayoutNode[] =>
-    list.flatMap((node) => {
-      if (node.componentId === 'tab-bar') {
-        tabBar ??= node
-        return []
-      }
-      return [{ ...node, children: strip(node.children) }]
-    })
-  return { content: strip(nodes), tabBar }
+export function tabBarFromParsed(parsed: unknown): ScreenLayoutNode | null {
+  const document = readRainbowDocument(parsed)
+  return document ? tabBarFromDocument(document) : null
+}
+
+export function tabBarFromDocument(document: RainbowDocument): ScreenLayoutNode | null {
+  const bar = findTabBarNode(document)
+  return bar ? toLayoutNode(bar, 'tabBar') : null
 }

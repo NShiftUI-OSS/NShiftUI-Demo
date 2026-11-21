@@ -15,9 +15,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import com.nshiftui.poc.theme.LocalSCNTheme
 import com.nshiftui.poc.theme.SCNRadius
 import com.nshiftui.poc.theme.SCNSpace
@@ -81,7 +83,12 @@ fun SCNSheet(
             Modifier.padding(SCNSpace.s4),
             verticalArrangement = Arrangement.spacedBy(SCNSpace.s3),
         ) {
-            SCNText(title, weight = FontWeight.SemiBold)
+            SCNText(
+                title,
+                weight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth(),
+                align = TextAlign.Center,
+            )
             content(dismiss)
         }
     }

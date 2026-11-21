@@ -5,6 +5,7 @@ export type PreviewNode = {
   id: string
   componentId: string
   children: PreviewNode[]
+  props?: Record<string, string | number | boolean | string[]>
 }
 
 export type PreviewLayout =

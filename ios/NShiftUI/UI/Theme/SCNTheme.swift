@@ -3,10 +3,17 @@ import UIKit
 
 @MainActor
 final class SCNTheme: ObservableObject {
+    private static let storageKey = "scn.global.ds.theme"
+
     static let shared = SCNTheme(
-        preset: SCNThemePreset.named(.neutral),
+        preset: SCNThemePreset.named(storedThemeID()),
         interfaceStyle: .light
     )
+
+    private static func storedThemeID() -> SCNThemeID {
+        let raw = UserDefaults.standard.string(forKey: storageKey) ?? ""
+        return SCNThemeID.resolve(raw) ?? .neutral
+    }
 
     @Published private(set) var preset: SCNThemePreset
     @Published private(set) var interfaceStyle: UIUserInterfaceStyle
@@ -77,6 +84,11 @@ final class SCNTheme: ObservableObject {
         guard preset.id != id else { return }
         preset = SCNThemePreset.named(id)
         revision += 1
+    }
+
+    func applyGlobal(_ id: SCNThemeID) {
+        UserDefaults.standard.set(id.rawValue, forKey: Self.storageKey)
+        set(id)
     }
 
     func set(colorScheme: ColorScheme) {

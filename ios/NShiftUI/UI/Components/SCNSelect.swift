@@ -15,20 +15,9 @@ struct SCNSelect: View {
     }
 
     var body: some View {
-        Menu {
-            ForEach(
-                options,
-                id: \.self
-            ) { option in
-                Button {
-                    selection = option
-                } label: {
-                    if option == selection {
-                        Label(option, systemImage: "checkmark")
-                    } else {
-                        Text(option)
-                    }
-                }
+        Picker(selection: $selection) {
+            ForEach(options, id: \.self) { option in
+                Text(option).tag(option)
             }
         } label: {
             HStack(spacing: theme.spacing.s2) {
@@ -43,26 +32,23 @@ struct SCNSelect: View {
                     color: theme.palette.mutedForeground.opacity(0.5)
                 )
             }
-            .padding(
-                .horizontal,
-                theme.spacing.s3
-            )
+            .padding(.horizontal, theme.spacing.s3)
             .frame(
                 maxWidth: .infinity,
                 minHeight: theme.spacing.s11,
                 alignment: .leading
             )
             .background(fill)
-        }
-        .buttonStyle(.plain)
-        .clipShape(fieldShape)
-        .overlay(
-            fieldShape.strokeBorder(
-                theme.palette.input,
-                lineWidth: theme.border.hairline
+            .clipShape(fieldShape)
+            .overlay(
+                fieldShape.strokeBorder(
+                    theme.palette.input,
+                    lineWidth: theme.border.hairline
+                )
             )
-        )
-        .contentShape(fieldShape)
+        }
+        .pickerStyle(.menu)
+        .tint(theme.palette.foreground)
     }
 
     private var fieldShape: RoundedRectangle {
