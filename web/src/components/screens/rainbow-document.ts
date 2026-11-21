@@ -230,6 +230,21 @@ function styleParameters(style: NShiftPluginStyle): RainbowParameter[] {
     if (edges) entries.push({ key: 'ignoreSafeArea', value: edges })
     parameters.push(parameter('background', { kind: 'object', entries }))
   }
+  const paddingEntries = (
+    [
+      ['top', style.padding?.top],
+      ['leading', style.padding?.leading],
+      ['trailing', style.padding?.trailing],
+      ['horizontal', style.padding?.horizontal],
+      ['vertical', style.padding?.vertical],
+      ['bottom', style.padding?.bottom],
+    ] as const
+  ).flatMap(([key, value]) =>
+    value === undefined ? [] : [{ key, value: numberValue(value) }],
+  )
+  if (paddingEntries.length > 0) {
+    parameters.push(parameter('padding', { kind: 'object', entries: paddingEntries }))
+  }
   const ignored = edgeValue(style.ignoreSafeArea)
   if (ignored) parameters.push(parameter('ignoreSafeArea', ignored))
   if (style.offset.x !== 0 || style.offset.y !== 0) {

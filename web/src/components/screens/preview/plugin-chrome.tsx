@@ -66,6 +66,21 @@ export function pluginChromeStyle(values: ChromeValues): CSSProperties {
   if (minHeight !== null) style.minHeight = minHeight
   if (maxHeight !== null) style.maxHeight = maxHeight
 
+  const paddingEdge = (edge: string, axis: string) => {
+    const specific = numberValue(`style.padding.${edge}`)
+    if (specific !== null) return specific
+    return numberValue(`style.padding.${axis}`) ?? 0
+  }
+  const paddingTop = paddingEdge('top', 'vertical')
+  const paddingBottom = paddingEdge('bottom', 'vertical')
+  const paddingLeading = paddingEdge('leading', 'horizontal')
+  const paddingTrailing = paddingEdge('trailing', 'horizontal')
+  if (paddingTop || paddingBottom || paddingLeading || paddingTrailing) {
+    style.marginTop = paddingTop || undefined
+    style.marginBottom = paddingBottom || undefined
+    style.marginLeft = paddingLeading || undefined
+    style.marginRight = paddingTrailing || undefined
+  }
   const background = typeof values['style.background.color'] === 'string' ? values['style.background.color'].trim() : ''
   if (background) style.backgroundColor = previewColor(background)
   const offsetX = numberValue('style.offset.x')

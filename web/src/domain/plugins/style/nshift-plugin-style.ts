@@ -12,6 +12,14 @@ export type NShiftPluginStyle = {
     readonly ignoreSafeArea?: string[]
   }
   readonly ignoreSafeArea?: string[]
+  readonly padding?: {
+    readonly top?: number
+    readonly leading?: number
+    readonly trailing?: number
+    readonly horizontal?: number
+    readonly vertical?: number
+    readonly bottom?: number
+  }
   readonly offset: { readonly x: number; readonly y: number }
   readonly animation?: {
     readonly isEnabled: boolean
@@ -68,6 +76,20 @@ export function pluginStyleFromFields(
   if (minHeight !== null && maxHeight !== null && minHeight > maxHeight) {
     throw new Error('A altura mínima é maior que a máxima.')
   }
+  const optionalInt = (key: string) => {
+    const text = (raw[key] ?? '').trim()
+    if (!text) return undefined
+    const value = Number(text)
+    return Number.isFinite(value) ? Math.trunc(value) : undefined
+  }
+  const padding = {
+    top: optionalInt('style.padding.top'),
+    leading: optionalInt('style.padding.leading'),
+    trailing: optionalInt('style.padding.trailing'),
+    horizontal: optionalInt('style.padding.horizontal'),
+    vertical: optionalInt('style.padding.vertical'),
+    bottom: optionalInt('style.padding.bottom'),
+  }
   const color = raw['style.background.color']?.trim()
   const backgroundEdges = edges(raw['style.background.ignoreSafeArea'])
   const background = color || backgroundEdges
@@ -88,6 +110,7 @@ export function pluginStyleFromFields(
   return {
     background,
     ignoreSafeArea: edges(raw['style.ignoreSafeArea']),
+    padding: Object.values(padding).some((value) => value !== undefined) ? padding : undefined,
     offset: {
       x: numberOr(raw['style.offset.x'], 0),
       y: numberOr(raw['style.offset.y'], 0),

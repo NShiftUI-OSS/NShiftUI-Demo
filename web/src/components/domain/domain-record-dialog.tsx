@@ -303,6 +303,12 @@ function styleFallback(fields: Record<string, string> | undefined) {
     if (value) picked[target] = value
   }
   copy('style.background.color', 'style.background.color')
+  copy('style.padding.top', 'style.padding.top')
+  copy('style.padding.leading', 'style.padding.leading')
+  copy('style.padding.trailing', 'style.padding.trailing')
+  copy('style.padding.horizontal', 'style.padding.horizontal')
+  copy('style.padding.vertical', 'style.padding.vertical')
+  copy('style.padding.bottom', 'style.padding.bottom')
   copy('style.ignoreSafeArea', 'style.ignoreSafeArea')
   copy('style.offset.x', 'style.offset.x')
   copy('style.offset.y', 'style.offset.y')
