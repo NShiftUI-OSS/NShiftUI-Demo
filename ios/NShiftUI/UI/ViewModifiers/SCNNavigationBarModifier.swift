@@ -182,8 +182,23 @@ private struct SCNNavigationBarAppearance: UIViewControllerRepresentable {
             } else {
                 appearance.configureWithOpaqueBackground()
             }
+            appearance.backgroundEffect = nil
+            appearance.shadowColor = .clear
+            appearance.shadowImage = UIImage()
             if let background {
-                appearance.backgroundColor = background.withAlphaComponent(isTranslucent ? 0.72 : 1)
+                let alpha = isTranslucent ? Self.translucentAlpha : 1
+                appearance.backgroundColor = Self.flat(
+                    background,
+                    alpha: alpha,
+                    traits: bar.traitCollection
+                )
+                if isTranslucent {
+                    navigationController.view.backgroundColor = Self.flat(
+                        background,
+                        alpha: 1,
+                        traits: bar.traitCollection
+                    )
+                }
             }
             appearance.titleTextAttributes = [
                 .font: UIFont.systemFont(ofSize: 17, weight: .semibold)
@@ -192,9 +207,58 @@ private struct SCNNavigationBarAppearance: UIViewControllerRepresentable {
                 .font: UIFont.systemFont(ofSize: 34, weight: .bold)
             ]
             bar.isTranslucent = isTranslucent
+            install(appearance, on: bar)
+            if let item = bar.topItem {
+                install(appearance, on: item)
+            }
+        }
+
+        private func install(
+            _ appearance: UINavigationBarAppearance,
+            on bar: UINavigationBar
+        ) {
             bar.standardAppearance = appearance
-            bar.scrollEdgeAppearance = appearance
             bar.compactAppearance = appearance
+            bar.scrollEdgeAppearance = appearance
+            bar.compactScrollEdgeAppearance = appearance
+        }
+
+        private func install(
+            _ appearance: UINavigationBarAppearance,
+            on item: UINavigationItem
+        ) {
+            item.standardAppearance = appearance
+            item.compactAppearance = appearance
+            item.scrollEdgeAppearance = appearance
+            item.compactScrollEdgeAppearance = appearance
+        }
+
+        private static let translucentAlpha: CGFloat = 0.4
+
+        private static func flat(
+            _ color: UIColor,
+            alpha: CGFloat,
+            traits: UITraitCollection
+        ) -> UIColor {
+            let resolved = color.resolvedColor(with: traits)
+            var red: CGFloat = 0
+            var green: CGFloat = 0
+            var blue: CGFloat = 0
+            var current: CGFloat = 0
+            guard resolved.getRed(
+                &red,
+                green: &green,
+                blue: &blue,
+                alpha: &current
+            ) else {
+                return resolved.withAlphaComponent(alpha)
+            }
+            return UIColor(
+                red: red,
+                green: green,
+                blue: blue,
+                alpha: alpha
+            )
         }
     }
 }
@@ -260,12 +324,22 @@ extension SCNNavigationBarModifier {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            SCNIcon(
-                icon,
-                size: theme.spacing.s5,
-                color: theme.palette.foreground
-            )
+            Image(uiImage: toolbarGlyph(icon, pointSize: theme.spacing.s5))
         }
+    }
+
+    /// Liquid glass sizes a bar button from the image's intrinsic size.
+    /// `SCNIcon` is a resizable PDF, so that size is empty and only the glass remains.
+    private func toolbarGlyph(_ icon: SCNIconName, pointSize: CGFloat) -> UIImage {
+        let side = max(pointSize, 1)
+        let canvas = CGSize(width: side, height: side)
+        let format = UIGraphicsImageRendererFormat.preferred()
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: canvas, format: format)
+        let rendered = renderer.image { _ in
+            UIImage(named: icon.rawValue)?.draw(in: CGRect(origin: .zero, size: canvas))
+        }
+        return rendered.withRenderingMode(.alwaysTemplate)
     }
 }
 

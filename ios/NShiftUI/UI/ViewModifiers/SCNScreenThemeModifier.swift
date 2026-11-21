@@ -22,7 +22,10 @@ struct SCNScreenThemeModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(screenTheme.palette.background)
+            .background {
+                screenTheme.palette.background
+                    .ignoresSafeArea()
+            }
             .environmentObject(screenTheme)
             .environment(\.theme, screenTheme)
             .onChange(of: themeName) { name in

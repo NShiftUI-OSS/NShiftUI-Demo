@@ -620,7 +620,8 @@ final class SCNNavigationItemSwizzle {
         fallbackOpaque: Bool
     ) -> UINavigationBarAppearance {
         let next = appearance?.copy() ?? UINavigationBarAppearance()
-        if fallbackOpaque || !isTransparent(next) {
+        let preserveFill = keepsTranslucentFill(next)
+        if !preserveFill && (fallbackOpaque || !isTransparent(next)) {
             next.configureWithOpaqueBackground()
             next.backgroundColor = SCNNavigationChrome.barBackground
             next.backgroundEffect = nil
@@ -779,6 +780,19 @@ final class SCNNavigationItemSwizzle {
         bar.titleTextAttributes = SCNNavigationChrome.attributes(for: .inline)
         bar.largeTitleTextAttributes = SCNNavigationChrome.attributes(for: .large)
         bar.tintColor = SCNNavigationChrome.titleColor
+    }
+
+    private static func keepsTranslucentFill(
+        _ appearance: UINavigationBarAppearance
+    ) -> Bool {
+        guard let color = appearance.backgroundColor else {
+            return false
+        }
+        let resolved = color.resolvedColor(
+            with: UITraitCollection.current
+        )
+        let alpha = resolved.cgColor.alpha
+        return alpha > 0.01 && alpha < 0.99
     }
 
     private static func isTransparent(_ appearance: UINavigationBarAppearance) -> Bool {

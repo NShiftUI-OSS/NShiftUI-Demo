@@ -142,6 +142,7 @@ struct ScreenPlugin: NShiftPluginContainer {
                 leading: leading,
                 center: centerIcon,
                 trailing: trailing,
+                isTranslucent: true,
                 background: barBackground
             )
             .scnScreenTheme(
@@ -218,21 +219,29 @@ struct ScreenPlugin: NShiftPluginContainer {
         return Image(navigationBar.centerIcon).renderingMode(.template)
     }
 
-    private var barBackground: Color? {
+    private var barBackground: Color {
+        let palette = screenPalette
         switch navigationBar.background {
-        case "background":
-            return theme.palette.background
         case "card":
-            return theme.palette.card
+            return palette.card
         case "primary":
-            return theme.palette.primary
+            return palette.primary
         case "muted":
-            return theme.palette.muted
+            return palette.muted
         case "secondary":
-            return theme.palette.secondary
+            return palette.secondary
         default:
-            return nil
+            return palette.background
         }
+    }
+
+    private var screenPalette: SCNThemePalette {
+        let id = SCNThemeID(rawValue: navigationBar.theme) ?? .neutral
+        let preset = SCNThemePreset.named(id)
+        if theme.interfaceStyle == .dark {
+            return preset.dark
+        }
+        return preset.light
     }
 }
 
