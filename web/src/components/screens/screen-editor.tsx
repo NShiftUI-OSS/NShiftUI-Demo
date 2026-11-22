@@ -32,6 +32,8 @@ import { ScreenFrame } from '@/components/screens/preview/screen-frame'
 import { readScreenChrome } from '@/scn/screen-theme'
 import { ScnPresetSelect } from '@/scn/theme'
 import { ScnToast } from '@/scn/widgets'
+import { WebViewPage } from '@/components/screens/preview/web-view-page'
+import { Input } from '@/components/ui/input'
 import {
   PhoneSelectionView,
   PREVIEW_PHONE_HEIGHT_CLASS,
@@ -41,8 +43,13 @@ import { PreviewFidelityNotice } from '@/components/preview-fidelity-notice'
 import { FlowCanvas } from '@/components/screens/flow/flow-canvas'
 import {
   anchorTabBar,
+  convertRootContainer,
   printRainbowDocument,
   readRainbowDocument,
+  rootHasContent,
+  setWebViewURL,
+  type RainbowDocument,
+  type RootContainer,
 } from '@/components/screens/rainbow-document'
 import { RainbowEditor } from '@/components/screens/rainbow-editor'
 import { Android } from '@/components/ui/android'
@@ -77,6 +84,8 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
     openFlow,
     sheets,
     toasts,
+    rootKind,
+    webView,
   } = useScreenLayout()
   const container = useNShift()
   const editorRowRef = useRef<HTMLDivElement>(null)
@@ -94,6 +103,25 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
   const selectedSheet = sheets.find((item) => item.id === selectedSheetId) ?? null
   const [selectedToastId, setSelectedToastId] = useState<string | null>(null)
   const selectedToast = toasts.find((item) => item.id === selectedToastId) ?? null
+  const [pendingContainer, setPendingContainer] = useState<RootContainer | null>(null)
+
+  async function rewriteSource(change: (document: RainbowDocument) => boolean) {
+    const document = readRainbowDocument(await container.parser.parse(rainbowSource))
+    if (!document || !change(document)) return
+    const printed = printRainbowDocument(document)
+    const formatted = await container.parser.format(printed)
+    setRainbowSource(formatted.ok && formatted.formatted ? formatted.formatted : printed)
+  }
+
+  async function chooseContainer(target: RootContainer) {
+    if (target === rootKind) return
+    const document = readRainbowDocument(await container.parser.parse(rainbowSource))
+    if (target === 'WebView' && document && rootHasContent(document)) {
+      setPendingContainer(target)
+      return
+    }
+    await rewriteSource((current) => convertRootContainer(current, target))
+  }
 
   const visibleScreen = screen?.id === screenId ? screen : null
   const viewedSnapshot = versions.find((item) => item.version === viewedVersion) ?? null
@@ -279,6 +307,19 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                 value={selectedToast?.id ?? 'none'}
                 onChange={setSelectedToastId}
               />
+              <span aria-hidden className="bg-border h-6 w-px" />
+              <ContainerSelect
+                value={rootKind}
+                disabled={frozen || !rootKind}
+                onChange={(target) => void chooseContainer(target)}
+              />
+              {webView ? (
+                <WebViewURLField
+                  url={webView.url}
+                  disabled={frozen}
+                  onCommit={(url) => void rewriteSource((current) => setWebViewURL(current, url))}
+                />
+              ) : null}
               <Button
                 aria-pressed={Boolean(flowFocus)}
                 data-tree-inspector=""
@@ -434,6 +475,35 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
               }}
             >
               {publishing ? 'Salvando...' : frozen ? 'Usar no app' : 'Publicar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={pendingContainer !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingContainer(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Transformar em WebView?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Uma WebView mostra só uma página com a barra de navegação. Os plugins, slots e o
+              scroll desta tela saem do Rainbow; a barra de navegação é mantida. Nada é publicado
+              até você publicar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const target = pendingContainer
+                setPendingContainer(null)
+                if (target) void rewriteSource((current) => convertRootContainer(current, target))
+              }}
+            >
+              Transformar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -682,7 +752,19 @@ function DevicePreview({
 }) {
   const { layoutNodes, previewError, rainbowSource, scroll, tabBar, searchBar, floatingButton } = useScreenLayout()
   const toast = useContext(PreviewToastContext)
+  const { webView } = useScreenLayout()
   const Frame = device === 'iphone' ? Iphone : Android
+  if (webView) {
+    return (
+      <Frame data-device-preview className={`${PHONE_HEIGHT_CLASS} w-auto shrink-0`}>
+        <ScreenFrame chrome={readScreenChrome(rainbowSource)} device={device}>
+          <div className="relative flex min-h-0 w-full flex-1 flex-col" data-preview-web-view="">
+            <WebViewPage url={webView.url} />
+          </div>
+        </ScreenFrame>
+      </Frame>
+    )
+  }
 
   return (
     <Frame
@@ -699,7 +781,12 @@ function DevicePreview({
         overlay={
           toast ? (
             <div data-preview-toast={toast.id} className="shadow-[0_8px_24px_rgba(0,0,0,0.28)] rounded-[var(--scn-radius-lg)]">
-              <ScnToast title={toast.title} body={toast.message} icon={toast.icon || undefined} />
+              <ScnToast
+                title={toast.title}
+                body={toast.message}
+                icon={toast.icon || undefined}
+                variant={toast.variant}
+              />
             </div>
           ) : null
         }
@@ -866,6 +953,74 @@ function BottomSheetSelect({
           ))}
         </SelectContent>
       </Select>
+    </label>
+  )
+}
+
+function ContainerSelect({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: RootContainer | null
+  disabled: boolean
+  onChange: (target: RootContainer) => void
+}) {
+  return (
+    <label className="flex items-center gap-2">
+      <span className="text-muted-foreground">Container</span>
+      <Select
+        value={value ?? undefined}
+        onValueChange={(next) => onChange(next as RootContainer)}
+        disabled={disabled}
+      >
+        <SelectTrigger aria-label="Plugin container da tela" className="w-32" size="sm">
+          <SelectValue placeholder="—" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="Screen">Screen</SelectItem>
+          <SelectItem value="WebView">WebView</SelectItem>
+        </SelectContent>
+      </Select>
+    </label>
+  )
+}
+
+/** URL of a WebView root; written to the Rainbow on Enter or when the field loses focus. */
+function WebViewURLField({
+  url,
+  disabled,
+  onCommit,
+}: {
+  url: string
+  disabled: boolean
+  onCommit: (url: string) => void
+}) {
+  const [draft, setDraft] = useState(url)
+  const [syncedURL, setSyncedURL] = useState(url)
+  if (url !== syncedURL) {
+    setSyncedURL(url)
+    setDraft(url)
+  }
+  const commit = () => {
+    const next = draft.trim()
+    if (next && next !== url) onCommit(next)
+  }
+  return (
+    <label className="flex items-center gap-2">
+      <span className="text-muted-foreground">URL</span>
+      <Input
+        aria-label="Endereço da WebView"
+        className="h-8 w-72"
+        disabled={disabled}
+        placeholder="https://"
+        value={draft}
+        onBlur={commit}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') commit()
+        }}
+      />
     </label>
   )
 }

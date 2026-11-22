@@ -35,6 +35,7 @@ data class ToastMessage(
     val title: String,
     val message: String,
     val icon: String,
+    val variant: SCNToastVariant = SCNToastVariant.Default,
     val id: String = UUID.randomUUID().toString(),
 )
 
@@ -72,6 +73,7 @@ fun SCNToastHost() {
                     title = shown.title,
                     message = shown.message,
                     icon = shown.icon,
+                    variant = shown.variant,
                     modifier = Modifier
                         .statusBarsPadding()
                         .padding(horizontal = SCNSpace.s4, vertical = SCNSpace.s2)

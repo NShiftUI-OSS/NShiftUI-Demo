@@ -176,6 +176,7 @@ export const flowEvents: FlowEventDefinition[] = [
       text('title', 'Título', 'Pronto!', true),
       text('message', 'Mensagem (aceita {{campo}} num ForEach)', ''),
       { name: 'icon', label: 'Ícone', kind: 'icon', defaultValue: 'circle-check' },
+      select('variant', 'Variante', ['default', 'success', 'error', 'info', 'warning']),
       number('duration', 'Duração (s)', '2.5'),
     ],
   },

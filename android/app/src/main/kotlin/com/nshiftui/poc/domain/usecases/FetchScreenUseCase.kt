@@ -59,7 +59,8 @@ class FetchScreenUseCase(
         } catch (_: Exception) {
             throw FetchScreenError()
         }
-        if (model.name.rawValue != "Screen") {
+        // Root plugin containers a runtime screen may have.
+        if (model.name.rawValue !in setOf("Screen", "WebView")) {
             throw FetchScreenError()
         }
         return model

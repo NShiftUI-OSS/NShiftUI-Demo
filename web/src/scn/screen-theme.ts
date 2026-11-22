@@ -93,7 +93,7 @@ export function writeScreenTheme(source: string, theme: ScnPresetId) {
 }
 
 function rootArguments(source: string) {
-  const match = /(?:^|\n)\s*Screen\s*\(/.exec(source)
+  const match = /(?:^|\n)\s*(?:Screen|WebView)\s*\(/.exec(source)
   if (!match || match.index === undefined) return null
   const start = source.indexOf('(', match.index)
   const end = matchingParenthesis(source, start)

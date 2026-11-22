@@ -173,6 +173,7 @@
 		10A2AB57CFC145453CC11ADF /* SCNFloatingButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2561F877C039D0727A0FC6 /* SCNFloatingButton.swift */; };
 		4C6A27A92B94DB14CA21F40D /* FloatingButtonPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DDD2A1CC64A0D9E96883C0A /* FloatingButtonPlugin.swift */; };
 		12BA5107E8187A4499F9EA60 /* ShowToastEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E8B3F35A92E119BA87896D6 /* ShowToastEvent.swift */; };
+		DE299C60BF098C0838FD0EC8 /* WebViewPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AE22EC35B069E18B9947518 /* WebViewPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -346,6 +347,7 @@
 		9E2561F877C039D0727A0FC6 /* SCNFloatingButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SCNFloatingButton.swift; sourceTree = "<group>"; };
 		8DDD2A1CC64A0D9E96883C0A /* FloatingButtonPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingButtonPlugin.swift; sourceTree = "<group>"; };
 		4E8B3F35A92E119BA87896D6 /* ShowToastEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowToastEvent.swift; sourceTree = "<group>"; };
+		4AE22EC35B069E18B9947518 /* WebViewPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -1093,6 +1095,7 @@
 		E7F3000000000000000000S1 /* SCN */ = {
 			isa = PBXGroup;
 			children = (
+				194DBCB18A81FB41C47D656D /* WebView */,
 				656DF8BA412E35FBE5AE4F6C /* FloatingButton */,
 				CD4AEB1EB5CA9DC61B08C51D /* SearchBar */,
 				E7F2000000000000000000A1 /* Screen */,
@@ -1228,6 +1231,14 @@
 				4E8B3F35A92E119BA87896D6 /* ShowToastEvent.swift */,
 			);
 			path = ShowToastEvent;
+			sourceTree = "<group>";
+		};
+		194DBCB18A81FB41C47D656D /* WebView */ = {
+			isa = PBXGroup;
+			children = (
+				4AE22EC35B069E18B9947518 /* WebViewPlugin.swift */,
+			);
+			path = WebView;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1387,6 +1398,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DE299C60BF098C0838FD0EC8 /* WebViewPlugin.swift in Sources */,
 				12BA5107E8187A4499F9EA60 /* ShowToastEvent.swift in Sources */,
 				4C6A27A92B94DB14CA21F40D /* FloatingButtonPlugin.swift in Sources */,
 				10A2AB57CFC145453CC11ADF /* SCNFloatingButton.swift in Sources */,

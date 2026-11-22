@@ -34,11 +34,13 @@ import { renderPreview } from '@/components/screens/preview'
 import { rootItemClass } from '@/components/screens/preview/plugin-layout'
 import {
   floatingButtonFromParsed,
+  webViewFromParsed,
   layoutFromRainbow,
   searchBarFromParsed,
   tabBarFromParsed,
 } from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
+import { WebViewPage } from '@/components/screens/preview/web-view-page'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
 import { readScreenChrome } from '@/scn/screen-theme'
 import { useNShift } from '@/di/nshift-provider'
@@ -318,6 +320,7 @@ function ScreenPreview({
   const [tabBar, setTabBar] = useState<ScreenLayoutNode | null>(null)
   const [searchBar, setSearchBar] = useState<ScreenLayoutNode | null>(null)
   const [floatingButton, setFloatingButton] = useState<ScreenLayoutNode | null>(null)
+  const [webView, setWebView] = useState<{ url: string } | null>(null)
   const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
@@ -336,6 +339,7 @@ function ScreenPreview({
       setTabBar(tabBarFromParsed(parsed))
       setSearchBar(searchBarFromParsed(parsed))
       setFloatingButton(floatingButtonFromParsed(parsed))
+      setWebView(webViewFromParsed(parsed))
     })
     return () => {
       cancelled = true
@@ -358,6 +362,8 @@ function ScreenPreview({
           <div className="flex min-h-0 flex-1 items-center justify-center px-5 text-center text-[10px]">
             Destino ausente
           </div>
+        ) : webView ? (
+          <WebViewPage url={webView.url} interactive={false} />
         ) : invalid ? (
           <div className="flex min-h-0 flex-1 items-center justify-center px-5 text-center text-[10px]">
             Preview indisponível

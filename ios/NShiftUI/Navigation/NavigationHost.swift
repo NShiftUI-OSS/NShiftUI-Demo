@@ -95,5 +95,6 @@ private struct ScreenPage: View {
                 resolved.resolve()
             }
         }
+        .environment(\.isStackRoot, isRoot)
     }
 }

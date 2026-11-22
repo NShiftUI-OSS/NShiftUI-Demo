@@ -542,7 +542,7 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
 }
 
 @Composable
-private fun AndroidNavigationBar(navigationBar: ScreenNavigationBarMetadata) {
+internal fun AndroidNavigationBar(navigationBar: ScreenNavigationBarMetadata) {
     val theme = LocalSCNTheme.current
     val onBack = LocalScreenBack.current
     val leading = leadingIcon(navigationBar, onBack, LocalModalPresentation.current)

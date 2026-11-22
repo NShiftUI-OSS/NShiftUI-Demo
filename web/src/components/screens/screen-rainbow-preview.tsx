@@ -9,6 +9,7 @@ import { Android } from '@/components/ui/android'
 import { Iphone } from '@/components/ui/iphone'
 import { renderPreview } from '@/components/screens/preview'
 import { rootItemClass } from '@/components/screens/preview/plugin-layout'
+import { WebViewPage } from '@/components/screens/preview/web-view-page'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
 import {
   layoutFromRainbow,
@@ -16,6 +17,7 @@ import {
   tabBarFromParsed,
   searchBarFromParsed,
   floatingButtonFromParsed,
+  webViewFromParsed,
 } from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { useNShift } from '@/di/nshift-provider'
@@ -65,6 +67,7 @@ function RainbowPreviewBody({
   const [tabBar, setTabBar] = useState<ScreenLayoutNode | null>(null)
   const [searchBar, setSearchBar] = useState<ScreenLayoutNode | null>(null)
   const [floatingButton, setFloatingButton] = useState<ScreenLayoutNode | null>(null)
+  const [webView, setWebView] = useState<{ url: string } | null>(null)
   const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
@@ -86,6 +89,7 @@ function RainbowPreviewBody({
       setTabBar(tabBarFromParsed(parsed))
       setSearchBar(searchBarFromParsed(parsed))
       setFloatingButton(floatingButtonFromParsed(parsed))
+      setWebView(webViewFromParsed(parsed))
     })
     return () => {
       cancelled = true
@@ -103,7 +107,9 @@ function RainbowPreviewBody({
       interactive={false}
     >
       <div className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col">
-        {invalid ? (
+        {webView ? (
+          <WebViewPage url={webView.url} interactive={false} />
+        ) : invalid ? (
           <PreviewMessage>Preview indisponível</PreviewMessage>
         ) : nodes === null ? (
           <PreviewMessage>Carregando…</PreviewMessage>

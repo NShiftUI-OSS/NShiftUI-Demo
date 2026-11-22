@@ -57,7 +57,8 @@ struct FetchScreenUseCase: FetchScreenUseCaseProtocol {
         } catch {
             throw FetchScreenError.unavailable
         }
-        guard model.name.rawValue == "Screen" else {
+        // Root plugin containers a runtime screen may have.
+        guard ["Screen", "WebView"].contains(model.name.rawValue) else {
             throw FetchScreenError.unavailable
         }
         return model

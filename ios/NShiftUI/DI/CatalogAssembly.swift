@@ -23,6 +23,7 @@ struct CatalogAssembly: NShiftDependencyAssembly {
     ScreenPlugin.self,
     SearchBarPlugin.self,
     FloatingButtonPlugin.self,
+    WebViewPlugin.self,
     ProgressPlugin.self,
     RadioPlugin.self,
     SelectPlugin.self,

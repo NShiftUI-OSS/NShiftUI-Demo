@@ -261,9 +261,20 @@ export function ScnSlider({ value = 0.45 }: { value?: number }) {
   )
 }
 
-export function ScnToast({ title, body, icon }: { title: string; body: string; icon?: string }) {
+export function ScnToast({
+  title,
+  body,
+  icon,
+  variant = 'default',
+}: {
+  title: string
+  body: string
+  icon?: string
+  /** Feedback colors follow shadcn's Sonner `richColors`. */
+  variant?: string
+}) {
   return (
-    <div className="scn-toast" data-icon={icon ? 'true' : undefined}>
+    <div className="scn-toast" data-icon={icon ? 'true' : undefined} data-variant={variant}>
       {icon ? <ScnIconMark name={icon} size={20} /> : null}
       <div className="scn-toast-text">
         <ScnText weight="medium">{title}</ScnText>

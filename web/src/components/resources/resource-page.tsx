@@ -19,6 +19,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { defaultWebViewSource, type RootContainer } from '@/components/screens/rainbow-document'
 
 type Resource = {
   id: string
@@ -40,6 +42,8 @@ export function ResourcePage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isRoot, setIsRoot] = useState(false)
+  const [containerKind, setContainerKind] = useState<RootContainer>('Screen')
+  const [webURL, setWebURL] = useState('https://')
   const visibleResources = (pageData?.items ?? []).map((screen) => ({
     id: screen.id,
     name: screen.name,
@@ -79,6 +83,8 @@ export function ResourcePage() {
     setName('')
     setDescription('')
     setIsRoot(false)
+    setContainerKind('Screen')
+    setWebURL('https://')
     setOpen(true)
   }
 
@@ -104,7 +110,13 @@ export function ResourcePage() {
           isRoot,
         })
       } else {
-        await api.createScreen({ name, description, isRoot })
+        await api.createScreen({
+          name,
+          description,
+          isRoot,
+          // A WebView starts from its page; a Screen from the backend's empty screen.
+          rainbow: containerKind === 'WebView' ? defaultWebViewSource(name.trim(), webURL.trim()) : undefined,
+        })
       }
       await refresh()
       setOpen(false)
@@ -222,6 +234,38 @@ export function ResourcePage() {
                 onChange={(event) => setDescription(event.target.value)}
               />
             </div>
+            {!editing && (
+              <div className="grid gap-2">
+                <Label>Plugin container</Label>
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  value={containerKind}
+                  onValueChange={(value) => {
+                    if (value) setContainerKind(value as RootContainer)
+                  }}
+                >
+                  <ToggleGroupItem value="Screen">Screen</ToggleGroupItem>
+                  <ToggleGroupItem value="WebView">WebView</ToggleGroupItem>
+                </ToggleGroup>
+                <p className="text-muted-foreground text-xs">
+                  {containerKind === 'Screen'
+                    ? 'Uma tela nativa montada com os plugins do design system.'
+                    : 'Uma página web com a barra de navegação do app.'}
+                </p>
+              </div>
+            )}
+            {!editing && containerKind === 'WebView' && (
+              <div className="grid gap-2">
+                <Label htmlFor="screen-url">Endereço da página</Label>
+                <Input
+                  id="screen-url"
+                  placeholder="https://"
+                  value={webURL}
+                  onChange={(event) => setWebURL(event.target.value)}
+                />
+              </div>
+            )}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -257,7 +301,13 @@ export function ResourcePage() {
                 <Button variant="outline" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
-                <Button disabled={!name.trim()} onClick={saveResource}>
+                <Button
+                  disabled={
+                    !name.trim() ||
+                    (!editing && containerKind === 'WebView' && !/^https?:\/\/\S+\.\S+/.test(webURL.trim()))
+                  }
+                  onClick={saveResource}
+                >
                   Salvar
                 </Button>
               </div>

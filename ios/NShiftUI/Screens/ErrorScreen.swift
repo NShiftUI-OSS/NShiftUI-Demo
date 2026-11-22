@@ -29,6 +29,6 @@ struct ErrorScreen: View {
             maxWidth: .infinity,
             maxHeight: .infinity
         )
-        .modifier(StandaloneNavigationBar(hosted: tabBarHosted, title: title ?? ""))
+        .modifier(StandaloneNavigationBar(hosted: tabBarHosted, title: title ?? "", leading: .back()))
     }
 }

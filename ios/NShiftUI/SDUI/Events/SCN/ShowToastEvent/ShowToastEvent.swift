@@ -7,6 +7,8 @@ struct ShowToastEventMetadata: NShiftMetadata, Decodable {
     let title: String
     let message: String
     let icon: String
+    /// `default`, `success`, `error`, `info` or `warning`.
+    let variant: String
     /// Seconds on screen.
     let duration: Double
 
@@ -15,6 +17,7 @@ struct ShowToastEventMetadata: NShiftMetadata, Decodable {
         title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
         message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
         icon = try container.decodeIfPresent(String.self, forKey: .icon) ?? ""
+        variant = try container.decodeIfPresent(String.self, forKey: .variant) ?? "default"
         if let seconds = try? container.decodeIfPresent(Double.self, forKey: .duration) {
             duration = seconds
         } else {
@@ -23,7 +26,7 @@ struct ShowToastEventMetadata: NShiftMetadata, Decodable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case title, message, icon, duration
+        case title, message, icon, variant, duration
     }
 }
 
@@ -42,7 +45,8 @@ struct ShowToastEvent: NShiftEvent {
         let toast = ToastContent(
             title: metadata.title,
             message: metadata.message,
-            icon: SCNIconName(rawValue: metadata.icon)
+            icon: SCNIconName(rawValue: metadata.icon),
+            variant: SCNToast.Variant(rawValue: metadata.variant) ?? .default
         )
         let duration = metadata.duration > 0 ? metadata.duration : 2.5
         await ToastPresenter.shared.show(toast, duration: duration)
@@ -55,6 +59,7 @@ struct ToastContent: Equatable {
     let title: String
     let message: String
     let icon: SCNIconName?
+    let variant: SCNToast.Variant
 }
 
 @MainActor
@@ -129,7 +134,8 @@ private struct ToastOverlayView: View {
                 SCNToast(
                     title: toast.title,
                     message: toast.message,
-                    icon: toast.icon
+                    icon: toast.icon,
+                    variant: toast.variant
                 )
                 .shadow(color: .black.opacity(0.25), radius: 16, x: 0, y: 8)
                 .padding(.horizontal, theme.spacing.s4)

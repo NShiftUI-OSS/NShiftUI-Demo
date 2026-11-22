@@ -17,11 +17,17 @@ import {
   searchBarFromDocument,
   floatingButtonFromDocument,
   toastsFromDocument,
+  webViewFromDocument,
   type PreviewSheet,
   type PreviewToast,
   type ScreenScrollPreview,
 } from '@/components/screens/rainbow-source'
-import { defaultRainbowSource, readRainbowDocument } from '@/components/screens/rainbow-document'
+import {
+  defaultRainbowSource,
+  readRainbowDocument,
+  rootContainer,
+  type RootContainer,
+} from '@/components/screens/rainbow-document'
 import { useNShift } from '@/di/nshift-provider'
 import type { NShiftPluginModel } from '@/domain/plugins/nshift-plugin-model'
 
@@ -47,6 +53,9 @@ type ScreenLayoutContextValue = {
   closeFlow: () => void
   sheets: PreviewSheet[]
   toasts: PreviewToast[]
+  /** Root plugin container of the document (Screen or WebView). */
+  rootKind: RootContainer | null
+  webView: { url: string } | null
   tabBar: ScreenLayoutNode | null
   searchBar: ScreenLayoutNode | null
   floatingButton: ScreenLayoutNode | null
@@ -63,6 +72,8 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
   const [floatingButtonNode, setFloatingButtonNode] = useState<ScreenLayoutNode | null>(null)
   const [sheets, setSheets] = useState<PreviewSheet[]>([])
   const [toasts, setToasts] = useState<PreviewToast[]>([])
+  const [rootKind, setRootKind] = useState<RootContainer | null>(null)
+  const [webView, setWebView] = useState<{ url: string } | null>(null)
   const [rainbowSource, setRainbowSourceState] = useState('')
   const [previewError, setPreviewError] = useState(false)
   const [scroll, setScroll] = useState<ScreenScrollPreview>({
@@ -109,6 +120,8 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
         setFloatingButtonNode(document ? floatingButtonFromDocument(document) : null)
         setSheets(document ? sheetsFromDocument(document) : [])
         setToasts(document ? toastsFromDocument(document) : [])
+        setRootKind(document ? rootContainer(document) : null)
+        setWebView(document ? webViewFromDocument(document) : null)
         setScroll(
           document
             ? scrollFromDocument(document)
@@ -137,6 +150,8 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
         closeFlow: () => setFlowFocus(null),
         sheets,
         toasts,
+        rootKind,
+        webView,
         tabBar: tabBarNode,
         searchBar: searchBarNode,
         floatingButton: floatingButtonNode,

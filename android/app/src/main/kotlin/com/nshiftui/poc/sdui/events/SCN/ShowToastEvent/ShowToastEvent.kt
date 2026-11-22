@@ -6,6 +6,7 @@ import com.nshiftui.NShiftTrigger
 import com.nshiftui.macro.NShiftEvent
 import com.nshiftui.poc.sdui.events.scn.eventdispatch.dispatch
 import com.nshiftui.poc.sdui.triggers.onComplete
+import com.nshiftui.poc.ui.components.SCNToastVariant
 import com.nshiftui.poc.ui.components.ToastMessage
 import com.nshiftui.poc.ui.components.ToastOverlay
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,8 @@ data class ShowToastEventMetadata(
     val title: String = "",
     val message: String = "",
     val icon: String = "",
+    /** `default`, `success`, `error`, `info` or `warning`. */
+    val variant: String = "default",
     /** Seconds on screen. */
     val duration: Double = 0.0,
 ) : NShiftMetadata
@@ -34,7 +37,12 @@ class ShowToastEvent : NShiftEventWithMetadata<ShowToastEventMetadata>(
     override suspend fun execute() {
         val duration = if (metadata.duration > 0) metadata.duration else 2.5
         withContext(Dispatchers.Main) {
-            ToastOverlay.show(ToastMessage(metadata.title, metadata.message, metadata.icon), duration)
+            ToastOverlay.show(ToastMessage(
+                    metadata.title,
+                    metadata.message,
+                    metadata.icon,
+                    SCNToastVariant.from(metadata.variant),
+                ), duration)
         }
         dispatch(this, NShiftTrigger.onComplete)
     }

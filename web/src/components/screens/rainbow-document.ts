@@ -81,6 +81,10 @@ export type RainbowDocument = {
   nodes: RainbowNode[]
 }
 
+export function defaultWebViewSource(screenId: string, url: string, title = '') {
+  return `use WebView@1.0.0\n\nWebView(\n  name: "${escapeString(screenId)}",\n  navigationBar: (\n    title: "${escapeString(title)}",\n    leading: "auto"\n  ),\n  url: "${escapeString(url)}"\n)\n`
+}
+
 export function defaultRainbowSource(screenId: string) {
   return `use Screen@1.0.0\n\nScreen(\n  name: "${escapeString(screenId)}",\n  scroll: (enabled: false, isLazy: false, fastRefresh: true)\n) {\n}\n`
 }
@@ -552,6 +556,8 @@ export function findSheet(document: RainbowDocument) {
 }
 
 function childrenOf(document: RainbowDocument, targetId: string | null) {
+  // A WebView shows a page: it has no plugin content to insert into.
+  if (rootContainer(document) === 'WebView') return null
   if (targetId === 'sheet') return sheetChildren(document)
   if (targetId?.startsWith('sheet/')) {
     return walkChildren(sheetChildren(document), targetId.slice('sheet/'.length))
@@ -732,14 +738,93 @@ function parentList(document: RainbowDocument, nodeId: string) {
   return { list, index }
 }
 
+/** Plugin containers a screen document can have as its root. */
+export const ROOT_CONTAINERS = ['Screen', 'WebView'] as const
+export type RootContainer = (typeof ROOT_CONTAINERS)[number]
+
+export function rootContainer(document: RainbowDocument): RootContainer | null {
+  const [root] = document.nodes
+  if (document.nodes.length !== 1 || !root) return null
+  const name = nodeName(root)
+  return (ROOT_CONTAINERS as readonly string[]).includes(name) ? (name as RootContainer) : null
+}
+
+export const DEFAULT_WEB_VIEW_URL = 'https://'
+
+/** The `url:` of a `WebView` root, or null when the root is not a WebView. */
+export function webViewURL(document: RainbowDocument): string | null {
+  if (rootContainer(document) !== 'WebView') return null
+  const value = document.nodes[0].parameters.find((parameter) => parameter.name === 'url')?.value
+  return value?.kind === 'string' || value?.kind === 'placeholder' ? value.value : ''
+}
+
+export function setWebViewURL(document: RainbowDocument, url: string) {
+  if (rootContainer(document) !== 'WebView') return false
+  const root = document.nodes[0]
+  const value: RainbowValue = { kind: 'string', value: url }
+  const existing = root.parameters.find((parameter) => parameter.name === 'url')
+  if (existing) existing.value = value
+  else root.parameters.push({ name: 'url', value })
+  return true
+}
+
+/**
+ * Turns the root into a `Screen` or a `WebView`. The navigation bar is kept;
+ * a WebView has no content, slots or scroll, so those are dropped when a Screen
+ * becomes a WebView (the caller confirms that first).
+ */
+export function convertRootContainer(document: RainbowDocument, target: RootContainer) {
+  const current = rootContainer(document)
+  if (!current || current === target) return false
+  const root = document.nodes[0]
+  const navigationBar = root.parameters.find((parameter) => parameter.name === 'navigationBar')
+  const kept = (root.parameters.filter((parameter) => parameter.name === 'name'))
+  root.name = { kind: 'ident', value: target }
+  if (target === 'WebView') {
+    root.parameters = [
+      ...kept,
+      ...(navigationBar ? [navigationBar] : []),
+      { name: 'url', value: { kind: 'string', value: DEFAULT_WEB_VIEW_URL } },
+    ]
+    root.block = null
+    root.slots = []
+    root.events = []
+    // Nothing but the container is left, so only its declaration is.
+    document.uses = []
+  } else {
+    root.parameters = [
+      ...kept,
+      ...(navigationBar ? [navigationBar] : []),
+      {
+        name: 'scroll',
+        value: {
+          kind: 'object',
+          entries: [
+            { key: 'enabled', value: { kind: 'bool', value: true } },
+            { key: 'isLazy', value: { kind: 'bool', value: false } },
+            { key: 'fastRefresh', value: { kind: 'bool', value: true } },
+          ],
+        },
+      },
+    ]
+    root.block = { children: [] }
+  }
+  document.uses = document.uses.filter(
+    (declaration) => declaration.name.kind !== 'ident' || declaration.name.value !== current,
+  )
+  ensureUse(document, target, '1.0.0')
+  return true
+}
+
+/** True when a screen has content that a conversion to WebView would drop. */
+export function rootHasContent(document: RainbowDocument) {
+  const root = rootContainer(document) ? document.nodes[0] : null
+  return Boolean(root && ((root.block?.children.length ?? 0) > 0 || (root.slots?.length ?? 0) > 0))
+}
+
 export function readFlowRoots(document: RainbowDocument) {
   const [screen] = document.nodes
-  const name = screen ? nodeName(screen) : ''
-  if (
-    document.nodes.length === 1 &&
-    screen &&
-    name === 'Screen'
-  ) {
+  if (rootContainer(document) && screen) {
     return { screen, roots: screen.block?.children ?? [] }
   }
   return { screen: null, roots: document.nodes }

@@ -8,6 +8,7 @@ import {
 } from '@/domain/triggers/rainbow-trigger'
 import {
   findFloatingButtonNode,
+  webViewURL,
   findSearchBarNode,
   findSheet,
   findTabBarNode,
@@ -91,11 +92,23 @@ export type PreviewSheet = {
   nodes: ScreenLayoutNode[]
 }
 
+/** The page of a `WebView` root, or null for any other root. */
+export function webViewFromDocument(document: RainbowDocument): { url: string } | null {
+  const url = webViewURL(document)
+  return url === null ? null : { url }
+}
+
+export function webViewFromParsed(parsed: unknown): { url: string } | null {
+  const document = readRainbowDocument(parsed)
+  return document ? webViewFromDocument(document) : null
+}
+
 export type PreviewToast = {
   id: string
   title: string
   message: string
   icon: string
+  variant: string
 }
 
 /** Every `ShowToastEvent` of the document, in source order (ForEach templates included). */
@@ -110,6 +123,7 @@ export function toastsFromDocument(document: RainbowDocument): PreviewToast[] {
         title: text('title') || 'Toast',
         message: text('message'),
         icon: text('icon'),
+        variant: text('variant') || 'default',
       })
     }
     for (const child of node.block?.children ?? []) visit(child)
@@ -160,7 +174,7 @@ export function layoutFromRainbow(parsed: unknown): ScreenLayoutNode[] | null {
   const root = roots.length === 1 ? roots[0] : null
   const rootName = root ? nodeName(root) : ''
   const visible =
-    root && rootName === 'Screen'
+    root && (rootName === 'Screen' || rootName === 'WebView')
       ? (root.block?.children ?? [])
       : roots
 

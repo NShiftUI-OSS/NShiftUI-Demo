@@ -21,6 +21,7 @@ struct LoadingScreen: View {
 
 struct StandaloneNavigationBar: ViewModifier {
     @Environment(\.modalDismiss) private var modalDismiss
+    @Environment(\.isStackRoot) private var isStackRoot
     let hosted: Bool
     let title: String
     var leading: SCNNavigationBarLeading = .none
@@ -42,10 +43,15 @@ struct StandaloneNavigationBar: ViewModifier {
                 .navigationBarBackButtonHidden(true)
                 .scnNavigationBar(
                     title: title,
-                    leading: leading
+                    // The first screen of the stack has nowhere to go back to.
+                    leading: isStackRoot ? .none : leading
                 )
         }
     }
+}
+
+private struct IsStackRootKey: EnvironmentKey {
+    static let defaultValue = false
 }
 
 private struct ModalDismissKey: EnvironmentKey {
@@ -53,6 +59,12 @@ private struct ModalDismissKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
+    /// True for the first screen of the navigation stack.
+    var isStackRoot: Bool {
+        get { self[IsStackRootKey.self] }
+        set { self[IsStackRootKey.self] = newValue }
+    }
+
     /// Set on screens presented with `presentation: "modal"`: closes the modal.
     var modalDismiss: (() -> Void)? {
         get { self[ModalDismissKey.self] }

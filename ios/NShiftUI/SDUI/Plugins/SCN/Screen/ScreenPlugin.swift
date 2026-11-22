@@ -190,6 +190,7 @@ struct ScreenPlugin: NShiftPluginContainer {
     @Environment(\.screenRefresh) private var screenRefresh
     @Environment(\.tabBarHosted) private var tabBarHosted
     @Environment(\.modalDismiss) private var modalDismiss
+    @Environment(\.isStackRoot) private var isStackRoot
     @Environment(\.tabChromeReport) private var tabChromeReport
     @StateObject private var scrollEnd = ScrollEndState()
     @State private var chromeByRoute: [String: ScreenNavigationBarMetadata] = [:]
@@ -544,8 +545,7 @@ struct ScreenPlugin: NShiftPluginContainer {
         case "auto":
             // Back only where there is somewhere to go back to: never on a
             // screen hosted as a tab, and only when the stack can pop.
-            let canPop = resolver.resolve(AppNavigator.self)?.canPop ?? false
-            return tabBarHosted == false && canPop && modalDismiss == nil ? .back() : .none
+            return tabBarHosted == false && isStackRoot == false && modalDismiss == nil ? .back() : .none
         default:
             return .none
         }
