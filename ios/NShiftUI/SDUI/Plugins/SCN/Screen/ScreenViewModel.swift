@@ -22,10 +22,58 @@ private struct PokedexResult: Decodable {
     let url: String
 }
 
+private struct PokedexDetail: Decodable {
+    struct TypeSlot: Decodable {
+        struct Named: Decodable {
+            let name: String
+        }
+
+        let slot: Int
+        let type: Named
+    }
+
+    let id: Int
+    let name: String
+    let height: Int
+    let weight: Int
+    let types: [TypeSlot]
+}
+
+/// Bound to the container node instance: a reloaded tree builds new nodes,
+/// so its pagination starts again from the first page.
 private struct PokedexPaginationState {
-    var offset = 3
+    weak var container: NShiftPluginNode?
+    var nextOffset = 0
     var isLoading = false
-    var isExhausted = false
+    var endReached = false
+}
+
+private enum PokedexCatalog {
+    static let typeNames: [String: String] = [
+        "normal": "Normal", "fire": "Fogo", "water": "Água",
+        "grass": "Grama", "electric": "Elétrico", "ice": "Gelo",
+        "fighting": "Lutador", "poison": "Veneno", "ground": "Terrestre",
+        "flying": "Voador", "psychic": "Psíquico", "bug": "Inseto",
+        "rock": "Pedra", "ghost": "Fantasma", "dragon": "Dragão",
+        "dark": "Sombrio", "steel": "Aço", "fairy": "Fada",
+    ]
+
+    static func typeName(_ raw: String) -> String {
+        typeNames[raw] ?? raw.capitalized
+    }
+
+    static func number(_ id: Int) -> String {
+        String(format: "%03d", id)
+    }
+
+    static func imageURL(_ id: Int) -> String {
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/\(id).png"
+    }
+
+    static func measure(_ value: Int, unit: String) -> String {
+        String(format: "%.1f", Double(value) / 10)
+            .replacingOccurrences(of: ".", with: ",") + " \(unit)"
+    }
 }
 
 @MainActor
@@ -168,12 +216,20 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         endpoint: String,
         limit: Int
     ) async throws -> SendHTTPResponse {
-        var state = pokedexPagination[parentID] ?? PokedexPaginationState()
-        guard state.isLoading == false, state.isExhausted == false else {
+        guard let tree = engine as? any NShiftEngineTree,
+              let container = tree.node(withID: parentID) else {
             return SendHTTPResponse(status: 204, body: Data())
         }
-        state.isLoading = true
-        pokedexPagination[parentID] = state
+        let stored = pokedexPagination[parentID]
+        let state = stored?.container === container
+            ? stored ?? PokedexPaginationState(container: container)
+            : PokedexPaginationState(container: container)
+        guard state.isLoading == false, state.endReached == false else {
+            return SendHTTPResponse(status: 204, body: Data())
+        }
+        var loading = state
+        loading.isLoading = true
+        pokedexPagination[parentID] = loading
         defer {
             pokedexPagination[parentID]?.isLoading = false
         }
@@ -184,8 +240,8 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
                 path: endpoint,
                 headers: [:],
                 query: [
-                    "offset": String(state.offset),
-                    "limit": String(limit),
+                    "offset": String(state.nextOffset),
+                    "limit": String(max(limit, 1)),
                 ],
                 body: ""
             )
@@ -193,95 +249,200 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         guard (200..<300).contains(response.status) else {
             return response
         }
-
         let page = try JSONDecoder().decode(
             PokedexPageResponse.self,
             from: response.body
         )
-        guard page.results.isEmpty == false else {
-            pokedexPagination[parentID]?.isExhausted = true
-            return response
+        let details = try await fetchPokedexDetails(page.results)
+
+        appendPokedexCards(details, tree: tree, parentID: parentID)
+
+        pokedexPagination[parentID]?.nextOffset = state.nextOffset + page.results.count
+        pokedexPagination[parentID]?.endReached = page.next == nil || page.results.isEmpty
+        return response
+    }
+
+    private func fetchPokedexDetails(
+        _ results: [PokedexResult]
+    ) async throws -> [PokedexDetail] {
+        var details: [PokedexDetail] = []
+        for result in results {
+            let response = try await sendHTTPRequest(
+                SendHTTPRequest(
+                    method: "GET",
+                    path: result.url,
+                    headers: [:],
+                    query: [:],
+                    body: ""
+                )
+            )
+            details.append(
+                try JSONDecoder().decode(PokedexDetail.self, from: response.body)
+            )
+        }
+        return details
+    }
+
+    private func appendPokedexCards(
+        _ details: [PokedexDetail],
+        tree: any NShiftEngineTree,
+        parentID: String
+    ) {
+        guard let parent = tree.node(withID: parentID) else {
+            return
+        }
+        let children = parent.model.children
+        guard let template = children.first(where: isMultiTypeCard)
+            ?? children.first(where: { $0.name.rawValue == "Card" }) else {
+            return
+        }
+        let existing = Set(children.flatMap(pokedexNumbers))
+        let fresh = details.filter {
+            existing.contains(PokedexCatalog.number($0.id)) == false
+        }
+        guard fresh.isEmpty == false else {
+            return
         }
 
-        guard let tree = engine as? any NShiftEngineTree,
-              let located = tree.node(withID: parentID),
-              let template = located.model.children
-                .compactMap(findPokedexCardTemplate)
-                .first else {
-            return response
+        let screen = tree.root
+        let sheetSlot = ScreenSlot.bottomSheet.slotName
+        let sheets = screen.model.slots[sheetSlot] ?? []
+        if let sheetTemplate = sheets.first(where: { $0.name.rawValue == "Sheet" }) {
+            tree.replaceSlot(
+                pluginID: screen.id.rawValue,
+                name: sheetSlot,
+                with: sheets + fresh.map {
+                    makePokedexSheet(from: sheetTemplate, card: template, detail: $0)
+                }
+            )
         }
 
-        let appended = page.results.map {
-            makePokedexCard(from: template, result: $0)
-        }
-        let children = located.model.children
+        let cards = fresh.map { makePokedexCard(from: template, detail: $0) }
         var nextChildren = children
         let insertionIndex = children.lastIndex(where: {
             $0.name.rawValue == "Card"
         }).map { $0 + 1 } ?? children.count
-        nextChildren.insert(contentsOf: appended, at: insertionIndex)
+        nextChildren.insert(contentsOf: cards, at: insertionIndex)
         tree.replaceChildren(
-            pluginID: located.id.rawValue,
+            pluginID: parent.id.rawValue,
             with: nextChildren
         )
         contentRevision += 1
-
-        pokedexPagination[parentID]?.offset += page.results.count
-        pokedexPagination[parentID]?.isExhausted = page.next == nil
-        return response
     }
 
     private func makePokedexCard(
         from template: NShiftPluginModel,
-        result: PokedexResult
+        detail: PokedexDetail
     ) -> NShiftPluginModel {
         var textIndex = 0
-        let id = result.url
-            .split(separator: "/")
-            .last
-            .flatMap { Int($0) } ?? 0
-        let number = String(format: "%03d", id)
-        let imageURL = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/\(id).png"
-        return replacePokedexValues(
-            in: template,
-            name: result.name.capitalized,
-            number: number,
-            imageURL: imageURL,
+        return rewritePokedexModel(
+            template,
+            detail: detail,
             textIndex: &textIndex
         )
     }
 
-    private func replacePokedexValues(
-        in model: NShiftPluginModel,
-        name: String,
-        number: String,
-        imageURL: String,
+    private func makePokedexSheet(
+        from template: NShiftPluginModel,
+        card: NShiftPluginModel,
+        detail: PokedexDetail
+    ) -> NShiftPluginModel {
+        let number = PokedexCatalog.number(detail.id)
+        let types = detail.types
+            .sorted { $0.slot < $1.slot }
+            .map { PokedexCatalog.typeName($0.type.name) }
+            .joined(separator: " · ")
+        let lines = [
+            "#\(number) · \(types)",
+            "Altura \(PokedexCatalog.measure(detail.height, unit: "m")) · Peso \(PokedexCatalog.measure(detail.weight, unit: "kg"))",
+        ]
+        var textIndex = 0
+        let avatar = firstModel(named: "Avatar", in: card).map {
+            rewritePokedexModel($0, detail: detail, textIndex: &textIndex)
+        }
+        textIndex = 0
+        var children: [NShiftPluginModel] = template.children.map { child in
+            if child.name.rawValue == "Text",
+               let text = child.metadata?.unwrap(as: TextMetadata.self) {
+                let line = textIndex < lines.count ? lines[textIndex] : text.text
+                textIndex += 1
+                return child.replacingMetadata(
+                    AnyNShiftMetadata(
+                        TextMetadata(
+                            text: line,
+                            style: text.style,
+                            weight: text.weight,
+                            color: text.color,
+                            alignment: text.alignment
+                        )
+                    )
+                )
+            }
+            if child.name.rawValue == "Button" {
+                return child.replacingEvents(
+                    child.events.compactMap(\.event).map {
+                        NShiftEventModel(
+                            name: "CloseBottomSheetEvent",
+                            version: "1.0.0",
+                            metadata: CloseBottomSheetEventMetadata(
+                                sheetID: pokedexSheetID(detail)
+                            ),
+                            trigger: $0.trigger
+                        )
+                    }
+                )
+            }
+            return child
+        }
+        if let avatar {
+            children.insert(avatar, at: 0)
+        }
+        return NShiftPluginModel(
+            id: pokedexSheetID(detail),
+            name: template.name,
+            version: template.version,
+            metadata: AnyNShiftMetadata(
+                SheetMetadata(title: detail.name.capitalized)
+            ),
+            style: template.style,
+            children: children,
+            slots: template.slots,
+            events: template.events.compactMap(\.event)
+        )
+    }
+
+    private func rewritePokedexModel(
+        _ model: NShiftPluginModel,
+        detail: PokedexDetail,
         textIndex: inout Int
     ) -> NShiftPluginModel {
-        var next = model
-        if model.name.rawValue == "Avatar",
-           let avatar = model.metadata?.unwrap(as: AvatarMetadata.self) {
-            next = model.replacingMetadata(
+        let number = PokedexCatalog.number(detail.id)
+        switch model.name.rawValue {
+        case "Avatar":
+            guard let avatar = model.metadata?.unwrap(as: AvatarMetadata.self) else {
+                return model
+            }
+            return model.replacingMetadata(
                 AnyNShiftMetadata(
                     AvatarMetadata(
                         initials: number,
                         size: avatar.size,
-                        imageURL: imageURL
+                        imageURL: PokedexCatalog.imageURL(detail.id)
                     )
                 )
             )
-        } else if model.name.rawValue == "Text",
-                  let text = model.metadata?.unwrap(as: TextMetadata.self) {
+        case "Text":
+            guard let text = model.metadata?.unwrap(as: TextMetadata.self) else {
+                return model
+            }
             let replacement: String
-            if textIndex == 0 {
-                replacement = name
-            } else if textIndex == 1 {
-                replacement = "#\(number) · PokeAPI"
-            } else {
-                replacement = text.text
+            switch textIndex {
+            case 0: replacement = detail.name.capitalized
+            case 1: replacement = "#\(number) · PokeAPI"
+            default: replacement = text.text
             }
             textIndex += 1
-            next = model.replacingMetadata(
+            return model.replacingMetadata(
                 AnyNShiftMetadata(
                     TextMetadata(
                         text: replacement,
@@ -292,28 +453,92 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
                     )
                 )
             )
-        }
-        return next.replacingChildren(
-            model.children.map {
-                replacePokedexValues(
-                    in: $0,
-                    name: name,
-                    number: number,
-                    imageURL: imageURL,
-                    textIndex: &textIndex
-                )
+        case "Badge":
+            return typeBadges(from: model, detail: detail).first ?? model
+        case "HorizontalStack" where isTypeStack(model):
+            guard let badge = model.children.first else {
+                return model
             }
-        )
+            return model.replacingChildren(typeBadges(from: badge, detail: detail))
+        case "Button":
+            return model.replacingEvents(
+                model.events.compactMap(\.event).map {
+                    NShiftEventModel(
+                        name: "OpenBottomSheetEvent",
+                        version: "1.0.0",
+                        metadata: OpenBottomSheetEventMetadata(
+                            sheetID: pokedexSheetID(detail)
+                        ),
+                        trigger: $0.trigger
+                    )
+                }
+            )
+        default:
+            return model.replacingChildren(
+                model.children.map {
+                    rewritePokedexModel($0, detail: detail, textIndex: &textIndex)
+                }
+            )
+        }
     }
 
-    private func findPokedexCardTemplate(
+    private func typeBadges(
+        from badge: NShiftPluginModel,
+        detail: PokedexDetail
+    ) -> [NShiftPluginModel] {
+        detail.types
+            .sorted { $0.slot < $1.slot }
+            .enumerated()
+            .map { index, entry in
+                badge.replacingMetadata(
+                    AnyNShiftMetadata(
+                        BadgeMetadata(
+                            text: PokedexCatalog.typeName(entry.type.name),
+                            variant: index == 0 ? "default" : "outline"
+                        )
+                    )
+                )
+            }
+    }
+
+    private func pokedexSheetID(_ detail: PokedexDetail) -> String {
+        "pokemon-\(detail.id)-details"
+    }
+
+    private func isTypeStack(_ model: NShiftPluginModel) -> Bool {
+        model.name.rawValue == "HorizontalStack"
+            && model.children.isEmpty == false
+            && model.children.allSatisfy { $0.name.rawValue == "Badge" }
+    }
+
+    private func isMultiTypeCard(_ model: NShiftPluginModel) -> Bool {
+        guard model.name.rawValue == "Card" else {
+            return false
+        }
+        func contains(_ node: NShiftPluginModel) -> Bool {
+            isTypeStack(node) || node.children.contains(where: contains)
+        }
+        return contains(model)
+    }
+
+    private func pokedexNumbers(in model: NShiftPluginModel) -> [String] {
+        guard model.name.rawValue == "Card",
+              let avatar = firstModel(named: "Avatar", in: model),
+              let metadata = avatar.metadata?.unwrap(as: AvatarMetadata.self) else {
+            return []
+        }
+        return [metadata.initials]
+    }
+
+    private func firstModel(
+        named name: String,
         in model: NShiftPluginModel
     ) -> NShiftPluginModel? {
-        if model.name.rawValue == "Card" {
+        if model.name.rawValue == name {
             return model
         }
         for child in model.children {
-            if let match = findPokedexCardTemplate(in: child) {
+            if let match = firstModel(named: name, in: child) {
                 return match
             }
         }
@@ -327,5 +552,39 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         for id in ids {
             waiters.removeValue(forKey: id)?.resume()
         }
+    }
+}
+
+/// The plugin macro resolves a transient `ScreenViewModel` every time SwiftUI
+/// rebuilds the Screen struct, while `@StateObject` keeps only the first one.
+/// The retained instance registers itself per engine so events (sheets, HTTP
+/// pagination) always reach the view model the screen actually renders.
+extension ScreenViewModel {
+    private final class WeakReference {
+        weak var value: ScreenViewModel?
+
+        init(_ value: ScreenViewModel) {
+            self.value = value
+        }
+    }
+
+    private static var active: [ObjectIdentifier: WeakReference] = [:]
+
+    static func activate(_ viewModel: ScreenViewModel, for engine: (any NShiftEngine)?) {
+        guard let engine else { return }
+        active = active.filter { $0.value.value != nil }
+        active[ObjectIdentifier(engine as AnyObject)] = WeakReference(viewModel)
+        engine.pluginViewModel = viewModel
+    }
+
+    static func resolve(
+        engine: (any NShiftEngine)?,
+        fallback: (any NShiftPluginViewModel)?
+    ) -> ScreenViewModel? {
+        if let engine,
+           let registered = active[ObjectIdentifier(engine as AnyObject)]?.value {
+            return registered
+        }
+        return fallback as? ScreenViewModel
     }
 }

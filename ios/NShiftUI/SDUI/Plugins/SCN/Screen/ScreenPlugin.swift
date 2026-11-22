@@ -187,6 +187,9 @@ struct ScreenPlugin: NShiftPluginContainer {
                 styled(content, bar: displayedBar)
             }
         }
+        .background(
+            EngineViewModelBinder(engine: engine, viewModel: viewModel)
+        )
         .onAppear {
             viewModel.bind(refresh: screenRefresh)
             tabChromeReport?.report(navigationBar)
@@ -196,13 +199,20 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
     }
 
+    /// Re-identified on every content revision so sheets appended at runtime
+    /// (Pokédex details) are rendered and registered.
+    private var bottomSheets: some View {
+        slots(.bottomSheet)
+            .id(viewModel.contentRevision)
+    }
+
     private var hostedBody: some View {
         content
             .frame(
                 maxWidth: .infinity,
                 maxHeight: .infinity
             )
-            .background(slots(.bottomSheet))
+            .background(bottomSheets)
             .background {
                 theme.palette.background
                     .ignoresSafeArea()
@@ -218,7 +228,7 @@ struct ScreenPlugin: NShiftPluginContainer {
                 maxWidth: .infinity,
                 maxHeight: .infinity
             )
-            .background(slots(.bottomSheet))
+            .background(bottomSheets)
             .scnNavigationBar(
                 title: bar.title,
                 leading: leading(for: bar),
@@ -274,17 +284,16 @@ struct ScreenPlugin: NShiftPluginContainer {
         if isLazy {
             List {
                 scrollRows
-                Color.clear
-                    .frame(height: 1)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
             }
             .listStyle(.plain)
             .hiddenScrollContentBackground()
+            .hiddenScrollIndicators()
             .background(ListContentInsetNormalizer())
             .background(
-                ScrollEndDetector(contentRevision: contentRevision) {
+                ScrollEndDetector(
+                    contentRevision: contentRevision,
+                    target: .list
+                ) {
                     fire(
                         .onScrollEndReached,
                         engine: engine,
@@ -322,7 +331,10 @@ struct ScreenPlugin: NShiftPluginContainer {
                     }
                 )
                 .background(
-                    ScrollEndDetector(contentRevision: contentRevision) {
+                    ScrollEndDetector(
+                        contentRevision: contentRevision,
+                        target: .scrollView
+                    ) {
                         fire(
                             .onScrollEndReached,
                             engine: engine,
@@ -352,7 +364,7 @@ struct ScreenPlugin: NShiftPluginContainer {
     @ViewBuilder
     private var scrollRows: some View {
         slots(.scrollHeader) { _, view in
-            listRow(view)
+            listRow(view, edge: .bottom)
         }
         children { model, view in
             if model.name.rawValue != "TabBar" {
@@ -360,7 +372,7 @@ struct ScreenPlugin: NShiftPluginContainer {
             }
         }
         slots(.scrollFooter) { _, view in
-            listRow(view)
+            listRow(view, edge: .top)
         }
     }
 
@@ -372,9 +384,13 @@ struct ScreenPlugin: NShiftPluginContainer {
     }
 
     @ViewBuilder
-    private func listRow(_ view: NShiftNodeView) -> some View {
+    private func listRow(
+        _ view: NShiftNodeView,
+        edge: Edge.Set = []
+    ) -> some View {
         view
             .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(edge, 12)
             .padding(.horizontal, 16)
             .listRowInsets(EdgeInsets())
             .listRowSeparator(.hidden)
@@ -495,6 +511,15 @@ private struct FastRefreshModifier: ViewModifier {
 
 private extension View {
     @ViewBuilder
+    func hiddenScrollIndicators() -> some View {
+        if #available(iOS 16.0, *) {
+            scrollIndicators(.hidden)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
     func hiddenScrollContentBackground() -> some View {
         if #available(iOS 16.0, *) {
             scrollContentBackground(.hidden)
@@ -597,21 +622,42 @@ private struct ListContentInsetNormalizer: UIViewRepresentable {
         scrollView.contentInset.top = 16
         scrollView.contentInset.left = 0
         scrollView.contentInset.right = 0
-        scrollView.contentInset.bottom = 0
+        scrollView.contentInset.bottom = 16
         scrollView.layoutMargins = .zero
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.showsHorizontalScrollIndicator = false
+    }
+}
+
+/// Registers the retained `@StateObject` view model for this screen's engine.
+private struct EngineViewModelBinder: UIViewRepresentable {
+    let engine: (any NShiftEngine)?
+    let viewModel: ScreenViewModel
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.isUserInteractionEnabled = false
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        ScreenViewModel.activate(viewModel, for: engine)
     }
 }
 
 @MainActor
 private struct ScrollEndDetector: UIViewRepresentable {
+    enum Target {
+        case list
+        case scrollView
+    }
+
     let contentRevision: Int
+    let target: Target
     let onReached: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(
-            contentRevision: contentRevision,
-            onReached: onReached
-        )
+        Coordinator(target: target, onReached: onReached)
     }
 
     func makeUIView(context: Context) -> UIView {
@@ -623,117 +669,119 @@ private struct ScrollEndDetector: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.onReached = onReached
-        context.coordinator.contentRevision = contentRevision
         DispatchQueue.main.async {
             context.coordinator.attach(to: uiView)
         }
     }
 
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        coordinator.detach()
+    }
+
+    /// Fires once per user gesture that reaches the bottom edge. Only the start
+    /// of a new drag arms it, so content growth, list cell reuse or fling
+    /// momentum never fire it again on their own.
     @MainActor
-    final class Coordinator: NSObject, @unchecked Sendable {
+    final class Coordinator: NSObject {
         var onReached: () -> Void
-        var contentRevision: Int
+        private let target: Target
         private weak var scrollView: UIScrollView?
-        private var offsetObservation: NSKeyValueObservation?
-        private var sizeObservation: NSKeyValueObservation?
-        private var endReachedArmed = true
+        private var observations: [NSKeyValueObservation] = []
+        private var isArmed = false
+        private var wasDragging = false
         private var attachAttempts = 0
 
-        init(
-            contentRevision: Int,
-            onReached: @escaping () -> Void
-        ) {
-            self.contentRevision = contentRevision
+        init(target: Target, onReached: @escaping () -> Void) {
+            self.target = target
             self.onReached = onReached
         }
 
         func attach(to view: UIView) {
-            let scrollView = findScrollView(from: view)
-                ?? view.window?.rootViewController.flatMap {
-                    findScrollView(in: $0.view.subviews)
-                }
-            guard let scrollView else {
+            guard let found = locateScrollView(from: view) else {
                 guard attachAttempts < 20 else { return }
                 attachAttempts += 1
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    self.attach(to: view)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self, weak view] in
+                    guard let view else { return }
+                    self?.attach(to: view)
                 }
                 return
             }
             attachAttempts = 0
-            if self.scrollView !== scrollView {
-                self.scrollView = scrollView
-                offsetObservation?.invalidate()
-                sizeObservation?.invalidate()
-                offsetObservation = scrollView.observe(\.contentOffset, options: [.new]) {
-                    [weak self] _, _ in
-                    let coordinator = self
-                    DispatchQueue.main.async { [weak coordinator] in
-                        coordinator?.scheduleCheck()
-                    }
-                }
-                sizeObservation = scrollView.observe(\.contentSize, options: [.new]) {
-                    [weak self] _, _ in
-                    let coordinator = self
-                    DispatchQueue.main.async { [weak coordinator] in
-                        coordinator?.scheduleCheck()
-                    }
-                }
-            }
-            scheduleCheck()
+            guard found !== scrollView else { return }
+            detach()
+            scrollView = found
+            found.showsVerticalScrollIndicator = false
+            found.showsHorizontalScrollIndicator = false
+            observations = [
+                found.observe(\.contentOffset, options: [.new]) { [weak self] _, _ in
+                    MainActor.assumeIsolated { self?.evaluate() }
+                },
+                found.observe(\.contentSize, options: [.new]) { [weak self] _, _ in
+                    MainActor.assumeIsolated { self?.evaluate() }
+                },
+            ]
         }
 
-        private func scheduleCheck() {
-            DispatchQueue.main.async { [weak self] in
-                self?.check()
-            }
+        func detach() {
+            observations.forEach { $0.invalidate() }
+            observations = []
+            scrollView = nil
         }
 
-        private func check() {
-            guard let scrollView,
-                  scrollView.contentSize.height > 0 else {
-                return
-            }
+        private func evaluate() {
+            guard let scrollView else { return }
+            let insets = scrollView.adjustedContentInset
+            let viewport = scrollView.bounds.height - insets.top - insets.bottom
+            guard scrollView.contentSize.height > viewport else { return }
             let visibleBottom = scrollView.contentOffset.y
                 + scrollView.bounds.height
-                - scrollView.adjustedContentInset.bottom
-            let contentBottom = scrollView.contentSize.height
-                - scrollView.adjustedContentInset.bottom
-            guard visibleBottom >= contentBottom - 8 else {
-                endReachedArmed = true
-                return
+                - insets.bottom
+            let isAtEnd = visibleBottom >= scrollView.contentSize.height - 24
+            let isDragging = scrollView.isTracking
+            if isDragging && wasDragging == false {
+                isArmed = true
             }
-            guard endReachedArmed else {
-                return
+            wasDragging = isDragging
+            if isAtEnd && isArmed {
+                isArmed = false
+                onReached()
             }
-            endReachedArmed = false
-            onReached()
         }
 
-        private func findScrollView(from view: UIView) -> UIScrollView? {
+        private func locateScrollView(from view: UIView) -> UIScrollView? {
             var current: UIView? = view
             while let node = current {
-                if let scrollView = node as? UIScrollView {
-                    return scrollView
+                if let match = node as? UIScrollView, accepts(match) {
+                    return match
                 }
-                if let scrollView = findScrollView(in: node.subviews) {
-                    return scrollView
+                if let match = search(node.subviews) {
+                    return match
                 }
                 current = node.superview
             }
             return nil
         }
 
-        private func findScrollView(in views: [UIView]) -> UIScrollView? {
+        private func search(_ views: [UIView]) -> UIScrollView? {
             for view in views {
-                if let scrollView = view as? UIScrollView {
-                    return scrollView
+                if let match = view as? UIScrollView, accepts(match) {
+                    return match
                 }
-                if let scrollView = findScrollView(in: view.subviews) {
-                    return scrollView
+                if let match = search(view.subviews) {
+                    return match
                 }
             }
             return nil
+        }
+
+        private func accepts(_ scrollView: UIScrollView) -> Bool {
+            switch target {
+            case .list:
+                return scrollView is UITableView || scrollView is UICollectionView
+            case .scrollView:
+                return (scrollView is UITableView || scrollView is UICollectionView) == false
+                    && scrollView.alwaysBounceHorizontal == false
+            }
         }
     }
 }

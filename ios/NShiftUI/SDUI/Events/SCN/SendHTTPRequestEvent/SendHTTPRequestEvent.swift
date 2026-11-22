@@ -44,7 +44,7 @@ struct SendHTTPRequestEvent: NShiftEvent {
     func execute() async throws {
         let nested = events
         let handler = eventHandler
-        let http = viewModel as? ScreenViewModel
+        let http = await ScreenViewModel.resolve(engine: engine, fallback: viewModel)
         guard let http else {
             await dispatch(
                 .onFailure,

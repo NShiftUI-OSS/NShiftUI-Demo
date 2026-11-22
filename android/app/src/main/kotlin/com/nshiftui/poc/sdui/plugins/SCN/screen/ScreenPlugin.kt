@@ -32,6 +32,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -318,32 +320,22 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         val isLazy = screen.scroll?.isLazy == true
         val lazyListState = rememberLazyListState()
         val scrollState = rememberScrollState()
-        var endReachedArmed by remember { mutableStateOf(true) }
+        val currentOnScrollEnd by rememberUpdatedState(onScrollEnd)
+        val lazyDragged = lazyListState.interactionSource.collectIsDraggedAsState()
+        val columnDragged = scrollState.interactionSource.collectIsDraggedAsState()
         if (isLazy) {
             LaunchedEffect(lazyListState) {
-                snapshotFlow { lazyListState.canScrollForward }
-                    .distinctUntilChanged()
-                    .collect { canScrollForward ->
-                        if (canScrollForward) {
-                            endReachedArmed = true
-                        } else if (endReachedArmed) {
-                            endReachedArmed = false
-                            onScrollEnd()
-                        }
-                    }
+                watchScrollEnd(
+                    { lazyListState.canScrollForward to lazyDragged.value },
+                    { currentOnScrollEnd() },
+                )
             }
         } else if (screen.scroll?.enabled == true || fastRefresh) {
             LaunchedEffect(scrollState) {
-                snapshotFlow { scrollState.value to scrollState.maxValue }
-                    .distinctUntilChanged()
-                    .collect { (value, max) ->
-                        if (max > 0 && value < max) {
-                            endReachedArmed = true
-                        } else if (max > 0 && endReachedArmed) {
-                            endReachedArmed = false
-                            onScrollEnd()
-                        }
-                    }
+                watchScrollEnd(
+                    { (scrollState.canScrollForward || scrollState.maxValue == 0) to columnDragged.value },
+                    { currentOnScrollEnd() },
+                )
             }
         }
         BoxWithConstraints(
@@ -362,9 +354,10 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                                 top = 16.dp,
                                 start = 16.dp,
                                 end = 16.dp,
+                                bottom = 16.dp,
                             ),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Top,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             lazySlotItems(ScreenSlot.ScrollHeader)
                             items(
@@ -439,7 +432,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                 } else {
                     page()
                 }
-                slots(ScreenSlot.BottomSheet)
+                androidx.compose.runtime.key(contentRevision) {
+                    slots(ScreenSlot.BottomSheet)
+                }
         }
     }
 
@@ -586,4 +581,26 @@ private fun barColor(token: String, theme: SCNTheme): Color {
         "secondary" -> theme.palette.secondary
         else -> theme.palette.background
     }
+}
+
+/**
+ * Fires once per user gesture that reaches the end. Only the start of a new drag
+ * arms it, so appended content or fling momentum never fire it again by themselves.
+ */
+private suspend fun watchScrollEnd(
+    state: () -> Pair<Boolean, Boolean>,
+    onReached: () -> Unit,
+) {
+    var armed = false
+    var wasDragging = false
+    snapshotFlow(state)
+        .distinctUntilChanged()
+        .collect { (canScrollForward, dragging) ->
+            if (dragging && !wasDragging) armed = true
+            wasDragging = dragging
+            if (!canScrollForward && armed) {
+                armed = false
+                onReached()
+            }
+        }
 }

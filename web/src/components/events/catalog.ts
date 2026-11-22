@@ -111,7 +111,7 @@ export const flowEvents: FlowEventDefinition[] = [
     metadata: sendHttpRequestEventMetadata,
     fields: [
       select('method', 'Método', ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
-      text('path', 'Caminho', '/', true),
+      text('path', 'Endpoint', '/', true),
       text('appendTo', 'Acrescentar no container', ''),
       number('pageSize', 'Itens por página', '3'),
       { ...text('body', 'Corpo'), embedded: 'JSON' },

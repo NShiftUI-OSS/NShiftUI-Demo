@@ -15,7 +15,7 @@ struct OpenBottomSheetEvent: NShiftEvent {
         let nested = events
         let handler = eventHandler
         let sheetID = metadata.sheetID
-        let sheets = viewModel as? ScreenViewModel
+        let sheets = await ScreenViewModel.resolve(engine: engine, fallback: viewModel)
         guard let sheets else {
             return
         }

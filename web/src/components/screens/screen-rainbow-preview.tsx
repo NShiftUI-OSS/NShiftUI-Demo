@@ -103,7 +103,7 @@ function RainbowPreviewBody({
           scroll.footer.length === 0 ? (
           <PreviewMessage>Tela vazia</PreviewMessage>
         ) : (
-          <div className="flex min-h-full w-full shrink-0 flex-col items-center justify-start px-4 pt-4">
+          <div className="flex min-h-full w-full shrink-0 flex-col items-center justify-start gap-3 px-4 pt-4 pb-4">
             {scroll?.header.map((node) => (
               <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
                 <PreviewNode node={node} />
