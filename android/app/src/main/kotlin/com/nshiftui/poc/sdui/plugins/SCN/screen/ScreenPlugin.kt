@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -304,6 +305,11 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                             Modifier
                                 .fillMaxSize()
                                 .fillMaxWidth(),
+                            contentPadding = PaddingValues(
+                                top = 16.dp,
+                                start = 16.dp,
+                                end = 16.dp,
+                            ),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Top,
                         ) {
@@ -330,10 +336,30 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Top,
                         ) {
-                            scrollChildren()
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        top = 16.dp,
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                    ),
+                            ) {
+                                scrollChildren()
+                            }
                         }
                     } else {
-                        screenChildren()
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    top = 16.dp,
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                ),
+                        ) {
+                            screenChildren()
+                        }
                     }
                 }
                 if (tabs.isNotEmpty() && selected > 0) {

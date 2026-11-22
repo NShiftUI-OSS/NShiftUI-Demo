@@ -117,6 +117,27 @@ final class APIClient: @unchecked Sendable {
     private func url<Request: APIRequest>(
         for request: Request
     ) throws(APIError) -> URL {
+        if let absoluteURL = URL(string: request.path),
+           let scheme = absoluteURL.scheme,
+           absoluteURL.host != nil {
+            guard var components = URLComponents(
+                url: absoluteURL,
+                resolvingAgainstBaseURL: false
+            ) else {
+                throw APIError.invalidURL
+            }
+            if request.query.isEmpty == false {
+                components.queryItems = (components.queryItems ?? [])
+                    + request.query.map { name, value in
+                        URLQueryItem(name: name, value: value)
+                    }
+            }
+            guard scheme == "http" || scheme == "https",
+                  let url = components.url else {
+                throw APIError.invalidURL
+            }
+            return url
+        }
         guard !baseURL.isEmpty,
               var components = URLComponents(string: baseURL) else {
             throw APIError.invalidURL

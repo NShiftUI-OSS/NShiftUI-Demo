@@ -276,6 +276,7 @@ struct ScreenPlugin: NShiftPluginContainer {
             }
             .listStyle(.plain)
             .hiddenScrollContentBackground()
+            .background(ListContentInsetNormalizer())
             .background(theme.palette.background)
             .modifier(
                 FastRefreshModifier(enabled: fastRefresh) {
@@ -289,7 +290,11 @@ struct ScreenPlugin: NShiftPluginContainer {
         } else if metadata.scroll?.enabled == true || fastRefresh {
             GeometryReader { geometry in
                 ScrollView(.vertical) {
-                    scrollPageChildren
+                    VStack(alignment: .leading, spacing: 0) {
+                        scrollPageChildren
+                    }
+                    .padding(.top, 16)
+                    .padding(.horizontal, 16)
                         .frame(
                             maxWidth: .infinity,
                             minHeight: geometry.size.height,
@@ -307,7 +312,11 @@ struct ScreenPlugin: NShiftPluginContainer {
                 )
             }
         } else {
-            pageChildren
+            VStack(alignment: .leading, spacing: 0) {
+                pageChildren
+            }
+            .padding(.top, 16)
+            .padding(.horizontal, 16)
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity,
@@ -342,6 +351,7 @@ struct ScreenPlugin: NShiftPluginContainer {
     private func listRow(_ view: NShiftNodeView) -> some View {
         view
             .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(.horizontal, 16)
             .listRowInsets(EdgeInsets())
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
@@ -515,5 +525,55 @@ private struct LegacyListBackgroundClearer: UIViewRepresentable {
         table.backgroundColor = .clear
         table.backgroundView = UIView()
         table.backgroundView?.backgroundColor = .clear
+    }
+}
+
+private struct ListContentInsetNormalizer: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        DispatchQueue.main.async {
+            normalizeScrollView(from: uiView)
+        }
+    }
+
+    private func normalizeScrollView(from view: UIView) {
+        var current: UIView? = view
+        while let node = current {
+            if let scrollView = node as? UIScrollView {
+                normalize(scrollView)
+                return
+            }
+            if let scrollView = scrollView(in: node.subviews) {
+                normalize(scrollView)
+                return
+            }
+            current = node.superview
+        }
+    }
+
+    private func scrollView(in views: [UIView]) -> UIScrollView? {
+        for view in views {
+            if let scrollView = view as? UIScrollView {
+                return scrollView
+            }
+            if let scrollView = scrollView(in: view.subviews) {
+                return scrollView
+            }
+        }
+        return nil
+    }
+
+    private func normalize(_ scrollView: UIScrollView) {
+        scrollView.contentInset.top = 16
+        scrollView.contentInset.left = 0
+        scrollView.contentInset.right = 0
+        scrollView.contentInset.bottom = 0
+        scrollView.layoutMargins = .zero
     }
 }

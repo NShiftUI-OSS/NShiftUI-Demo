@@ -155,13 +155,19 @@ export function ScnToggleGroup({ options, selected }: { options: string[]; selec
 export function ScnAvatar({
   letters,
   size = 'default',
+  imageURL,
 }: {
   letters: string
-  size?: 'sm' | 'default' | 'lg'
+  size?: 'sm' | 'default' | 'lg' | 'xl'
+  imageURL?: string
 }) {
   return (
     <span className="scn-avatar" data-size={size}>
-      {letters}
+      {imageURL ? (
+        <img src={imageURL} alt={letters} />
+      ) : (
+        letters
+      )}
     </span>
   )
 }

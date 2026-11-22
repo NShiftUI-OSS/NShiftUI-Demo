@@ -15,12 +15,20 @@ const definition = {
 } as const
 
 export function AvatarPreview(props: PreviewRenderProps) {
+  const imageURL = previewText(props.values, 'imageURL', '')
+  const rawSize = props.values?.size
+  const size =
+    rawSize === 'sm' || rawSize === 'lg' || rawSize === 'xl'
+      ? rawSize
+      : 'default'
+
   return (
     <PreviewFrame definition={definition} {...props}>
       {props.values?.initials ? (
         <ScnAvatar
           letters={previewText(props.values, 'initials', 'NS')}
-          size={props.values.size === 'sm' || props.values.size === 'lg' ? props.values.size : 'default'}
+          size={size}
+          imageURL={imageURL}
         />
       ) : (
         <span className="scn-row">

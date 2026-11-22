@@ -248,6 +248,21 @@
   overflow-y: auto;
   scrollbar-width: none;
 }
+.phone-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.scn-hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scn-hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
 
 .ios-tab-glass {
   background: rgb(255 255 255 / 0.34);

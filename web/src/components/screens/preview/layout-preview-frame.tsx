@@ -74,8 +74,8 @@ function LayoutPreviewFrame({
       <div
         className={cn(
           'min-h-0',
-          layout === 'vertical-scroll' && 'w-full flex-1 overflow-y-auto',
-          layout === 'horizontal-scroll' && 'w-full flex-1 overflow-x-auto',
+          layout === 'vertical-scroll' && 'scn-hide-scrollbar w-full flex-1 overflow-y-auto',
+          layout === 'horizontal-scroll' && 'scn-hide-scrollbar w-full flex-1 overflow-x-auto',
           layered && 'w-full',
         )}
       >

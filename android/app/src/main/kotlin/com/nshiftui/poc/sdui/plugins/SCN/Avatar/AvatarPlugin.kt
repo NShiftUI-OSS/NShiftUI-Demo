@@ -10,10 +10,12 @@ import com.nshiftui.poc.ui.components.SCNAvatarSize
 data class AvatarMetadata(
     val initials: String,
     val size: String,
+    val imageURL: String = "",
 ) : NShiftMetadata {
     fun scnSize(): SCNAvatarSize = when (size) {
         "sm" -> SCNAvatarSize.Sm
         "lg" -> SCNAvatarSize.Lg
+        "xl" -> SCNAvatarSize.Xl
         else -> SCNAvatarSize.Default
     }
 }
@@ -33,6 +35,7 @@ class AvatarPlugin : NShiftPluginWithMetadata<AvatarMetadata>(
         SCNAvatar(
             initials = metadata.initials,
             size = metadata.scnSize(),
+            imageURL = metadata.imageURL,
         )
     }
 }

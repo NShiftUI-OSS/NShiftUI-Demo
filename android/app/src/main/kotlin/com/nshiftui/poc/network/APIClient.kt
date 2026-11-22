@@ -61,20 +61,27 @@ class APIClient(
         }
         try {
             return withContext(Dispatchers.IO) {
-                val url = baseURL
-                    .trimEnd('/')
-                    .toHttpUrl()
-                    .newBuilder()
-                    .apply {
-                        val relative = request.path.trim('/')
-                        if (relative.isNotEmpty()) {
-                            addEncodedPathSegments(relative)
+                val urlBuilder = if (
+                    request.path.startsWith("http://") ||
+                    request.path.startsWith("https://")
+                ) {
+                    request.path.toHttpUrl().newBuilder()
+                } else {
+                    baseURL
+                        .trimEnd('/')
+                        .toHttpUrl()
+                        .newBuilder()
+                        .apply {
+                            val relative = request.path.trim('/')
+                            if (relative.isNotEmpty()) {
+                                addEncodedPathSegments(relative)
+                            }
                         }
-                        request.query.forEach { (name, value) ->
-                            addQueryParameter(name, value)
-                        }
-                    }
-                    .build()
+                }
+                request.query.forEach { (name, value) ->
+                    urlBuilder.addQueryParameter(name, value)
+                }
+                val url = urlBuilder.build()
 
                 val body = request.body
                     ?.json
