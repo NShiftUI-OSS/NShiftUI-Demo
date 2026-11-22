@@ -136,6 +136,7 @@ export const pluginFields: Partial<Record<PreviewPluginId, PluginField[]>> = {
   ],
   'button-group': [list('titles', 'Títulos', 'Day, Week, Month', true), text('selection', 'Seleção', 'Day')],
   badge: [text('text', 'Texto', 'Default', true), select('variant', 'Variante', ['default', 'secondary', 'destructive', 'outline', 'ghost', 'link'])],
+  card: [text('filter', 'Filtro', '')],
   avatar: [
     text('initials', 'Iniciais', 'NS', true),
     text('imageURL', 'URL da imagem'),

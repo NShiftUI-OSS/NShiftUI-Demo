@@ -1,5 +1,6 @@
 package com.nshiftui.poc.sdui.plugins.scn.select
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import com.nshiftui.NShiftMetadata
 import com.nshiftui.NShiftPluginWithMetadata
@@ -33,7 +34,14 @@ class SelectPlugin : NShiftPluginWithMetadata<SelectMetadata>(
     @Composable
     override fun Content() {
         val scope = rememberCoroutineScope()
-        val shown = themeSelection(metadata.options, LocalSCNTheme.current) ?: metadata.selection
+        val screen = optionalViewModel<ScreenViewModel>()
+        val inputs = screen?.inputs?.collectAsState()
+        val inputValue = inputs?.value?.firstOrNull {
+            it.id == (model.id ?: renderID.rawValue)
+        }?.value
+        val shown = inputValue
+            ?: themeSelection(metadata.options, LocalSCNTheme.current)
+            ?: metadata.selection
         SCNSelect(
             options = metadata.options,
             selection = shown,
