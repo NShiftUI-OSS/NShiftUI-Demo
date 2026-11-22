@@ -319,7 +319,21 @@ class ScreenViewModel(
         detail: PokedexDetail,
     ): NShiftPluginModel {
         var textIndex = 0
-        return rewritePokedexModel(template, detail) { textIndex++ }
+        val card = rewritePokedexModel(template, detail) { textIndex++ }
+        return card.copy(
+            events = card.events.map { event ->
+                event.copy(
+                    id = UUID.randomUUID().toString(),
+                    name = NShiftEventName("OpenBottomSheetEvent"),
+                    metadata = AnyNShiftMetadata(
+                        OpenBottomSheetEventMetadata(
+                            sheetID = PokedexCatalog.sheetID(detail),
+                        ),
+                    ),
+                    events = emptyList(),
+                )
+            },
+        )
     }
 
     private fun makePokedexSheet(

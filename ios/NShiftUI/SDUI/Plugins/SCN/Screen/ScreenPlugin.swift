@@ -688,7 +688,6 @@ private struct ScrollEndDetector: UIViewRepresentable {
         private weak var scrollView: UIScrollView?
         private var observations: [NSKeyValueObservation] = []
         private var isArmed = false
-        private var wasDragging = false
         private var attachAttempts = 0
 
         init(target: Target, onReached: @escaping () -> Void) {
@@ -712,6 +711,10 @@ private struct ScrollEndDetector: UIViewRepresentable {
             scrollView = found
             found.showsVerticalScrollIndicator = false
             found.showsHorizontalScrollIndicator = false
+            // Every user scroll gesture (touch drag, trackpad or mouse wheel)
+            // goes through the pan recognizer, unlike `isTracking`, which only
+            // reflects direct touches.
+            found.panGestureRecognizer.addTarget(self, action: #selector(userDidPan(_:)))
             observations = [
                 found.observe(\.contentOffset, options: [.new]) { [weak self] _, _ in
                     MainActor.assumeIsolated { self?.evaluate() }
@@ -725,27 +728,27 @@ private struct ScrollEndDetector: UIViewRepresentable {
         func detach() {
             observations.forEach { $0.invalidate() }
             observations = []
+            scrollView?.panGestureRecognizer.removeTarget(self, action: #selector(userDidPan(_:)))
             scrollView = nil
         }
 
+        @objc private func userDidPan(_ recognizer: UIPanGestureRecognizer) {
+            guard recognizer.state == .began else { return }
+            isArmed = true
+            evaluate()
+        }
+
         private func evaluate() {
-            guard let scrollView else { return }
+            guard isArmed, let scrollView else { return }
             let insets = scrollView.adjustedContentInset
             let viewport = scrollView.bounds.height - insets.top - insets.bottom
             guard scrollView.contentSize.height > viewport else { return }
             let visibleBottom = scrollView.contentOffset.y
                 + scrollView.bounds.height
                 - insets.bottom
-            let isAtEnd = visibleBottom >= scrollView.contentSize.height - 24
-            let isDragging = scrollView.isTracking
-            if isDragging && wasDragging == false {
-                isArmed = true
-            }
-            wasDragging = isDragging
-            if isAtEnd && isArmed {
-                isArmed = false
-                onReached()
-            }
+            guard visibleBottom >= scrollView.contentSize.height - 24 else { return }
+            isArmed = false
+            onReached()
         }
 
         private func locateScrollView(from view: UIView) -> UIScrollView? {

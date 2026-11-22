@@ -335,10 +335,22 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         detail: PokedexDetail
     ) -> NShiftPluginModel {
         var textIndex = 0
-        return rewritePokedexModel(
+        let card = rewritePokedexModel(
             template,
             detail: detail,
             textIndex: &textIndex
+        )
+        return card.replacingEvents(
+            card.events.compactMap(\.event).map {
+                NShiftEventModel(
+                    name: "OpenBottomSheetEvent",
+                    version: "1.0.0",
+                    metadata: OpenBottomSheetEventMetadata(
+                        sheetID: pokedexSheetID(detail)
+                    ),
+                    trigger: $0.trigger
+                )
+            }
         )
     }
 
