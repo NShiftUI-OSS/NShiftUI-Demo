@@ -16,6 +16,7 @@ export function ScreenFrame({
   searchBar = null,
   searchBarInset = 104,
   floatingButton = null,
+  overlay = null,
   children,
 }: {
   chrome: ScreenChrome | null
@@ -27,10 +28,12 @@ export function ScreenFrame({
   searchBarInset?: number
   /** FloatingButton slot, floating at the bottom-right corner over the content. */
   floatingButton?: ReactNode
+  /** Drawn over everything at the top (a toast preview). */
+  overlay?: ReactNode
   children: ReactNode
   interactive?: boolean
 }) {
-  if (!chrome && !tabBar && !searchBar && !floatingButton) return children
+  if (!chrome && !tabBar && !searchBar && !floatingButton && !overlay) return children
 
   return (
     <div
@@ -71,6 +74,11 @@ export function ScreenFrame({
         ) : null}
       </div>
       {tabBar ? <ScreenTabBar node={tabBar} device={device} /> : null}
+      {overlay ? (
+        <div data-screen-overlay="" className="pointer-events-none absolute inset-x-0 top-1 z-40 px-3">
+          {overlay}
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -63,11 +63,9 @@ struct SCNInputOTP: View {
             isFocused = true
         }
         .onAppear {
-            withAnimation(
-                .easeInOut(duration: 0.7).repeatForever(autoreverses: true)
-            ) {
-                caretOn = false
-            }
+            // Scoped to the caret (see its `.animation`), so the repeating
+            // blink never leaks into other layout changes.
+            caretOn = false
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Verification code")
@@ -93,6 +91,10 @@ extension SCNInputOTP {
                     .fill(theme.palette.foreground)
                     .frame(width: 1, height: theme.spacing.s4)
                     .opacity(caretOn ? 1 : 0)
+                    .animation(
+                        .easeInOut(duration: 0.7).repeatForever(autoreverses: true),
+                        value: caretOn
+                    )
             }
         }
         .frame(width: theme.spacing.s11, height: theme.spacing.s11)

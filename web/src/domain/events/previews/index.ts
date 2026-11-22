@@ -14,3 +14,4 @@ export { closeAppEventMetadata } from '@/domain/events/previews/close-app-metada
 export { addListItemEventMetadata } from '@/domain/events/previews/add-list-item-metadata'
 export { clearListEventMetadata } from '@/domain/events/previews/clear-list-metadata'
 export { showSuccessEventMetadata } from '@/domain/events/previews/show-success-metadata'
+export { showToastEventMetadata } from '@/domain/events/previews/show-toast-metadata'

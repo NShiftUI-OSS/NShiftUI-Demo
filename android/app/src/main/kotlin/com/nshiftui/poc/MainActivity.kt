@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import com.nshiftui.poc.navigation.AppCloser
 import com.nshiftui.poc.ui.components.SCNSuccessOverlayHost
+import com.nshiftui.poc.ui.components.SCNToastHost
 import com.nshiftui.poc.navigation.AppNavigator
 import com.nshiftui.poc.navigation.NavigationHost
 import com.nshiftui.poc.theme.LocalSCNTheme
@@ -57,6 +58,7 @@ private fun SCNPocApp() {
         }
         Box(Modifier.fillMaxSize()) {
             NavigationHost(navigator)
+            SCNToastHost()
             SCNSuccessOverlayHost()
         }
     }

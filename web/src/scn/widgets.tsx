@@ -261,13 +261,18 @@ export function ScnSlider({ value = 0.45 }: { value?: number }) {
   )
 }
 
-export function ScnToast({ title, body }: { title: string; body: string }) {
+export function ScnToast({ title, body, icon }: { title: string; body: string; icon?: string }) {
   return (
-    <div className="scn-toast">
-      <ScnText weight="medium">{title}</ScnText>
-      <ScnText color="muted" style="xs">
-        {body}
-      </ScnText>
+    <div className="scn-toast" data-icon={icon ? 'true' : undefined}>
+      {icon ? <ScnIconMark name={icon} size={20} /> : null}
+      <div className="scn-toast-text">
+        <ScnText weight="medium">{title}</ScnText>
+        {body ? (
+          <ScnText color="muted" style="xs">
+            {body}
+          </ScnText>
+        ) : null}
+      </div>
     </div>
   )
 }

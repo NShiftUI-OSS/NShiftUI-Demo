@@ -15,6 +15,7 @@ import { closeAppEventMetadata } from '@/domain/events/previews/close-app-metada
 import { addListItemEventMetadata } from '@/domain/events/previews/add-list-item-metadata'
 import { clearListEventMetadata } from '@/domain/events/previews/clear-list-metadata'
 import { showSuccessEventMetadata } from '@/domain/events/previews/show-success-metadata'
+import { showToastEventMetadata } from '@/domain/events/previews/show-toast-metadata'
 import type { PluginField } from '@/scn/plugin-fields'
 import { scnPresets } from '@/scn/presets'
 
@@ -164,6 +165,19 @@ export const flowEvents: FlowEventDefinition[] = [
     triggers: complete,
     metadata: showSuccessEventMetadata,
     fields: [text('title', 'Título', 'Sucesso!'), text('message', 'Mensagem', '')],
+  },
+  {
+    id: 'show-toast',
+    name: showToastEventMetadata.kind,
+    description: 'Mostra um toast no topo da tela sem bloquear os próximos eventos',
+    triggers: complete,
+    metadata: showToastEventMetadata,
+    fields: [
+      text('title', 'Título', 'Pronto!', true),
+      text('message', 'Mensagem (aceita {{campo}} num ForEach)', ''),
+      { name: 'icon', label: 'Ícone', kind: 'icon', defaultValue: 'circle-check' },
+      number('duration', 'Duração (s)', '2.5'),
+    ],
   },
   {
     id: 'update-list',

@@ -91,6 +91,38 @@ export type PreviewSheet = {
   nodes: ScreenLayoutNode[]
 }
 
+export type PreviewToast = {
+  id: string
+  title: string
+  message: string
+  icon: string
+}
+
+/** Every `ShowToastEvent` of the document, in source order (ForEach templates included). */
+export function toastsFromDocument(document: RainbowDocument): PreviewToast[] {
+  const toasts: PreviewToast[] = []
+  const visit = (node: RainbowNode) => {
+    if (nodeName(node) === 'ShowToastEvent') {
+      const fields = valuesOf(node)
+      const text = (key: string) => (typeof fields[key] === 'string' ? (fields[key] as string) : '')
+      toasts.push({
+        id: `toast:${toasts.length}`,
+        title: text('title') || 'Toast',
+        message: text('message'),
+        icon: text('icon'),
+      })
+    }
+    for (const child of node.block?.children ?? []) visit(child)
+    for (const slot of node.slots ?? []) slot.plugins.forEach(visit)
+    for (const trigger of node.events ?? []) trigger.events.forEach(visit)
+    for (const parameter of node.parameters ?? []) {
+      if (parameter.value.kind === 'plugins') parameter.value.plugins.forEach(visit)
+    }
+  }
+  document.nodes.forEach(visit)
+  return toasts
+}
+
 export function sheetsFromDocument(document: RainbowDocument): PreviewSheet[] {
   const screen = readFlowRoots(document).screen
   const slot = screen?.slots?.find((item) => isBottomSheetSlot(item.name.value))

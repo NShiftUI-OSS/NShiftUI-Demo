@@ -57,6 +57,7 @@ struct CatalogAssembly: NShiftDependencyAssembly {
         AddListItemEvent.self,
         ClearListEvent.self,
         ShowSuccessEvent.self,
+        ShowToastEvent.self,
         OpenBottomSheetEvent.self,
         CloseBottomSheetEvent.self,
         NavigateEvent.self,

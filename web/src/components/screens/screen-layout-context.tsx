@@ -16,7 +16,9 @@ import {
   tabBarFromDocument,
   searchBarFromDocument,
   floatingButtonFromDocument,
+  toastsFromDocument,
   type PreviewSheet,
+  type PreviewToast,
   type ScreenScrollPreview,
 } from '@/components/screens/rainbow-source'
 import { defaultRainbowSource, readRainbowDocument } from '@/components/screens/rainbow-document'
@@ -31,7 +33,7 @@ export type ScreenLayoutNode = {
   children: ScreenLayoutNode[]
 }
 
-export type { PreviewSheet }
+export type { PreviewSheet, PreviewToast }
 
 type ScreenLayoutContextValue = {
   layoutNodes: ScreenLayoutNode[]
@@ -44,6 +46,7 @@ type ScreenLayoutContextValue = {
   openFlow: (nodeId: string) => void
   closeFlow: () => void
   sheets: PreviewSheet[]
+  toasts: PreviewToast[]
   tabBar: ScreenLayoutNode | null
   searchBar: ScreenLayoutNode | null
   floatingButton: ScreenLayoutNode | null
@@ -59,6 +62,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
   const [searchBarNode, setSearchBarNode] = useState<ScreenLayoutNode | null>(null)
   const [floatingButtonNode, setFloatingButtonNode] = useState<ScreenLayoutNode | null>(null)
   const [sheets, setSheets] = useState<PreviewSheet[]>([])
+  const [toasts, setToasts] = useState<PreviewToast[]>([])
   const [rainbowSource, setRainbowSourceState] = useState('')
   const [previewError, setPreviewError] = useState(false)
   const [scroll, setScroll] = useState<ScreenScrollPreview>({
@@ -104,6 +108,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
         setSearchBarNode(document ? searchBarFromDocument(document) : null)
         setFloatingButtonNode(document ? floatingButtonFromDocument(document) : null)
         setSheets(document ? sheetsFromDocument(document) : [])
+        setToasts(document ? toastsFromDocument(document) : [])
         setScroll(
           document
             ? scrollFromDocument(document)
@@ -131,6 +136,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
         openFlow: setFlowFocus,
         closeFlow: () => setFlowFocus(null),
         sheets,
+        toasts,
         tabBar: tabBarNode,
         searchBar: searchBarNode,
         floatingButton: floatingButtonNode,

@@ -1,4 +1,6 @@
 import {
+  useContext,
+  createContext,
   useCallback,
   useEffect,
   useRef,
@@ -29,6 +31,7 @@ import { rootItemClass } from '@/components/screens/preview/plugin-layout'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
 import { readScreenChrome } from '@/scn/screen-theme'
 import { ScnPresetSelect } from '@/scn/theme'
+import { ScnToast } from '@/scn/widgets'
 import {
   PhoneSelectionView,
   PREVIEW_PHONE_HEIGHT_CLASS,
@@ -58,8 +61,12 @@ import type { PreviewSizing } from '@/components/screens/preview/types'
 import {
   useScreenLayout,
   type PreviewSheet,
+  type PreviewToast,
   type ScreenLayoutNode,
 } from '@/components/screens/screen-layout-context'
+
+/** Toast chosen in the header, drawn over every device preview. */
+const PreviewToastContext = createContext<PreviewToast | null>(null)
 
 export function ScreenEditor({ screenId }: { screenId: string }) {
   const {
@@ -69,6 +76,7 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
     closeFlow,
     openFlow,
     sheets,
+    toasts,
   } = useScreenLayout()
   const container = useNShift()
   const editorRowRef = useRef<HTMLDivElement>(null)
@@ -84,6 +92,8 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
   const [viewedVersion, setViewedVersion] = useState<string | null>(null)
   const [selectedSheetId, setSelectedSheetId] = useState<string | null>(null)
   const selectedSheet = sheets.find((item) => item.id === selectedSheetId) ?? null
+  const [selectedToastId, setSelectedToastId] = useState<string | null>(null)
+  const selectedToast = toasts.find((item) => item.id === selectedToastId) ?? null
 
   const visibleScreen = screen?.id === screenId ? screen : null
   const viewedSnapshot = versions.find((item) => item.version === viewedVersion) ?? null
@@ -264,6 +274,11 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                 value={selectedSheet?.id ?? 'none'}
                 onChange={setSelectedSheetId}
               />
+              <ToastSelect
+                toasts={toasts}
+                value={selectedToast?.id ?? 'none'}
+                onChange={setSelectedToastId}
+              />
               <Button
                 aria-pressed={Boolean(flowFocus)}
                 data-tree-inspector=""
@@ -351,7 +366,9 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
             {flowFocus ? (
               <FlowCanvas focus={flowFocus} />
             ) : (
-              <PhonePreview sheet={selectedSheet} />
+              <PreviewToastContext.Provider value={selectedToast}>
+                <PhonePreview sheet={selectedSheet} />
+              </PreviewToastContext.Provider>
             )}
           </div>
           <div
@@ -664,6 +681,7 @@ function DevicePreview({
   sheet: PreviewSheet | null
 }) {
   const { layoutNodes, previewError, rainbowSource, scroll, tabBar, searchBar, floatingButton } = useScreenLayout()
+  const toast = useContext(PreviewToastContext)
   const Frame = device === 'iphone' ? Iphone : Android
 
   return (
@@ -678,6 +696,13 @@ function DevicePreview({
         searchBar={searchBar ? <LayoutNodeView node={searchBar} /> : null}
         searchBarInset={searchBar && searchBar.children.length > 0 ? 100 : 60}
         floatingButton={floatingButton ? <LayoutNodeView node={floatingButton} /> : null}
+        overlay={
+          toast ? (
+            <div data-preview-toast={toast.id} className="shadow-[0_8px_24px_rgba(0,0,0,0.28)] rounded-[var(--scn-radius-lg)]">
+              <ScnToast title={toast.title} body={toast.message} icon={toast.icon || undefined} />
+            </div>
+          ) : null
+        }
       >
         <div
           className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col select-none"
@@ -837,6 +862,40 @@ function BottomSheetSelect({
           {sheets.map((sheet) => (
             <SelectItem key={sheet.id} value={sheet.id}>
               {sheetLabel(sheet, sheets)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
+  )
+}
+
+function ToastSelect({
+  toasts,
+  value,
+  onChange,
+}: {
+  toasts: PreviewToast[]
+  value: string
+  onChange: (id: string | null) => void
+}) {
+  return (
+    <label className="flex items-center gap-2">
+      <span className="text-muted-foreground">Toast</span>
+      <Select
+        value={value}
+        onValueChange={(next) => onChange(next === 'none' ? null : next)}
+      >
+        <SelectTrigger aria-label="Toast no preview" className="w-44" size="sm" disabled={toasts.length === 0}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Nenhum</SelectItem>
+          {toasts.map((toast, index) => (
+            <SelectItem key={toast.id} value={toast.id}>
+              {toasts.filter((item) => item.title === toast.title).length > 1
+                ? `${toast.title} · ${index + 1}`
+                : toast.title}
             </SelectItem>
           ))}
         </SelectContent>
