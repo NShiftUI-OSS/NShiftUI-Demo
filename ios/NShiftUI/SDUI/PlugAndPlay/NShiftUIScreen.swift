@@ -164,9 +164,6 @@ private struct StableNShiftScreen: View, Equatable {
     }
 }
 
-/// Keeps tab screens alive across tab switches: SwiftUI may recreate a tab's
-/// view, but the loaded model and its engine (appended items, view model
-/// state) are kept here, keyed by the tab route.
 @MainActor
 private final class RetainedScreenStore {
     static let shared = RetainedScreenStore()

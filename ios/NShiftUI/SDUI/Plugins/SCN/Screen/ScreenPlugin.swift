@@ -219,8 +219,6 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
     }
 
-    /// Observes the screen node so sheets appended at runtime (Pokédex
-    /// details) are rendered without rebuilding the existing ones.
     @ViewBuilder
     private var bottomSheets: some View {
         if let tree = engine as? any NShiftEngineTree,
@@ -414,8 +412,6 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
     }
 
-    /// The single root `VerticalStack` of a lazy screen, rendered as one List
-    /// row per child so rows are created lazily and reused.
     private func lazyRootStack(in tree: any NShiftEngineTree) -> NShiftPluginNode? {
         guard let screen = tree.node(withRenderID: renderID) else { return nil }
         let content = screen.children.filter { $0.model.name.rawValue != "TabBar" }
@@ -681,13 +677,8 @@ private struct ListContentInsetNormalizer: UIViewRepresentable {
     }
 }
 
-/// Renders each child of a stack node as its own List row. It observes the
-/// node, so appended children become new rows while existing rows keep their
-/// identity and are not rebuilt.
 private struct LazyStackRows<Row: View>: View {
     @ObservedObject var node: NShiftPluginNode
-    /// Observed so cards hidden by the product filter drop their rows (and
-    /// their spacing) instead of leaving empty gaps in the list.
     @ObservedObject var screen: ScreenViewModel
     let engine: any NShiftEngineTree
     let viewModel: (any NShiftPluginViewModel)?
@@ -715,8 +706,6 @@ private struct LazyStackRows<Row: View>: View {
     }
 }
 
-/// Renders a slot from the observed node, adding new slot children without
-/// rebuilding the existing ones.
 private struct ObservedSlotChildren: View {
     @ObservedObject var node: NShiftPluginNode
     let name: NShiftSlotName
@@ -730,7 +719,6 @@ private struct ObservedSlotChildren: View {
     }
 }
 
-/// Registers the retained `@StateObject` view model for this screen's engine.
 private struct EngineViewModelBinder: UIViewRepresentable {
     let engine: (any NShiftEngine)?
     let viewModel: ScreenViewModel
@@ -746,10 +734,6 @@ private struct EngineViewModelBinder: UIViewRepresentable {
     }
 }
 
-/// End-of-scroll state shared by the scroll view detector and the List's end
-/// sentinel row. It fires once per user scroll gesture that reaches the end:
-/// only the start of a gesture arms it, so content growth, row reuse or fling
-/// momentum never fire it again on their own.
 @MainActor
 private final class ScrollEndState: ObservableObject {
     var onReached: () -> Void = {}
@@ -773,9 +757,6 @@ private final class ScrollEndState: ObservableObject {
     }
 }
 
-/// Invisible last row of a lazy List. Its visibility is the end signal, which,
-/// unlike `contentSize`, does not depend on the estimated height of rows the
-/// List has not laid out yet.
 private struct ScrollEndSentinel: View {
     let state: ScrollEndState
 
@@ -793,9 +774,7 @@ private struct ScrollEndSentinel: View {
 @MainActor
 private struct ScrollEndDetector: UIViewRepresentable {
     enum Target {
-        /// A lazy List: the end is reported by `ScrollEndSentinel`.
         case list
-        /// A plain ScrollView: the end is computed from its geometry.
         case scrollView
     }
 
@@ -854,8 +833,6 @@ private struct ScrollEndDetector: UIViewRepresentable {
             scrollView = found
             found.showsVerticalScrollIndicator = false
             found.showsHorizontalScrollIndicator = false
-            // Every user scroll gesture (touch drag, trackpad or mouse wheel)
-            // goes through the pan recognizer.
             found.panGestureRecognizer.addTarget(self, action: #selector(userDidPan(_:)))
             guard target == .scrollView else { return }
             observations = [

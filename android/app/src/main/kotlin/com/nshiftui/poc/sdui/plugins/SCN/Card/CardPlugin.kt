@@ -35,11 +35,9 @@ data class CardMetadata(
     companion object {
         const val FILTER_INPUT_ID = "product-filter"
 
-        /** Current selection of the screen's product filter ("Todos" when unset). */
         fun selection(inputs: List<ScreenInput>): String =
             inputs.firstOrNull { it.id == FILTER_INPUT_ID }?.value ?: "Todos"
 
-        /** Whether [model] is a card hidden by the current filter selection. */
         fun isHidden(model: NShiftPluginModel, inputs: List<ScreenInput>): Boolean {
             if (model.name.rawValue != "Card") return false
             val metadata = model.metadata?.unwrap<CardMetadata>() ?: return false

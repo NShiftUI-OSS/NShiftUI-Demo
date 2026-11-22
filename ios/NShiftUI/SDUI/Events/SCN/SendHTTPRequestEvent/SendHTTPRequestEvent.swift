@@ -12,8 +12,6 @@ struct SendHTTPRequestEventMetadata: NShiftMetadata, NShiftJSONTaggedMetadata, D
     let body: String
     let appendTo: String
     let pageSize: Int
-    /// Query parameter that carries the page offset (`offset` for PokeAPI,
-    /// `skip` for DummyJSON).
     let offsetParameter: String
 
     private enum CodingKeys: String, CodingKey {

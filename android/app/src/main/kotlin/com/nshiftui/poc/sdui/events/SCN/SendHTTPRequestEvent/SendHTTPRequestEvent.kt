@@ -23,7 +23,6 @@ data class SendHTTPRequestEventMetadata(
     val body: String = "",
     val appendTo: String = "",
     val pageSize: Int = 3,
-    /** Query parameter that carries the page offset (`offset` for PokeAPI, `skip` for DummyJSON). */
     val offsetParameter: String = "offset",
 ) : NShiftMetadata
 

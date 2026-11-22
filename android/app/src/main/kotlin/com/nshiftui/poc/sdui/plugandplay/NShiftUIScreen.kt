@@ -152,11 +152,6 @@ private fun ResolvedScreen(
     }
 }
 
-/**
- * Keeps a resolved screen alive while its back stack entry exists, so coming
- * back from another screen shows the same live tree (appended items, view
- * model state) instead of reloading it from scratch.
- */
 internal class RetainedScreenState : ViewModel() {
     var phase: Screen.Phase? = null
     private var model: NShiftPluginModel? = null

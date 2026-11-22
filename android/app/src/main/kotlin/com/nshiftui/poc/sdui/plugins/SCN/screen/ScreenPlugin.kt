@@ -165,8 +165,6 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         val hosted = LocalTabBarHosted.current
         val slotTabs = tabBarItems(model.slots[ScreenSlot.TabBar.slotName].orEmpty(), hosted)
         val tabs = if (slotTabs.isNotEmpty()) slotTabs else tabBarItems(model.children, hosted)
-        // Saveable so the selected tab survives navigating to another screen
-        // and back (the NavHost restores it from the back stack entry).
         var selected by rememberSaveable { mutableStateOf(0) }
         var chromeByRoute by remember { mutableStateOf<Map<String, ScreenNavigationBarMetadata>>(emptyMap()) }
         val ownerBar = screen.navigationBar ?: ScreenNavigationBarMetadata()
@@ -350,13 +348,8 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                 val scrolling = screen.scroll?.enabled == true || fastRefresh || isLazy
                 val page: @Composable () -> Unit = @Composable {
                     if (isLazy) {
-                        // A single root VerticalStack is expanded into one lazy item per
-                        // child, so appended cards are composed on their own and existing
-                        // items are kept.
                         val stack = lazyRootStack()
                         val stackLayout = stack?.model?.metadata?.unwrap<StackLayoutMetadata>()
-                        // Cards hidden by the product filter drop their items (and
-                        // spacing) instead of leaving empty gaps in the list.
                         val inputs by viewModel.inputs.collectAsState()
                         val itemNodes = (stack?.children ?: screenChildrenNodes())
                             .filterNot { CardMetadata.isHidden(it.model, inputs) }
@@ -598,10 +591,6 @@ private fun barColor(token: String, theme: SCNTheme): Color {
     }
 }
 
-/**
- * Fires once per user gesture that reaches the end. Only the start of a new drag
- * arms it, so appended content or fling momentum never fire it again by themselves.
- */
 private suspend fun watchScrollEnd(
     state: () -> Pair<Boolean, Boolean>,
     onReached: () -> Unit,

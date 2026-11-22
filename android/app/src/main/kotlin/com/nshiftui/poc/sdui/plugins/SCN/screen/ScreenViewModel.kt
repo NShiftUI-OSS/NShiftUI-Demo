@@ -174,8 +174,6 @@ class ScreenViewModel(
     val routeParameters: StateFlow<Map<String, String>> = routeParametersState.asStateFlow()
     private val loadedRouteKeys = mutableSetOf<String>()
     private val paginationMutex = Mutex()
-    // Keyed by the container node instance: a reloaded tree builds new nodes,
-    // so its pagination starts from the first page again.
     private val pokedexPagination = java.util.WeakHashMap<NShiftPluginNode, PokedexPaginationState>()
     var renderingEngine: NShiftEngine? = null
         private set
@@ -218,7 +216,6 @@ class ScreenViewModel(
                 rewritePokedexModel(it, detail) { textIndex++ }
             }
             tree.replaceChildren(container.renderId.rawValue, children)
-            // Force the root screen composition to observe the new metadata.
             routeParametersState.value = routeParametersState.value.toMap()
         } catch (_: Exception) {
             loadedRouteKeys.remove(key)
@@ -233,7 +230,6 @@ class ScreenViewModel(
         refreshObserver?.refresh()
     }
 
-    // Counted per id: a recomposed sheet can register before the old one leaves.
     private val sheetRegistrations = mutableMapOf<String, Int>()
 
     fun registerSheet(id: String) {
@@ -298,12 +294,6 @@ class ScreenViewModel(
         return http.execute(request)
     }
 
-    /**
-     * Loads the next PokeAPI page into the container [parentID].
-     * The mutex is held for the whole cycle (offset read, request, append,
-     * next offset update), so concurrent triggers are dropped, never queued.
-     */
-    /** Loads the next page of [endpoint]; supports PokeAPI (`results`) and DummyJSON (`products`). */
     suspend fun appendPage(
         engine: NShiftEngine?,
         parentID: String,
@@ -341,9 +331,6 @@ class ScreenViewModel(
                 PokedexJson.decodeFromString<ProductPageResponse>(response.body)
             }.getOrNull()?.takeIf { it.products != null }
             if (productPage != null) {
-                // With a filter active, a page may add nothing the user can see.
-                // Keep fetching (one request at a time, at most 5 pages per
-                // gesture) until something visible is added or the catalog ends.
                 val selection = CardMetadata.selection(inputs.value)
                 var page: ProductPageResponse = productPage
                 var offset = state.nextOffset
@@ -416,7 +403,6 @@ class ScreenViewModel(
         }
     }
 
-    /** Appends product cards and returns the filter category of each one added. */
     private fun appendProductCards(
         products: List<Product>,
         tree: NShiftEngineTree,
@@ -490,8 +476,6 @@ class ScreenViewModel(
             )
         }
 
-        // Insert only the new cards: existing card nodes keep their identity,
-        // so their composed items are not rebuilt on every page.
         val cards = fresh.map { makePokedexCard(template, it) }
         val insertionIndex = children.indexOfLast { it.name.rawValue == "Card" }
             .let { if (it >= 0) it + 1 else children.size }
@@ -507,11 +491,6 @@ class ScreenViewModel(
         return navigatingToDetails(card, detail)
     }
 
-    /**
-     * Points the card's actions (and those of any button inside it) to the
-     * details screen of [detail]. Kept out of [rewritePokedexModel], which only
-     * fills in data, so screens reusing it keep their own actions.
-     */
     private fun navigatingToDetails(
         model: NShiftPluginModel,
         detail: PokedexDetail,

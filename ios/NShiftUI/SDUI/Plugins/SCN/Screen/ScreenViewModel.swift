@@ -92,8 +92,6 @@ private struct PokedexDetail: Decodable {
     let types: [TypeSlot]
 }
 
-/// Bound to the container node instance: a reloaded tree builds new nodes,
-/// so its pagination starts again from the first page.
 private struct PokedexPaginationState {
     weak var container: NShiftPluginNode?
     var nextOffset = 0
@@ -171,8 +169,6 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         await refreshObserver?.refresh()
     }
 
-    /// Sheets are counted per id: when SwiftUI rebuilds a view, the new sheet
-    /// can appear before the old one disappears, and both share the same id.
     func registerSheet(id: String) {
         sheetRegistrations[id, default: 0] += 1
         guard bottomSheets.contains(where: { $0.id == id }) == false else {
@@ -323,8 +319,6 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         }
     }
 
-    /// Loads the next page of `endpoint` into the container `parentID`.
-    /// Supports PokeAPI (`results`) and DummyJSON (`products`) pages.
     func appendPage(
         engine: (any NShiftEngine)?,
         parentID: String,
@@ -369,9 +363,6 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
             ProductPageResponse.self,
             from: response.body
         ) {
-            // With a filter active, a page may add nothing the user can see.
-            // Keep fetching (one request at a time, at most 5 pages per
-            // gesture) until something visible is added or the catalog ends.
             let selection = CardMetadata.selection(in: inputs)
             var offset = state.nextOffset
             var fetched = 0
@@ -475,8 +466,6 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
             )
         }
 
-        // Insert only the new cards: existing card nodes keep their identity,
-        // so their rendered rows are not rebuilt on every page.
         let cards = fresh.map { makePokedexCard(from: template, detail: $0) }
         let insertionIndex = children.lastIndex(where: {
             $0.name.rawValue == "Card"
@@ -488,7 +477,6 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         )
     }
 
-    /// Appends product cards and returns the filter category of each one added.
     @discardableResult
     private func appendProductCards(
         _ products: [Product],
@@ -584,9 +572,6 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         return navigatingToDetails(card, detail: detail)
     }
 
-    /// Points the card's actions (and those of any button inside it) to the
-    /// details screen of `detail`. Kept out of `rewritePokedexModel`, which only
-    /// fills in data, so screens reusing it keep their own actions.
     private func navigatingToDetails(
         _ model: NShiftPluginModel,
         detail: PokedexDetail
@@ -815,10 +800,6 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
     }
 }
 
-/// The plugin macro resolves a transient `ScreenViewModel` every time SwiftUI
-/// rebuilds the Screen struct, while `@StateObject` keeps only the first one.
-/// The retained instance registers itself per engine so events (sheets, HTTP
-/// pagination) always reach the view model the screen actually renders.
 extension ScreenViewModel {
     private final class WeakReference {
         weak var value: ScreenViewModel?

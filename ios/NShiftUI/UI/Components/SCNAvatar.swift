@@ -66,8 +66,6 @@ struct SCNAvatar: View {
     }
 }
 
-/// Remote avatar image backed by a shared in-memory cache of images already
-/// downsampled to the avatar size, so rebuilt rows never refetch or redecode.
 private struct RemoteAvatarImage<Placeholder: View>: View {
     let url: URL
     let side: CGFloat
