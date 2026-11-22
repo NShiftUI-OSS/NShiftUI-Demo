@@ -22,7 +22,7 @@ import com.nshiftui.poc.config.NShiftAppConfiguration
 import com.nshiftui.poc.sdui.plugandplay.Screen
 import com.nshiftui.poc.theme.LocalSCNTheme
 
-private const val ScreenRoute = "screen/{name}"
+private const val ScreenRoute = "screen/{name}?context={context}"
 
 @Composable
 fun NavigationHost(navigator: AppNavigator) {
@@ -46,7 +46,13 @@ fun NavigationHost(navigator: AppNavigator) {
     ) {
         composable(
             route = ScreenRoute,
-            arguments = listOf(navArgument("name") { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument("name") { type = NavType.StringType },
+                navArgument("context") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
         ) { entry ->
             ScreenDestination(entry, navController, navigator)
         }
@@ -60,8 +66,16 @@ private fun ScreenDestination(
     navigator: AppNavigator,
 ) {
     val name = entry.arguments?.getString("name")?.takeIf { it.isNotBlank() } ?: return
-    val url = NShiftAppConfiguration.current.runtimeScreenURL(name)
-    val preloaded = remember(entry.id) { navigator.consumePreloaded(name) }
+    val encodedContext = entry.arguments?.getString("context").orEmpty()
+    val parameters = if (encodedContext.isBlank()) {
+        emptyMap()
+    } else {
+        Deeplink.decodeParameters(encodedContext)
+    }
+    val url = NShiftAppConfiguration.current.runtimeScreenURL(name, parameters)
+    val preloaded = remember(entry.id) {
+        navigator.consumePreloaded(name, parameters)
+    }
     val isRoot = navController.currentBackStack.value
         .firstOrNull { it.destination.route == ScreenRoute }
         ?.id == entry.id
@@ -70,7 +84,11 @@ private fun ScreenDestination(
     } else {
         { navController.popBackStack() }
     }
-    val builder = Screen().url(url).title(name).let { base ->
+    val builder = Screen()
+        .url(url)
+        .routeParameters(parameters)
+        .title(name)
+        .let { base ->
         preloaded?.let(base::preloaded) ?: base
     }
     if (isRoot && preloaded == null) {

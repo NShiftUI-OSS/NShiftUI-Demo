@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.nshiftui.NShiftMetadata
+import com.nshiftui.NShiftPluginModel
 import androidx.compose.runtime.rememberCoroutineScope
 import com.nshiftui.NShiftPlugin
 import com.nshiftui.NShiftPluginWithMetadata
 import com.nshiftui.NShiftTrigger
 import com.nshiftui.macro.NShiftPlugin as NShiftPluginMacro
+import com.nshiftui.poc.sdui.plugins.scn.screen.ScreenInput
 import com.nshiftui.poc.sdui.plugins.scn.screen.ScreenViewModel
 import com.nshiftui.poc.sdui.triggers.fire
 import com.nshiftui.poc.sdui.triggers.onChange
@@ -24,7 +26,27 @@ import com.nshiftui.poc.ui.components.SCNCard
 @kotlinx.serialization.Serializable
 data class CardMetadata(
     val filter: String = "",
-) : NShiftMetadata
+) : NShiftMetadata {
+    fun isVisible(selection: String): Boolean =
+        filter.isBlank() ||
+            selection.equals("Todos", ignoreCase = true) ||
+            filter.equals(selection, ignoreCase = true)
+
+    companion object {
+        const val FILTER_INPUT_ID = "product-filter"
+
+        /** Current selection of the screen's product filter ("Todos" when unset). */
+        fun selection(inputs: List<ScreenInput>): String =
+            inputs.firstOrNull { it.id == FILTER_INPUT_ID }?.value ?: "Todos"
+
+        /** Whether [model] is a card hidden by the current filter selection. */
+        fun isHidden(model: NShiftPluginModel, inputs: List<ScreenInput>): Boolean {
+            if (model.name.rawValue != "Card") return false
+            val metadata = model.metadata?.unwrap<CardMetadata>() ?: return false
+            return !metadata.isVisible(selection(inputs))
+        }
+    }
+}
 
 @NShiftPluginMacro(
     name = "Card",
@@ -41,10 +63,7 @@ class CardPlugin : NShiftPluginWithMetadata<CardMetadata>(
         val scope = rememberCoroutineScope()
         val screen = optionalViewModel<ScreenViewModel>()
         val inputs by (screen?.inputs ?: kotlinx.coroutines.flow.flowOf(emptyList())).collectAsState(emptyList())
-        val selectedFilter = inputs.firstOrNull { it.id == "product-filter" }?.value ?: "Todos"
-        val visible = metadata.filter.isBlank() ||
-            selectedFilter.equals("Todos", ignoreCase = true) ||
-            metadata.filter.equals(selectedFilter, ignoreCase = true)
+        val visible = metadata.isVisible(CardMetadata.selection(inputs))
         if (visible) {
             SCNCard(
                 onClick = { fire(NShiftTrigger.onTap, scope) },

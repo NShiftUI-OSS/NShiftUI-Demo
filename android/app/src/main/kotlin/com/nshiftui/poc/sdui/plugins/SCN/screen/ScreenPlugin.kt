@@ -38,11 +38,13 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import com.nshiftui.poc.sdui.observers.LocalScreenRefresh
 import com.nshiftui.poc.sdui.plugins.primitive.StackLayoutMetadata
+import com.nshiftui.poc.sdui.plugins.scn.card.CardMetadata
 import com.nshiftui.poc.sdui.triggers.fire
 import com.nshiftui.poc.sdui.triggers.onScrollEndReached
 import kotlinx.coroutines.launch
@@ -73,6 +75,7 @@ import com.nshiftui.poc.sdui.plugins.scn.tabbar.LocalTabBarHosted
 import com.nshiftui.poc.sdui.plugins.scn.tabbar.LocalTabChromeReport
 import com.nshiftui.poc.sdui.plugins.scn.tabbar.TabRouteScreen
 import com.nshiftui.poc.sdui.plugins.scn.tabbar.tabBarItems
+import com.nshiftui.poc.sdui.plugandplay.LocalScreenRouteParameters
 import com.nshiftui.poc.ui.SCNIcon
 
 @kotlinx.serialization.Serializable
@@ -154,10 +157,17 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         val screen = metadata<ScreenMetadata>()
         val scope = rememberCoroutineScope()
         viewModel.bindEngine(engine)
+        val routeParameters = LocalScreenRouteParameters.current
+        viewModel.bindRouteParameters(routeParameters)
+        LaunchedEffect(routeParameters) {
+            viewModel.loadRouteParameters(engine)
+        }
         val hosted = LocalTabBarHosted.current
         val slotTabs = tabBarItems(model.slots[ScreenSlot.TabBar.slotName].orEmpty(), hosted)
         val tabs = if (slotTabs.isNotEmpty()) slotTabs else tabBarItems(model.children, hosted)
-        var selected by remember { mutableStateOf(0) }
+        // Saveable so the selected tab survives navigating to another screen
+        // and back (the NavHost restores it from the back stack entry).
+        var selected by rememberSaveable { mutableStateOf(0) }
         var chromeByRoute by remember { mutableStateOf<Map<String, ScreenNavigationBarMetadata>>(emptyMap()) }
         val ownerBar = screen.navigationBar ?: ScreenNavigationBarMetadata()
         val activeBar = if (!hosted && selected > 0) {
@@ -345,7 +355,11 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                         // items are kept.
                         val stack = lazyRootStack()
                         val stackLayout = stack?.model?.metadata?.unwrap<StackLayoutMetadata>()
-                        val itemNodes = stack?.children ?: screenChildrenNodes()
+                        // Cards hidden by the product filter drop their items (and
+                        // spacing) instead of leaving empty gaps in the list.
+                        val inputs by viewModel.inputs.collectAsState()
+                        val itemNodes = (stack?.children ?: screenChildrenNodes())
+                            .filterNot { CardMetadata.isHidden(it.model, inputs) }
                         LazyColumn(
                             Modifier
                                 .fillMaxSize()

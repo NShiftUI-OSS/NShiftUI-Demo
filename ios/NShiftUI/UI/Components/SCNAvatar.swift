@@ -85,7 +85,11 @@ private struct RemoteAvatarImage<Placeholder: View>: View {
             }
         }
         .task(id: url) {
-            guard image == nil else { return }
+            if let cached = RemoteAvatarImageCache.shared.image(for: url) {
+                image = cached
+                return
+            }
+            image = nil
             image = await RemoteAvatarImageCache.shared.load(url, side: side)
         }
     }

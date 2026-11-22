@@ -17,8 +17,9 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlinx.coroutines.sync.Mutex
 import com.nshiftui.poc.sdui.events.scn.closebottomsheetevent.CloseBottomSheetEventMetadata
-import com.nshiftui.poc.sdui.events.scn.openbottomsheetevent.OpenBottomSheetEventMetadata
+import com.nshiftui.poc.sdui.events.scn.navigateevent.NavigateEventMetadata
 import com.nshiftui.poc.sdui.plugins.scn.badge.BadgeMetadata
+import com.nshiftui.poc.sdui.plugins.scn.card.CardMetadata
 import com.nshiftui.poc.sdui.plugins.scn.sheet.SheetMetadata
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +55,48 @@ private data class PokedexResult(
     val name: String,
     val url: String,
 )
+
+@Serializable
+private data class ProductPageResponse(
+    val products: List<Product>? = null,
+    val total: Int = 0,
+    val skip: Int = 0,
+)
+
+@Serializable
+private data class Product(
+    val title: String,
+    val category: String = "",
+    val price: Double = 0.0,
+    val stock: Int = 0,
+    val discountPercentage: Double = 0.0,
+)
+
+private object ProductCatalog {
+    fun categoryName(raw: String): String = when (raw) {
+        "laptops", "smartphones", "tablets", "mobile-accessories" -> "Tecnologia"
+        "beauty", "fragrances", "skin-care" -> "Beleza"
+        "furniture", "home-decoration", "kitchen-accessories" -> "Casa"
+        "groceries" -> "Mercado"
+        "sports-accessories" -> "Esportes"
+        "motorcycle", "vehicle" -> "Veículos"
+        "womens-bags" -> "Viagem"
+        else -> if (raw.startsWith("mens-") || raw.startsWith("womens-") || raw == "tops" || raw == "sunglasses") {
+            "Moda"
+        } else {
+            raw.replaceFirstChar { it.uppercase() }
+        }
+    }
+
+    fun price(value: Double): String =
+        "US$ " + String.format(java.util.Locale.US, "%.2f", value).replace('.', ',')
+
+    fun badge(product: Product): Pair<String, String> = when {
+        product.stock < 10 -> "Últimas unidades" to "destructive"
+        product.discountPercentage >= 15 -> "Oferta" to "default"
+        else -> "Em estoque" to "secondary"
+    }
+}
 
 @Serializable
 private data class PokedexDetail(
@@ -127,6 +170,9 @@ class ScreenViewModel(
 
     private val inputState = MutableStateFlow<List<ScreenInput>>(emptyList())
     val inputs: StateFlow<List<ScreenInput>> = inputState.asStateFlow()
+    private val routeParametersState = MutableStateFlow<Map<String, String>>(emptyMap())
+    val routeParameters: StateFlow<Map<String, String>> = routeParametersState.asStateFlow()
+    private val loadedRouteKeys = mutableSetOf<String>()
     private val paginationMutex = Mutex()
     // Keyed by the container node instance: a reloaded tree builds new nodes,
     // so its pagination starts from the first page again.
@@ -142,6 +188,43 @@ class ScreenViewModel(
         renderingEngine = engine
     }
 
+    fun bindRouteParameters(parameters: Map<String, String>) {
+        routeParametersState.value = parameters
+    }
+
+    suspend fun loadRouteParameters(engine: NShiftEngine?) {
+        val parameters = routeParameters.value
+        val id = parameters["id"]?.toIntOrNull()
+        if (parameters["resource"] != "pokemon" || id == null) return
+        val tree = engine as? NShiftEngineTree ?: return
+        val container = tree.root.children.firstOrNull {
+            it.model.name.rawValue == "VerticalStack"
+        } ?: return
+        val key = "pokemon:$id"
+        if (!loadedRouteKeys.add(key)) return
+        try {
+            val response = sendHTTPRequest(
+                SendHTTPRequest(
+                    method = "GET",
+                    path = "https://pokeapi.co/api/v2/pokemon/$id",
+                    headers = emptyMap(),
+                    query = emptyMap(),
+                    body = "",
+                ),
+            )
+            val detail = PokedexJson.decodeFromString<PokedexDetail>(response.body)
+            var textIndex = 0
+            val children = container.model.children.map {
+                rewritePokedexModel(it, detail) { textIndex++ }
+            }
+            tree.replaceChildren(container.renderId.rawValue, children)
+            // Force the root screen composition to observe the new metadata.
+            routeParametersState.value = routeParametersState.value.toMap()
+        } catch (_: Exception) {
+            loadedRouteKeys.remove(key)
+        }
+    }
+
     fun bind(refresh: ScreenRefreshObserver?) {
         refreshObserver = refresh
     }
@@ -150,12 +233,22 @@ class ScreenViewModel(
         refreshObserver?.refresh()
     }
 
+    // Counted per id: a recomposed sheet can register before the old one leaves.
+    private val sheetRegistrations = mutableMapOf<String, Int>()
+
     fun registerSheet(id: String) {
+        sheetRegistrations[id] = (sheetRegistrations[id] ?: 0) + 1
         if (sheetState.value.any { it.id == id }) return
         sheetState.value = sheetState.value + ScreenBottomSheet(id, presented = false)
     }
 
     fun unregisterSheet(id: String) {
+        val remaining = (sheetRegistrations[id] ?: 1) - 1
+        if (remaining > 0) {
+            sheetRegistrations[id] = remaining
+            return
+        }
+        sheetRegistrations.remove(id)
         sheetState.value = sheetState.value.filterNot { it.id == id }
     }
 
@@ -210,11 +303,13 @@ class ScreenViewModel(
      * The mutex is held for the whole cycle (offset read, request, append,
      * next offset update), so concurrent triggers are dropped, never queued.
      */
-    suspend fun appendPokedexPage(
+    /** Loads the next page of [endpoint]; supports PokeAPI (`results`) and DummyJSON (`products`). */
+    suspend fun appendPage(
         engine: NShiftEngine?,
         parentID: String,
         endpoint: String,
         limit: Int,
+        offsetParameter: String = "offset",
     ): SendHTTPResponse {
         if (!paginationMutex.tryLock()) return SendHTTPResponse(status = 204, body = "")
         val tree = engine as? NShiftEngineTree
@@ -235,13 +330,55 @@ class ScreenViewModel(
                     path = endpoint,
                     headers = emptyMap(),
                     query = mapOf(
-                        "offset" to state.nextOffset.toString(),
+                        offsetParameter to state.nextOffset.toString(),
                         "limit" to limit.coerceAtLeast(1).toString(),
                     ),
                     body = "",
                 ),
             )
             if (response.status !in 200..299) return response
+            val productPage = runCatching {
+                PokedexJson.decodeFromString<ProductPageResponse>(response.body)
+            }.getOrNull()?.takeIf { it.products != null }
+            if (productPage != null) {
+                // With a filter active, a page may add nothing the user can see.
+                // Keep fetching (one request at a time, at most 5 pages per
+                // gesture) until something visible is added or the catalog ends.
+                val selection = CardMetadata.selection(inputs.value)
+                var page: ProductPageResponse = productPage
+                var offset = state.nextOffset
+                var fetched = 0
+                while (true) {
+                    val products = page.products.orEmpty()
+                    val added = withContext(Dispatchers.Main) {
+                        appendProductCards(products, tree, parentID)
+                    }
+                    offset += products.size
+                    fetched += 1
+                    val endReached = products.isEmpty() || page.skip + products.size >= page.total
+                    val showsSomething = added.any { CardMetadata(filter = it).isVisible(selection) }
+                    pokedexPagination[container] = PokedexPaginationState(
+                        nextOffset = offset,
+                        isLoading = true,
+                        endReached = endReached,
+                    )
+                    if (endReached || showsSomething || fetched >= 5) return response
+                    val next = sendHTTPRequest(
+                        SendHTTPRequest(
+                            method = "GET",
+                            path = endpoint,
+                            headers = emptyMap(),
+                            query = mapOf(
+                                offsetParameter to offset.toString(),
+                                "limit" to limit.coerceAtLeast(1).toString(),
+                            ),
+                            body = "",
+                        ),
+                    )
+                    if (next.status !in 200..299) return next
+                    page = PokedexJson.decodeFromString<ProductPageResponse>(next.body)
+                }
+            }
             val page = PokedexJson.decodeFromString<PokedexPageResponse>(response.body)
             val details = coroutineScope {
                 page.results.map { result ->
@@ -277,6 +414,55 @@ class ScreenViewModel(
             }
             paginationMutex.unlock()
         }
+    }
+
+    /** Appends product cards and returns the filter category of each one added. */
+    private fun appendProductCards(
+        products: List<Product>,
+        tree: NShiftEngineTree,
+        parentID: String,
+    ): List<String> {
+        val parent = tree.node(parentID) ?: return emptyList()
+        val children = parent.model.children
+        val template = children.lastOrNull { it.name.rawValue == "Card" } ?: return emptyList()
+        val existing = children.mapNotNull(::firstCardText).toSet()
+        val fresh = products.filter { it.title !in existing }
+        val cards = fresh.map { makeProductCard(template, it) }
+        if (cards.isEmpty()) return emptyList()
+        val insertionIndex = children.indexOfLast { it.name.rawValue == "Card" }
+            .let { if (it >= 0) it + 1 else children.size }
+        tree.insertChildren(parent.renderId.rawValue, insertionIndex, cards)
+        return fresh.map { ProductCatalog.categoryName(it.category) }
+    }
+
+    private fun makeProductCard(template: NShiftPluginModel, product: Product): NShiftPluginModel {
+        val category = ProductCatalog.categoryName(product.category)
+        val (badgeText, badgeVariant) = ProductCatalog.badge(product)
+        var textIndex = 0
+        fun rewrite(model: NShiftPluginModel): NShiftPluginModel {
+            val next = when (model.name.rawValue) {
+                "Card" -> model.replacingMetadata(AnyNShiftMetadata(CardMetadata(filter = category)))
+                "Text" -> model.metadata?.unwrap<TextMetadata>()?.let { text ->
+                    val value = when (textIndex++) {
+                        0 -> product.title
+                        1 -> "$category · ${ProductCatalog.price(product.price)}"
+                        else -> text.text
+                    }
+                    model.replacingMetadata(AnyNShiftMetadata(text.copy(text = value)))
+                } ?: model
+                "Badge" -> model.replacingMetadata(
+                    AnyNShiftMetadata(BadgeMetadata(text = badgeText, variant = badgeVariant)),
+                )
+                else -> model
+            }
+            return next.replacingChildren(model.children.map(::rewrite))
+        }
+        return rewrite(template)
+    }
+
+    private fun firstCardText(model: NShiftPluginModel): String? {
+        if (model.name.rawValue != "Card") return null
+        return model.firstModel("Text")?.metadata?.unwrap<TextMetadata>()?.text
     }
 
     private fun appendPokedexCards(
@@ -318,19 +504,41 @@ class ScreenViewModel(
     ): NShiftPluginModel {
         var textIndex = 0
         val card = rewritePokedexModel(template, detail) { textIndex++ }
-        return card.copy(
-            events = card.events.map { event ->
+        return navigatingToDetails(card, detail)
+    }
+
+    /**
+     * Points the card's actions (and those of any button inside it) to the
+     * details screen of [detail]. Kept out of [rewritePokedexModel], which only
+     * fills in data, so screens reusing it keep their own actions.
+     */
+    private fun navigatingToDetails(
+        model: NShiftPluginModel,
+        detail: PokedexDetail,
+    ): NShiftPluginModel {
+        val events = if (model.name.rawValue == "Card" || model.name.rawValue == "Button") {
+            model.events.map { event ->
                 event.copy(
                     id = UUID.randomUUID().toString(),
-                    name = NShiftEventName("OpenBottomSheetEvent"),
+                    name = NShiftEventName("NavigateEvent"),
                     metadata = AnyNShiftMetadata(
-                        OpenBottomSheetEventMetadata(
-                            sheetID = PokedexCatalog.sheetID(detail),
+                        NavigateEventMetadata(
+                            screenName = "pokemon-details",
+                            parameters = mapOf(
+                                "resource" to "pokemon",
+                                "id" to detail.id.toString(),
+                            ),
                         ),
                     ),
                     events = emptyList(),
                 )
-            },
+            }
+        } else {
+            model.events
+        }
+        return model.copy(
+            events = events,
+            children = model.children.map { navigatingToDetails(it, detail) },
         )
     }
 
@@ -416,18 +624,6 @@ class ScreenViewModel(
             } else {
                 model.replacingChildren(model.children.map { rewritePokedexModel(it, detail, nextTextIndex) })
             }
-            "Button" -> model.replacingEvents(
-                model.events.map { event ->
-                    event.copy(
-                        id = UUID.randomUUID().toString(),
-                        name = NShiftEventName("OpenBottomSheetEvent"),
-                        metadata = AnyNShiftMetadata(
-                            OpenBottomSheetEventMetadata(sheetID = PokedexCatalog.sheetID(detail)),
-                        ),
-                        events = emptyList(),
-                    )
-                },
-            )
             else -> model.replacingChildren(model.children.map { rewritePokedexModel(it, detail, nextTextIndex) })
         }
     }

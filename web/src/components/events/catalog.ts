@@ -114,6 +114,7 @@ export const flowEvents: FlowEventDefinition[] = [
       text('path', 'Endpoint', '/', true),
       text('appendTo', 'Acrescentar no container', ''),
       number('pageSize', 'Itens por página', '3'),
+      text('offsetParameter', 'Parâmetro de offset', 'offset'),
       { ...text('body', 'Corpo'), embedded: 'JSON' },
     ],
   },

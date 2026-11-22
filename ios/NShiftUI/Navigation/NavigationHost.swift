@@ -65,6 +65,7 @@ private struct ScreenPage: View {
     var body: some View {
         let builder = Screen()
             .url(entry.screenURL)
+            .routeParameters(entry.parameters)
             .title(entry.screenName)
         let resolved = entry.preloadedModel.map { builder.preloaded($0) } ?? builder
         Group {

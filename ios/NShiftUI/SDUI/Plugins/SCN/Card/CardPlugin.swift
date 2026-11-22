@@ -5,9 +5,35 @@ import SwiftUI
 struct CardMetadata: NShiftMetadata, Decodable {
     let filter: String
 
+    init(filter: String) {
+        self.filter = filter
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         filter = try container.decodeIfPresent(String.self, forKey: .filter) ?? ""
+    }
+
+    static let filterInputID = "product-filter"
+
+    /// Current selection of the screen's product filter ("Todos" when unset).
+    static func selection(in inputs: [ScreenInput]) -> String {
+        inputs.first { $0.id == filterInputID }?.value ?? "Todos"
+    }
+
+    func isVisible(for selection: String) -> Bool {
+        filter.isEmpty ||
+            selection.caseInsensitiveCompare("Todos") == .orderedSame ||
+            filter.caseInsensitiveCompare(selection) == .orderedSame
+    }
+
+    /// Whether `model` is a card hidden by the current filter selection.
+    static func isHidden(_ model: NShiftPluginModel, in inputs: [ScreenInput]) -> Bool {
+        guard model.name.rawValue == "Card",
+              let metadata = model.metadata?.unwrap(as: CardMetadata.self) else {
+            return false
+        }
+        return metadata.isVisible(for: selection(in: inputs)) == false
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -55,8 +81,6 @@ struct CardPlugin: NShiftPlugin {
     }
 
     private func cardIsVisible(for selection: String) -> Bool {
-        metadata.filter.isEmpty ||
-            selection.caseInsensitiveCompare("Todos") == .orderedSame ||
-            metadata.filter.caseInsensitiveCompare(selection) == .orderedSame
+        metadata.isVisible(for: selection)
     }
 }

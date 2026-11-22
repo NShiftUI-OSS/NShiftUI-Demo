@@ -11,21 +11,25 @@ struct Screen {
 
     fileprivate let screenURL: String?
     fileprivate let screenTitle: String?
+    fileprivate let routeParameters: [String: String]
     fileprivate let phase: Phase
 
     init() {
         screenURL = nil
         screenTitle = nil
+        routeParameters = [:]
         phase = .pending
     }
 
     private init(
         screenURL: String?,
         screenTitle: String?,
+        routeParameters: [String: String],
         phase: Phase
     ) {
         self.screenURL = screenURL
         self.screenTitle = screenTitle
+        self.routeParameters = routeParameters
         self.phase = phase
     }
 
@@ -33,6 +37,7 @@ struct Screen {
         Self(
             screenURL: value,
             screenTitle: screenTitle,
+            routeParameters: routeParameters,
             phase: .pending
         )
     }
@@ -42,6 +47,16 @@ struct Screen {
         return Self(
             screenURL: screenURL,
             screenTitle: title?.isEmpty == false ? title : nil,
+            routeParameters: routeParameters,
+            phase: phase
+        )
+    }
+
+    func routeParameters(_ value: [String: String]) -> Self {
+        Self(
+            screenURL: screenURL,
+            screenTitle: screenTitle,
+            routeParameters: value,
             phase: phase
         )
     }
@@ -64,6 +79,7 @@ struct Screen {
         Self(
             screenURL: screenURL,
             screenTitle: screenTitle,
+            routeParameters: routeParameters,
             phase: .loaded(model)
         )
     }
@@ -77,6 +93,7 @@ struct Screen {
             return Self(
                 screenURL: screenURL,
                 screenTitle: screenTitle,
+                routeParameters: routeParameters,
                 phase: .failed
             )
         }
@@ -86,22 +103,28 @@ struct Screen {
             return Self(
                 screenURL: screenURL,
                 screenTitle: screenTitle,
+                routeParameters: routeParameters,
                 phase: .loaded(model)
             )
         } catch {
             return Self(
                 screenURL: screenURL,
                 screenTitle: screenTitle,
+                routeParameters: routeParameters,
                 phase: .failed
             )
         }
     }
 
     @ViewBuilder
-    func resolve(onBack: (() -> Void)? = nil) -> some View {
+    func resolve(
+        onBack: (() -> Void)? = nil,
+        retainKey: String? = nil
+    ) -> some View {
         ResolvedScreen(
             builder: self,
-            onBack: onBack
+            onBack: onBack,
+            retainKey: retainKey
         )
     }
 
@@ -117,6 +140,7 @@ struct Screen {
 private struct StableNShiftScreen: View, Equatable {
     let token: String
     let model: NShiftPluginModel
+    var retainKey: String? = nil
 
     nonisolated static func == (
         lhs: StableNShiftScreen,
@@ -126,22 +150,69 @@ private struct StableNShiftScreen: View, Equatable {
     }
 
     var body: some View {
-        NShiftView(model: model)
+        if let retainKey {
+            NShiftView(
+                engine: RetainedScreenStore.shared.engine(
+                    for: retainKey,
+                    token: token,
+                    model: model
+                )
+            )
+        } else {
+            NShiftView(model: model)
+        }
+    }
+}
+
+/// Keeps tab screens alive across tab switches: SwiftUI may recreate a tab's
+/// view, but the loaded model and its engine (appended items, view model
+/// state) are kept here, keyed by the tab route.
+@MainActor
+private final class RetainedScreenStore {
+    static let shared = RetainedScreenStore()
+
+    private struct Entry {
+        var phase: Screen.Phase
+        var token: String?
+        var engine: (any NShiftEngine)?
+    }
+
+    private var entries: [String: Entry] = [:]
+
+    func phase(for key: String) -> Screen.Phase? {
+        entries[key]?.phase
+    }
+
+    func store(_ phase: Screen.Phase, for key: String) {
+        entries[key, default: Entry(phase: phase)].phase = phase
+    }
+
+    func engine(for key: String, token: String, model: NShiftPluginModel) -> any NShiftEngine {
+        if let entry = entries[key], entry.token == token, let engine = entry.engine {
+            return engine
+        }
+        let engine = NShiftView.makeEngine(for: model)
+        entries[key, default: Entry(phase: .loaded(model))].token = token
+        entries[key]?.engine = engine
+        return engine
     }
 }
 
 private struct ResolvedScreen: View {
     let builder: Screen
     let onBack: (() -> Void)?
+    let retainKey: String?
     @StateObject private var refresh = ScreenRefreshObserver()
     @State private var phase: Screen.Phase
     @State private var generation = 0
     @State private var retrying = false
 
-    init(builder: Screen, onBack: (() -> Void)?) {
+    init(builder: Screen, onBack: (() -> Void)?, retainKey: String? = nil) {
         self.builder = builder
         self.onBack = onBack
-        _phase = State(initialValue: builder.phase)
+        self.retainKey = retainKey
+        let retained = retainKey.flatMap { RetainedScreenStore.shared.phase(for: $0) }
+        _phase = State(initialValue: retained ?? builder.phase)
     }
 
     var body: some View {
@@ -154,6 +225,9 @@ private struct ResolvedScreen: View {
                 let loaded = await builder.load()
                 await holdFetchPresentation(since: started)
                 phase = loaded.phase
+                if let retainKey {
+                    RetainedScreenStore.shared.store(loaded.phase, for: retainKey)
+                }
             }
             .onReceive(refresh.subject) { _ in
                 Task { @MainActor in
@@ -161,6 +235,9 @@ private struct ResolvedScreen: View {
                     if loaded.isLoaded {
                         phase = loaded.phase
                         generation += 1
+                        if let retainKey {
+                            RetainedScreenStore.shared.store(loaded.phase, for: retainKey)
+                        }
                     }
                     refresh.finish()
                 }
@@ -187,10 +264,15 @@ private struct ResolvedScreen: View {
         case .loaded(let model):
             StableNShiftScreen(
                 token: "\(builder.screenURL ?? "")#\(generation)",
-                model: model
+                model: model,
+                retainKey: retainKey
             )
             .equatable()
             .environment(\.screenRefresh, refresh)
+            .environment(
+                \.screenRouteParameters,
+                builder.routeParameters
+            )
         }
     }
 }

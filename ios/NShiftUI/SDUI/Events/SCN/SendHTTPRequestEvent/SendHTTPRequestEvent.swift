@@ -12,6 +12,9 @@ struct SendHTTPRequestEventMetadata: NShiftMetadata, NShiftJSONTaggedMetadata, D
     let body: String
     let appendTo: String
     let pageSize: Int
+    /// Query parameter that carries the page offset (`offset` for PokeAPI,
+    /// `skip` for DummyJSON).
+    let offsetParameter: String
 
     private enum CodingKeys: String, CodingKey {
         case method
@@ -21,6 +24,7 @@ struct SendHTTPRequestEventMetadata: NShiftMetadata, NShiftJSONTaggedMetadata, D
         case body
         case appendTo
         case pageSize
+        case offsetParameter
     }
 
     init(from decoder: Decoder) throws {
@@ -32,6 +36,8 @@ struct SendHTTPRequestEventMetadata: NShiftMetadata, NShiftJSONTaggedMetadata, D
         body = try container.decodeIfPresent(String.self, forKey: .body) ?? ""
         appendTo = try container.decodeIfPresent(String.self, forKey: .appendTo) ?? ""
         pageSize = try container.decodeIfPresent(Int.self, forKey: .pageSize) ?? 3
+        let offset = try container.decodeIfPresent(String.self, forKey: .offsetParameter) ?? ""
+        offsetParameter = offset.isEmpty ? "offset" : offset
     }
 }
 
@@ -57,11 +63,12 @@ struct SendHTTPRequestEvent: NShiftEvent {
         let response: SendHTTPResponse
         do {
             if metadata.appendTo.isEmpty == false {
-                response = try await http.appendPokedexPage(
+                response = try await http.appendPage(
                     engine: engine,
                     parentID: metadata.appendTo,
                     endpoint: metadata.path,
-                    limit: metadata.pageSize
+                    limit: metadata.pageSize,
+                    offsetParameter: metadata.offsetParameter
                 )
             } else {
                 response = try await http.sendHTTPRequest(

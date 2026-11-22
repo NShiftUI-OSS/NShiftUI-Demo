@@ -2,6 +2,7 @@ package com.nshiftui.poc.navigation
 
 import java.net.URI
 import java.net.URLDecoder
+import java.net.URLEncoder
 
 data class Deeplink(
     val screenName: String,
@@ -53,5 +54,18 @@ data class Deeplink(
 
         private fun decode(text: String): String =
             URLDecoder.decode(text, "UTF-8")
+
+        fun encodeParameters(parameters: Map<String, String>): String =
+            parameters.entries
+                .sortedBy { it.key }
+                .joinToString("&") { (key, value) ->
+                    "${encode(key)}=${encode(value)}"
+                }
+
+        fun decodeParameters(encoded: String): Map<String, String> =
+            parameters(URLDecoder.decode(encoded, "UTF-8"))
+
+        private fun encode(text: String): String =
+            URLEncoder.encode(text, "UTF-8")
     }
 }

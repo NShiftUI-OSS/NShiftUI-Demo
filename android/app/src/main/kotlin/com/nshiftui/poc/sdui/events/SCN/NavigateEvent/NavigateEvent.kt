@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 @kotlinx.serialization.Serializable
 data class NavigateEventMetadata(
     val screenName: String? = null,
+    val parameters: Map<String, String> = emptyMap(),
 ) : NShiftMetadata
 
 @NShiftEvent(
@@ -30,7 +31,7 @@ class NavigateEvent : NShiftEventWithMetadata<NavigateEventMetadata>(
         val navigator = resolver.resolveOrThrow<AppNavigator>()
         val screenName = metadata.screenName?.takeIf { it.isNotBlank() } ?: return
         withContext(Dispatchers.Main) {
-            navigator.pushScreen(screenName)
+            navigator.pushScreen(screenName, metadata.parameters)
         }
         dispatch(this, NShiftTrigger.onComplete)
     }
@@ -39,6 +40,7 @@ class NavigateEvent : NShiftEventWithMetadata<NavigateEventMetadata>(
 @kotlinx.serialization.Serializable
 data class AsyncNavigateEventMetadata(
     val screenName: String? = null,
+    val parameters: Map<String, String> = emptyMap(),
 ) : NShiftMetadata
 
 @NShiftEvent(
@@ -54,7 +56,7 @@ class AsyncNavigateEvent : NShiftEventWithMetadata<AsyncNavigateEventMetadata>(
     override suspend fun execute() {
         val navigator = resolver.resolveOrThrow<AppNavigator>()
         val screenName = metadata.screenName?.takeIf { it.isNotBlank() } ?: return
-        if (navigator.pushAsync(screenName)) {
+        if (navigator.pushAsync(screenName, metadata.parameters)) {
             dispatch(this, NShiftTrigger.onComplete)
         }
     }

@@ -19,24 +19,34 @@ class AppNavigator {
     val canPop: Boolean
         get() = controller?.previousBackStackEntry != null
 
-    fun pushScreen(screenName: String?) {
+    fun pushScreen(
+        screenName: String?,
+        parameters: Map<String, String> = emptyMap(),
+    ) {
         val name = screenName?.takeIf { it.isNotBlank() } ?: return
-        onMain { controller?.navigate(route(name)) }
+        onMain { controller?.navigate(route(name, parameters)) }
     }
 
-    suspend fun pushAsync(screenName: String?): Boolean {
+    suspend fun pushAsync(
+        screenName: String?,
+        parameters: Map<String, String> = emptyMap(),
+    ): Boolean {
         val name = screenName?.takeIf { it.isNotBlank() } ?: return false
         val loaded = Screen()
-            .url(NShiftAppConfiguration.current.runtimeScreenURL(name))
+            .url(NShiftAppConfiguration.current.runtimeScreenURL(name, parameters))
+            .routeParameters(parameters)
             .title(name)
             .load()
         val model = loaded.loadedModel ?: return false
-        preloaded[name] = model
-        onMain { controller?.navigate(route(name)) }
+        preloaded[routeKey(name, parameters)] = model
+        onMain { controller?.navigate(route(name, parameters)) }
         return true
     }
 
-    fun consumePreloaded(screenName: String): NShiftPluginModel? = preloaded.remove(screenName)
+    fun consumePreloaded(
+        screenName: String,
+        parameters: Map<String, String> = emptyMap(),
+    ): NShiftPluginModel? = preloaded.remove(routeKey(screenName, parameters))
 
     fun pop() {
         pop(steps = 1)
@@ -71,7 +81,17 @@ class AppNavigator {
         onMain { controller?.popBackStack(route(name), false) }
     }
 
-    private fun route(name: String) = "screen/${Uri.encode(name)}"
+    private fun route(
+        name: String,
+        parameters: Map<String, String> = emptyMap(),
+    ): String {
+        val base = "screen/${Uri.encode(name)}"
+        if (parameters.isEmpty()) return base
+        return "$base?context=${Uri.encode(Deeplink.encodeParameters(parameters))}"
+    }
+
+    private fun routeKey(name: String, parameters: Map<String, String>): String =
+        "$name?${Deeplink.encodeParameters(parameters)}"
 
     private fun onMain(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) {

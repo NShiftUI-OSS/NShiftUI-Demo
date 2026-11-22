@@ -23,6 +23,8 @@ data class SendHTTPRequestEventMetadata(
     val body: String = "",
     val appendTo: String = "",
     val pageSize: Int = 3,
+    /** Query parameter that carries the page offset (`offset` for PokeAPI, `skip` for DummyJSON). */
+    val offsetParameter: String = "offset",
 ) : NShiftMetadata
 
 @NShiftEvent(
@@ -43,11 +45,12 @@ class SendHTTPRequestEvent : NShiftEventWithMetadata<SendHTTPRequestEventMetadat
         }
         val response = try {
             if (metadata.appendTo.isNotBlank()) {
-                http.appendPokedexPage(
+                http.appendPage(
                     engine = http.renderingEngine ?: resolver.resolveOrThrow<NShiftEngine>(),
                     parentID = metadata.appendTo,
                     endpoint = metadata.path,
                     limit = metadata.pageSize,
+                    offsetParameter = metadata.offsetParameter.ifBlank { "offset" },
                 )
             } else {
                 http.sendHTTPRequest(

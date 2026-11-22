@@ -82,7 +82,7 @@ struct TabRouteScreen: View {
             Screen()
                 .url(NShiftAppConfiguration.current.runtimeScreenURL(for: name))
                 .title(name)
-                .resolve()
+                .resolve(retainKey: "tab:\(name)")
                 .environment(\.tabBarHosted, true)
                 .environment(\.tabChromeReport, TabChromeReport(report: onChrome))
         }

@@ -26,23 +26,48 @@ final class AppNavigator: ObservableObject, @unchecked Sendable {
         entries.append(NavigationEntry(deeplink: parsed))
     }
 
-    func push(screenName: String?) {
+    func push(
+        screenName: String?,
+        parameters: [String: String] = [:]
+    ) {
         guard let screenName, screenName.isEmpty == false else {
             return
         }
-        push("nshift://screen/\(screenName)")
+        var components = URLComponents(
+            string: "nshift://screen/\(screenName)"
+        )
+        components?.queryItems = parameters.map {
+            URLQueryItem(name: $0.key, value: $0.value)
+        }
+        push(components?.string ?? "nshift://screen/\(screenName)")
     }
 
     @MainActor
-    func pushAsync(screenName: String?) async -> Bool {
+    func pushAsync(
+        screenName: String?,
+        parameters: [String: String] = [:]
+    ) async -> Bool {
         guard let screenName, screenName.isEmpty == false else {
             return false
         }
-        guard let parsed = Deeplink.parse("nshift://screen/\(screenName)") else {
+        var components = URLComponents(
+            string: "nshift://screen/\(screenName)"
+        )
+        components?.queryItems = parameters.map {
+            URLQueryItem(name: $0.key, value: $0.value)
+        }
+        guard let raw = components?.string,
+              let parsed = Deeplink.parse(raw) else {
             return false
         }
         let builder = Screen()
-            .url(NShiftAppConfiguration.current.runtimeScreenURL(for: screenName))
+            .url(
+                NShiftAppConfiguration.current.runtimeScreenURL(
+                    for: screenName,
+                    parameters: parameters
+                )
+            )
+            .routeParameters(parameters)
             .title(screenName)
         let loaded = await builder.load()
         guard let model = loaded.loadedModel else {

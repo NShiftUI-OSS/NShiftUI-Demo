@@ -40,6 +40,8 @@ fun SCNText(
         modifier = modifier,
         color = ink,
         textAlign = align,
+        maxLines = Int.MAX_VALUE,
+        softWrap = true,
         style = TextStyle(
             fontFamily = SCNFont,
             fontSize = size,

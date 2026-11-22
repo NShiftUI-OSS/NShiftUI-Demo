@@ -56,7 +56,12 @@ struct ServicesAssembly: NShiftDependencyAssembly {
             ScreenViewModel.self,
             scope: .transient
         ) {
-            ScreenViewModel(
+            // A Screen is resolved again whenever SwiftUI rebuilds it. Reuse
+            // the view model already active for the engine being rendered so
+            // its state (filter inputs, pagination, sheets) is kept.
+            MainActor.assumeIsolated {
+                ScreenViewModel.resolve(engine: NShiftRenderingEngine.current, fallback: nil)
+            } ?? ScreenViewModel(
                 http: container.resolveUnwrapping((any SendHTTPRequestUseCaseProtocol).self)
             )
         }

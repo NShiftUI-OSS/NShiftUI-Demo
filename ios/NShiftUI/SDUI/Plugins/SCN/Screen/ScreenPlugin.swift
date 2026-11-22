@@ -164,6 +164,17 @@ enum ScreenSlot: NShiftSlotKey {
     case scrollFooter
 }
 
+private struct ScreenRouteParametersKey: EnvironmentKey {
+    static let defaultValue: [String: String] = [:]
+}
+
+extension EnvironmentValues {
+    var screenRouteParameters: [String: String] {
+        get { self[ScreenRouteParametersKey.self] }
+        set { self[ScreenRouteParametersKey.self] = newValue }
+    }
+}
+
 @NShiftPlugin(
     name: "Screen",
     version: "1.0.0",
@@ -173,9 +184,11 @@ enum ScreenSlot: NShiftSlotKey {
 struct ScreenPlugin: NShiftPluginContainer {
     @StateObject var viewModel: ScreenViewModel
     @EnvironmentObject private var theme: SCNTheme
+    @Environment(\.screenRouteParameters) private var routeParameters
     @Environment(\.screenRefresh) private var screenRefresh
     @Environment(\.tabBarHosted) private var tabBarHosted
     @Environment(\.tabChromeReport) private var tabChromeReport
+    @StateObject private var scrollEnd = ScrollEndState()
     @State private var selectedTab = 0
     @State private var chromeByRoute: [String: ScreenNavigationBarMetadata] = [:]
 
@@ -191,8 +204,15 @@ struct ScreenPlugin: NShiftPluginContainer {
             EngineViewModelBinder(engine: engine, viewModel: viewModel)
         )
         .onAppear {
+            viewModel.bindRouteParameters(routeParameters)
             viewModel.bind(refresh: screenRefresh)
             tabChromeReport?.report(navigationBar)
+        }
+        .onChange(of: routeParameters) { parameters in
+            viewModel.bindRouteParameters(parameters)
+        }
+        .task(id: routeParameters) {
+            await viewModel.loadRouteParameters(engine: engine)
         }
         .onChange(of: navigationBar) { bar in
             tabChromeReport?.report(bar)
@@ -293,6 +313,7 @@ struct ScreenPlugin: NShiftPluginContainer {
         if isLazy {
             List {
                 scrollRows
+                ScrollEndSentinel(state: scrollEnd)
             }
             .listStyle(.plain)
             .environment(\.defaultMinListRowHeight, 0)
@@ -300,7 +321,7 @@ struct ScreenPlugin: NShiftPluginContainer {
             .hiddenScrollIndicators()
             .background(ListContentInsetNormalizer())
             .background(
-                ScrollEndDetector(target: .list) {
+                ScrollEndDetector(target: .list, state: scrollEnd) {
                     fire(
                         .onScrollEndReached,
                         engine: engine,
@@ -338,7 +359,7 @@ struct ScreenPlugin: NShiftPluginContainer {
                     }
                 )
                 .background(
-                    ScrollEndDetector(target: .scrollView) {
+                    ScrollEndDetector(target: .scrollView, state: scrollEnd) {
                         fire(
                             .onScrollEndReached,
                             engine: engine,
@@ -372,7 +393,7 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
         if let tree = engine as? any NShiftEngineTree,
            let stack = lazyRootStack(in: tree) {
-            LazyStackRows(node: stack, engine: tree, viewModel: viewModel) { view, spacing, alignment in
+            LazyStackRows(node: stack, screen: viewModel, engine: tree, viewModel: viewModel) { view, spacing, alignment in
                 view
                     .frame(maxWidth: .infinity, alignment: alignment)
                     .padding(.top, spacing)
@@ -665,6 +686,9 @@ private struct ListContentInsetNormalizer: UIViewRepresentable {
 /// identity and are not rebuilt.
 private struct LazyStackRows<Row: View>: View {
     @ObservedObject var node: NShiftPluginNode
+    /// Observed so cards hidden by the product filter drop their rows (and
+    /// their spacing) instead of leaving empty gaps in the list.
+    @ObservedObject var screen: ScreenViewModel
     let engine: any NShiftEngineTree
     let viewModel: (any NShiftPluginViewModel)?
     let row: (NShiftNodeView, CGFloat, Alignment) -> Row
@@ -677,8 +701,11 @@ private struct LazyStackRows<Row: View>: View {
         case .trailing?: .topTrailing
         default: .topLeading
         }
-        let firstID = node.children.first?.renderId
-        ForEach(node.children, id: \.renderId) { child in
+        let visible = node.children.filter {
+            CardMetadata.isHidden($0.model, in: screen.inputs) == false
+        }
+        let firstID = visible.first?.renderId
+        ForEach(visible, id: \.renderId) { child in
             row(
                 NShiftNodeView(node: child, engine: engine, viewModel: viewModel),
                 child.renderId == firstID ? 0 : spacing,
@@ -719,18 +746,65 @@ private struct EngineViewModelBinder: UIViewRepresentable {
     }
 }
 
+/// End-of-scroll state shared by the scroll view detector and the List's end
+/// sentinel row. It fires once per user scroll gesture that reaches the end:
+/// only the start of a gesture arms it, so content growth, row reuse or fling
+/// momentum never fire it again on their own.
+@MainActor
+private final class ScrollEndState: ObservableObject {
+    var onReached: () -> Void = {}
+    private var isArmed = false
+    private var isEndVisible = false
+
+    func userBeganScrolling() {
+        isArmed = true
+        evaluate()
+    }
+
+    func setEndVisible(_ visible: Bool) {
+        isEndVisible = visible
+        evaluate()
+    }
+
+    private func evaluate() {
+        guard isArmed, isEndVisible else { return }
+        isArmed = false
+        onReached()
+    }
+}
+
+/// Invisible last row of a lazy List. Its visibility is the end signal, which,
+/// unlike `contentSize`, does not depend on the estimated height of rows the
+/// List has not laid out yet.
+private struct ScrollEndSentinel: View {
+    let state: ScrollEndState
+
+    var body: some View {
+        Color.clear
+            .frame(height: 1)
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .onAppear { state.setEndVisible(true) }
+            .onDisappear { state.setEndVisible(false) }
+    }
+}
+
 @MainActor
 private struct ScrollEndDetector: UIViewRepresentable {
     enum Target {
+        /// A lazy List: the end is reported by `ScrollEndSentinel`.
         case list
+        /// A plain ScrollView: the end is computed from its geometry.
         case scrollView
     }
 
     let target: Target
+    let state: ScrollEndState
     let onReached: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(target: target, onReached: onReached)
+        Coordinator(target: target, state: state)
     }
 
     func makeUIView(context: Context) -> UIView {
@@ -741,7 +815,7 @@ private struct ScrollEndDetector: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.onReached = onReached
+        state.onReached = onReached
         DispatchQueue.main.async {
             context.coordinator.attach(to: uiView)
         }
@@ -751,21 +825,17 @@ private struct ScrollEndDetector: UIViewRepresentable {
         coordinator.detach()
     }
 
-    /// Fires once per user gesture that reaches the bottom edge. Only the start
-    /// of a new drag arms it, so content growth, list cell reuse or fling
-    /// momentum never fire it again on their own.
     @MainActor
     final class Coordinator: NSObject {
-        var onReached: () -> Void
         private let target: Target
+        private let state: ScrollEndState
         private weak var scrollView: UIScrollView?
         private var observations: [NSKeyValueObservation] = []
-        private var isArmed = false
         private var attachAttempts = 0
 
-        init(target: Target, onReached: @escaping () -> Void) {
+        init(target: Target, state: ScrollEndState) {
             self.target = target
-            self.onReached = onReached
+            self.state = state
         }
 
         func attach(to view: UIView) {
@@ -785,15 +855,15 @@ private struct ScrollEndDetector: UIViewRepresentable {
             found.showsVerticalScrollIndicator = false
             found.showsHorizontalScrollIndicator = false
             // Every user scroll gesture (touch drag, trackpad or mouse wheel)
-            // goes through the pan recognizer, unlike `isTracking`, which only
-            // reflects direct touches.
+            // goes through the pan recognizer.
             found.panGestureRecognizer.addTarget(self, action: #selector(userDidPan(_:)))
+            guard target == .scrollView else { return }
             observations = [
                 found.observe(\.contentOffset, options: [.new]) { [weak self] _, _ in
-                    MainActor.assumeIsolated { self?.evaluate() }
+                    MainActor.assumeIsolated { self?.updateEndVisibility() }
                 },
                 found.observe(\.contentSize, options: [.new]) { [weak self] _, _ in
-                    MainActor.assumeIsolated { self?.evaluate() }
+                    MainActor.assumeIsolated { self?.updateEndVisibility() }
                 },
             ]
         }
@@ -807,21 +877,21 @@ private struct ScrollEndDetector: UIViewRepresentable {
 
         @objc private func userDidPan(_ recognizer: UIPanGestureRecognizer) {
             guard recognizer.state == .began else { return }
-            isArmed = true
-            evaluate()
+            state.userBeganScrolling()
         }
 
-        private func evaluate() {
-            guard isArmed, let scrollView else { return }
+        private func updateEndVisibility() {
+            guard let scrollView else { return }
             let insets = scrollView.adjustedContentInset
             let viewport = scrollView.bounds.height - insets.top - insets.bottom
-            guard scrollView.contentSize.height > viewport else { return }
+            guard scrollView.contentSize.height > viewport else {
+                state.setEndVisible(false)
+                return
+            }
             let visibleBottom = scrollView.contentOffset.y
                 + scrollView.bounds.height
                 - insets.bottom
-            guard visibleBottom >= scrollView.contentSize.height - 24 else { return }
-            isArmed = false
-            onReached()
+            state.setEndVisible(visibleBottom >= scrollView.contentSize.height - 24)
         }
 
         private func locateScrollView(from view: UIView) -> UIScrollView? {

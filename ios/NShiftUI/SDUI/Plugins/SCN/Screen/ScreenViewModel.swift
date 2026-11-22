@@ -22,6 +22,59 @@ private struct PokedexResult: Decodable {
     let url: String
 }
 
+private struct ProductPageResponse: Decodable {
+    let products: [Product]
+    let total: Int
+    let skip: Int
+}
+
+private struct Product: Decodable {
+    let title: String
+    let category: String
+    let price: Double
+    let stock: Int
+    let discountPercentage: Double
+}
+
+private enum ProductCatalog {
+    static func categoryName(_ raw: String) -> String {
+        switch raw {
+        case "laptops", "smartphones", "tablets", "mobile-accessories":
+            return "Tecnologia"
+        case "beauty", "fragrances", "skin-care":
+            return "Beleza"
+        case "furniture", "home-decoration", "kitchen-accessories":
+            return "Casa"
+        case "groceries":
+            return "Mercado"
+        case "sports-accessories":
+            return "Esportes"
+        case "motorcycle", "vehicle":
+            return "Veículos"
+        case "womens-bags":
+            return "Viagem"
+        default:
+            return raw.hasPrefix("mens-") || raw.hasPrefix("womens-") || raw == "tops" || raw == "sunglasses"
+                ? "Moda"
+                : raw.capitalized
+        }
+    }
+
+    static func price(_ value: Double) -> String {
+        "US$ " + String(format: "%.2f", value).replacingOccurrences(of: ".", with: ",")
+    }
+
+    static func badge(for product: Product) -> (text: String, variant: String) {
+        if product.stock < 10 {
+            return ("Últimas unidades", "destructive")
+        }
+        if product.discountPercentage >= 15 {
+            return ("Oferta", "default")
+        }
+        return ("Em estoque", "secondary")
+    }
+}
+
 private struct PokedexDetail: Decodable {
     struct TypeSlot: Decodable {
         struct Named: Decodable {
@@ -92,15 +145,22 @@ protocol ScreenHTTPLayer: AnyObject {
 final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenSheetLayer, ScreenHTTPLayer {
     @Published private(set) var bottomSheets: [ScreenBottomSheet] = []
     @Published private(set) var inputs: [ScreenInput] = []
+    @Published private(set) var routeParameters: [String: String] = [:]
 
     private let http: any SendHTTPRequestUseCaseProtocol
     private var refreshObserver: ScreenRefreshObserver?
+    private var sheetRegistrations: [String: Int] = [:]
     private var pokedexPagination: [String: PokedexPaginationState] = [:]
+    private var loadedRouteKeys: Set<String> = []
     private var presentWaiters: [String: CheckedContinuation<Void, Never>] = [:]
     private var dismissWaiters: [String: CheckedContinuation<Void, Never>] = [:]
 
     nonisolated init(http: any SendHTTPRequestUseCaseProtocol) {
         self.http = http
+    }
+
+    func bindRouteParameters(_ parameters: [String: String]) {
+        routeParameters = parameters
     }
 
     func bind(refresh: ScreenRefreshObserver?) {
@@ -111,7 +171,10 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         await refreshObserver?.refresh()
     }
 
+    /// Sheets are counted per id: when SwiftUI rebuilds a view, the new sheet
+    /// can appear before the old one disappears, and both share the same id.
     func registerSheet(id: String) {
+        sheetRegistrations[id, default: 0] += 1
         guard bottomSheets.contains(where: { $0.id == id }) == false else {
             return
         }
@@ -124,6 +187,12 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
     }
 
     func unregisterSheet(id: String) {
+        let remaining = (sheetRegistrations[id] ?? 1) - 1
+        guard remaining <= 0 else {
+            sheetRegistrations[id] = remaining
+            return
+        }
+        sheetRegistrations[id] = nil
         bottomSheets.removeAll { $0.id == id }
     }
 
@@ -209,11 +278,59 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         try await http.execute(request)
     }
 
-    func appendPokedexPage(
+    func loadRouteParameters(
+        engine: (any NShiftEngine)?
+    ) async {
+        guard routeParameters["resource"] == "pokemon",
+              let rawID = routeParameters["id"],
+              let id = Int(rawID),
+              let tree = engine as? any NShiftEngineTree,
+              let container = tree.root.children.first(where: {
+                  $0.model.name.rawValue == "VerticalStack"
+              }) else {
+            return
+        }
+        let key = "pokemon:\(id)"
+        guard loadedRouteKeys.insert(key).inserted else { return }
+        do {
+            let response = try await sendHTTPRequest(
+                SendHTTPRequest(
+                    method: "GET",
+                    path: "https://pokeapi.co/api/v2/pokemon/\(id)",
+                    headers: [:],
+                    query: [:],
+                    body: ""
+                )
+            )
+            let detail = try JSONDecoder().decode(
+                PokedexDetail.self,
+                from: response.body
+            )
+            var textIndex = 0
+            let children = container.model.children.map {
+                rewritePokedexModel(
+                    $0,
+                    detail: detail,
+                    textIndex: &textIndex
+                )
+            }
+            tree.replaceChildren(
+                pluginID: container.id.rawValue,
+                with: children
+            )
+        } catch {
+            loadedRouteKeys.remove(key)
+        }
+    }
+
+    /// Loads the next page of `endpoint` into the container `parentID`.
+    /// Supports PokeAPI (`results`) and DummyJSON (`products`) pages.
+    func appendPage(
         engine: (any NShiftEngine)?,
         parentID: String,
         endpoint: String,
-        limit: Int
+        limit: Int,
+        offsetParameter: String = "offset"
     ) async throws -> SendHTTPResponse {
         guard let tree = engine as? any NShiftEngineTree,
               let container = tree.node(withID: parentID) else {
@@ -239,7 +356,7 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
                 path: endpoint,
                 headers: [:],
                 query: [
-                    "offset": String(state.nextOffset),
+                    offsetParameter: String(state.nextOffset),
                     "limit": String(max(limit, 1)),
                 ],
                 body: ""
@@ -247,6 +364,48 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         )
         guard (200..<300).contains(response.status) else {
             return response
+        }
+        if var products = try? JSONDecoder().decode(
+            ProductPageResponse.self,
+            from: response.body
+        ) {
+            // With a filter active, a page may add nothing the user can see.
+            // Keep fetching (one request at a time, at most 5 pages per
+            // gesture) until something visible is added or the catalog ends.
+            let selection = CardMetadata.selection(in: inputs)
+            var offset = state.nextOffset
+            var fetched = 0
+            while true {
+                let added = appendProductCards(products.products, tree: tree, parentID: parentID)
+                offset += products.products.count
+                fetched += 1
+                let endReached = products.products.isEmpty
+                    || products.skip + products.products.count >= products.total
+                let showsSomething = added.contains {
+                    CardMetadata(filter: $0).isVisible(for: selection)
+                }
+                pokedexPagination[parentID]?.nextOffset = offset
+                pokedexPagination[parentID]?.endReached = endReached
+                if endReached || showsSomething || fetched >= 5 {
+                    return response
+                }
+                let next = try await sendHTTPRequest(
+                    SendHTTPRequest(
+                        method: "GET",
+                        path: endpoint,
+                        headers: [:],
+                        query: [
+                            offsetParameter: String(offset),
+                            "limit": String(max(limit, 1)),
+                        ],
+                        body: ""
+                    )
+                )
+                guard (200..<300).contains(next.status) else {
+                    return next
+                }
+                products = try JSONDecoder().decode(ProductPageResponse.self, from: next.body)
+            }
         }
         let page = try JSONDecoder().decode(
             PokedexPageResponse.self,
@@ -329,6 +488,89 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         )
     }
 
+    /// Appends product cards and returns the filter category of each one added.
+    @discardableResult
+    private func appendProductCards(
+        _ products: [Product],
+        tree: any NShiftEngineTree,
+        parentID: String
+    ) -> [String] {
+        guard let parent = tree.node(withID: parentID) else { return [] }
+        let children = parent.model.children
+        guard let template = children.last(where: { $0.name.rawValue == "Card" }) else {
+            return []
+        }
+        let existing = Set(children.compactMap { firstText(in: $0) })
+        let fresh = products.filter { existing.contains($0.title) == false }
+        let cards = fresh.map { makeProductCard(from: template, product: $0) }
+        guard cards.isEmpty == false else { return [] }
+        let insertionIndex = children.lastIndex(where: {
+            $0.name.rawValue == "Card"
+        }).map { $0 + 1 } ?? children.count
+        tree.insertChildren(
+            pluginID: parent.id.rawValue,
+            at: insertionIndex,
+            with: cards
+        )
+        return fresh.map { ProductCatalog.categoryName($0.category) }
+    }
+
+    private func makeProductCard(
+        from template: NShiftPluginModel,
+        product: Product
+    ) -> NShiftPluginModel {
+        let category = ProductCatalog.categoryName(product.category)
+        let badge = ProductCatalog.badge(for: product)
+        var textIndex = 0
+        func rewrite(_ model: NShiftPluginModel) -> NShiftPluginModel {
+            var next = model
+            switch model.name.rawValue {
+            case "Card":
+                next = model.replacingMetadata(
+                    AnyNShiftMetadata(CardMetadata(filter: category))
+                )
+            case "Text":
+                if let text = model.metadata?.unwrap(as: TextMetadata.self) {
+                    let value: String
+                    switch textIndex {
+                    case 0: value = product.title
+                    case 1: value = "\(category) · \(ProductCatalog.price(product.price))"
+                    default: value = text.text
+                    }
+                    textIndex += 1
+                    next = model.replacingMetadata(
+                        AnyNShiftMetadata(
+                            TextMetadata(
+                                text: value,
+                                style: text.style,
+                                weight: text.weight,
+                                color: text.color,
+                                alignment: text.alignment
+                            )
+                        )
+                    )
+                }
+            case "Badge":
+                next = model.replacingMetadata(
+                    AnyNShiftMetadata(BadgeMetadata(text: badge.text, variant: badge.variant))
+                )
+            default:
+                break
+            }
+            return next.replacingChildren(model.children.map(rewrite))
+        }
+        return rewrite(template)
+    }
+
+    private func firstText(in model: NShiftPluginModel) -> String? {
+        guard model.name.rawValue == "Card",
+              let text = firstModel(named: "Text", in: model)?
+                .metadata?.unwrap(as: TextMetadata.self) else {
+            return nil
+        }
+        return text.text
+    }
+
     private func makePokedexCard(
         from template: NShiftPluginModel,
         detail: PokedexDetail
@@ -339,17 +581,37 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
             detail: detail,
             textIndex: &textIndex
         )
-        return card.replacingEvents(
-            card.events.compactMap(\.event).map {
-                NShiftEventModel(
-                    name: "OpenBottomSheetEvent",
-                    version: "1.0.0",
-                    metadata: OpenBottomSheetEventMetadata(
-                        sheetID: pokedexSheetID(detail)
-                    ),
-                    trigger: $0.trigger
-                )
-            }
+        return navigatingToDetails(card, detail: detail)
+    }
+
+    /// Points the card's actions (and those of any button inside it) to the
+    /// details screen of `detail`. Kept out of `rewritePokedexModel`, which only
+    /// fills in data, so screens reusing it keep their own actions.
+    private func navigatingToDetails(
+        _ model: NShiftPluginModel,
+        detail: PokedexDetail
+    ) -> NShiftPluginModel {
+        var next = model
+        if model.name.rawValue == "Card" || model.name.rawValue == "Button" {
+            next = model.replacingEvents(
+                model.events.compactMap(\.event).map {
+                    NShiftEventModel(
+                        name: "NavigateEvent",
+                        version: "1.0.0",
+                        metadata: NavigateEventMetadata(
+                            screenName: "pokemon-details",
+                            parameters: [
+                                "resource": "pokemon",
+                                "id": String(detail.id),
+                            ]
+                        ),
+                        trigger: $0.trigger
+                    )
+                }
+            )
+        }
+        return next.replacingChildren(
+            model.children.map { navigatingToDetails($0, detail: detail) }
         )
     }
 
@@ -471,19 +733,6 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
                 return model
             }
             return model.replacingChildren(typeBadges(from: badge, detail: detail))
-        case "Button":
-            return model.replacingEvents(
-                model.events.compactMap(\.event).map {
-                    NShiftEventModel(
-                        name: "OpenBottomSheetEvent",
-                        version: "1.0.0",
-                        metadata: OpenBottomSheetEventMetadata(
-                            sheetID: pokedexSheetID(detail)
-                        ),
-                        trigger: $0.trigger
-                    )
-                }
-            )
         default:
             return model.replacingChildren(
                 model.children.map {

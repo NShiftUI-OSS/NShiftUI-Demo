@@ -110,6 +110,7 @@ struct SCNText: View {
                 )
             )
             .foregroundColor(ink)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

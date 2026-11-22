@@ -3,6 +3,30 @@ import NShiftUI
 @NShiftMetadata
 struct NavigateEventMetadata: NShiftMetadata, Decodable {
     let screenName: String?
+    let parameters: [String: String]
+
+    init(
+        screenName: String,
+        parameters: [String: String] = [:]
+    ) {
+        self.screenName = screenName
+        self.parameters = parameters
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        screenName = try container.decodeIfPresent(String.self, forKey: .screenName)
+            ?? ""
+        parameters = try container.decodeIfPresent(
+            [String: String].self,
+            forKey: .parameters
+        ) ?? [:]
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case screenName
+        case parameters
+    }
 }
 
 @NShiftEvent(
@@ -20,7 +44,10 @@ struct NavigateEvent: NShiftEvent {
             return
         }
         await MainActor.run {
-            navigator.push(screenName: screenName)
+            navigator.push(
+                screenName: screenName,
+                parameters: metadata.parameters
+            )
         }
         await dispatch(
             .onComplete,
@@ -91,6 +118,30 @@ struct BackNavigationEvent: NShiftEvent {
 @NShiftMetadata
 struct AsyncNavigateEventMetadata: NShiftMetadata, Decodable {
     let screenName: String?
+    let parameters: [String: String]
+
+    init(
+        screenName: String,
+        parameters: [String: String] = [:]
+    ) {
+        self.screenName = screenName
+        self.parameters = parameters
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        screenName = try container.decodeIfPresent(String.self, forKey: .screenName)
+            ?? ""
+        parameters = try container.decodeIfPresent(
+            [String: String].self,
+            forKey: .parameters
+        ) ?? [:]
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case screenName
+        case parameters
+    }
 }
 
 @NShiftEvent(
@@ -107,7 +158,10 @@ struct AsyncNavigateEvent: NShiftEvent {
               screenName.isEmpty == false else {
             return
         }
-        guard await navigator.pushAsync(screenName: screenName) else {
+        guard await navigator.pushAsync(
+            screenName: screenName,
+            parameters: metadata.parameters
+        ) else {
             return
         }
         await dispatch(

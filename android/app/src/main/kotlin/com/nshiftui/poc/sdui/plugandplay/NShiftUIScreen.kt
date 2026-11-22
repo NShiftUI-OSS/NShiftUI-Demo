@@ -9,7 +9,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.nshiftui.NShiftPluginModel
+import com.nshiftui.NShiftEngineTree
 import com.nshiftui.NShiftView
+import com.nshiftui.makeNShiftEngine
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nshiftui.NShiftConfig
 import com.nshiftui.poc.domain.protocols.FetchScreenUseCaseProtocol
 import com.nshiftui.poc.screens.ErrorScreen
@@ -21,9 +25,14 @@ import com.nshiftui.poc.sdui.plugins.scn.screen.LocalScreenBack
 import com.nshiftui.resolveOrThrow
 import kotlinx.coroutines.delay
 
+val LocalScreenRouteParameters = androidx.compose.runtime.staticCompositionLocalOf<Map<String, String>> {
+    emptyMap()
+}
+
 class Screen private constructor(
     internal val requestedURL: String?,
     internal val screenTitle: String?,
+    internal val routeParameters: Map<String, String>,
     internal val phase: Phase,
 ) {
     internal sealed interface Phase {
@@ -37,6 +46,7 @@ class Screen private constructor(
             Screen(
                 requestedURL = null,
                 screenTitle = null,
+                routeParameters = emptyMap(),
                 phase = Phase.Pending,
             )
     }
@@ -46,6 +56,9 @@ class Screen private constructor(
 
     fun title(value: String?): Screen =
         copy(screenTitle = value?.takeIf { it.isNotBlank() })
+
+    fun routeParameters(value: Map<String, String>): Screen =
+        copy(routeParameters = value)
 
     val isLoaded: Boolean
         get() = phase is Phase.Loaded
@@ -83,8 +96,9 @@ class Screen private constructor(
     private fun copy(
         requestedURL: String? = this.requestedURL,
         screenTitle: String? = this.screenTitle,
+        routeParameters: Map<String, String> = this.routeParameters,
         phase: Phase = this.phase,
-    ) = Screen(requestedURL, screenTitle, phase)
+    ) = Screen(requestedURL, screenTitle, routeParameters, phase)
 }
 
 @Composable
@@ -92,8 +106,9 @@ private fun ResolvedScreen(
     builder: Screen,
     onBack: (() -> Unit)?,
 ) {
+    val retained = viewModel<RetainedScreenState>(key = "nshift-screen:${builder.requestedURL}")
     var attempt by remember(builder.requestedURL) { mutableIntStateOf(0) }
-    var phase by remember(builder.requestedURL) { mutableStateOf(builder.phase) }
+    var phase by remember(builder.requestedURL) { mutableStateOf(retained.phase ?: builder.phase) }
     var retrying by remember(builder.requestedURL) { mutableStateOf(false) }
     val refresh = remember(builder.requestedURL) { ScreenRefreshObserver() }
     LaunchedEffect(builder.requestedURL, attempt) {
@@ -129,8 +144,30 @@ private fun ResolvedScreen(
         is Screen.Phase.Loaded -> CompositionLocalProvider(
             LocalScreenBack provides onBack,
             LocalScreenRefresh provides refresh,
+            LocalScreenRouteParameters provides builder.routeParameters,
         ) {
-            NShiftView(current.model)
+            retained.phase = current
+            NShiftView(retained.engine(current.model))
+        }
+    }
+}
+
+/**
+ * Keeps a resolved screen alive while its back stack entry exists, so coming
+ * back from another screen shows the same live tree (appended items, view
+ * model state) instead of reloading it from scratch.
+ */
+internal class RetainedScreenState : ViewModel() {
+    var phase: Screen.Phase? = null
+    private var model: NShiftPluginModel? = null
+    private var engine: NShiftEngineTree? = null
+
+    fun engine(model: NShiftPluginModel): NShiftEngineTree {
+        val current = engine
+        if (current != null && this.model === model) return current
+        return makeNShiftEngine(model).also {
+            this.model = model
+            engine = it
         }
     }
 }
