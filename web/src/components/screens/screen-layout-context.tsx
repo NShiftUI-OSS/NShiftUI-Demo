@@ -14,6 +14,7 @@ import {
   scrollFromDocument,
   sheetsFromDocument,
   tabBarFromDocument,
+  searchBarFromDocument,
   type PreviewSheet,
   type ScreenScrollPreview,
 } from '@/components/screens/rainbow-source'
@@ -43,6 +44,7 @@ type ScreenLayoutContextValue = {
   closeFlow: () => void
   sheets: PreviewSheet[]
   tabBar: ScreenLayoutNode | null
+  searchBar: ScreenLayoutNode | null
 }
 
 const ScreenLayoutContext = createContext<ScreenLayoutContextValue | null>(null)
@@ -52,6 +54,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
   const boundScreenRef = useRef<string | null>(null)
   const [layoutNodes, setLayoutNodes] = useState<ScreenLayoutNode[]>([])
   const [tabBarNode, setTabBarNode] = useState<ScreenLayoutNode | null>(null)
+  const [searchBarNode, setSearchBarNode] = useState<ScreenLayoutNode | null>(null)
   const [sheets, setSheets] = useState<PreviewSheet[]>([])
   const [rainbowSource, setRainbowSourceState] = useState('')
   const [previewError, setPreviewError] = useState(false)
@@ -95,6 +98,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
         replaceLayout(layoutFromRainbow(parsed))
         const document = readRainbowDocument(parsed)
         setTabBarNode(document ? tabBarFromDocument(document) : null)
+        setSearchBarNode(document ? searchBarFromDocument(document) : null)
         setSheets(document ? sheetsFromDocument(document) : [])
         setScroll(
           document
@@ -124,6 +128,7 @@ export function ScreenLayoutProvider({ children }: { children: ReactNode }) {
         closeFlow: () => setFlowFocus(null),
         sheets,
         tabBar: tabBarNode,
+        searchBar: searchBarNode,
       }}
     >
       {children}

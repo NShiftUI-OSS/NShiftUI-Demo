@@ -1,38 +1,17 @@
 package com.nshiftui.poc.sdui.plugins.scn.screen
 
-import com.nshiftui.AnyNShiftMetadata
 import com.nshiftui.NShiftEngine
-import com.nshiftui.NShiftEngineTree
-import com.nshiftui.NShiftEventName
-import com.nshiftui.NShiftPluginNode
-import com.nshiftui.NShiftPluginModel
 import com.nshiftui.NShiftPluginViewModel
-import com.nshiftui.poc.sdui.plugins.scn.avatar.AvatarMetadata
-import com.nshiftui.poc.sdui.plugins.scn.text.TextMetadata
 import com.nshiftui.poc.domain.protocols.SendHTTPRequestUseCaseProtocol
 import com.nshiftui.poc.sdui.observers.ScreenRefreshObserver
 import com.nshiftui.poc.services.requests.SendHTTPRequest
 import com.nshiftui.poc.services.responses.SendHTTPResponse
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
-import kotlinx.coroutines.sync.Mutex
-import com.nshiftui.poc.sdui.events.scn.closebottomsheetevent.CloseBottomSheetEventMetadata
-import com.nshiftui.poc.sdui.events.scn.navigateevent.NavigateEventMetadata
-import com.nshiftui.poc.sdui.plugins.scn.badge.BadgeMetadata
-import com.nshiftui.poc.sdui.plugins.scn.card.CardMetadata
-import com.nshiftui.poc.sdui.plugins.scn.sheet.SheetMetadata
-import java.util.UUID
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 data class ScreenBottomSheet(
     val id: String,
@@ -43,112 +22,6 @@ data class ScreenInput(
     val id: String,
     val value: String,
 )
-
-@Serializable
-private data class PokedexPageResponse(
-    val results: List<PokedexResult> = emptyList(),
-    val next: String? = null,
-)
-
-@Serializable
-private data class PokedexResult(
-    val name: String,
-    val url: String,
-)
-
-@Serializable
-private data class ProductPageResponse(
-    val products: List<Product>? = null,
-    val total: Int = 0,
-    val skip: Int = 0,
-)
-
-@Serializable
-private data class Product(
-    val title: String,
-    val category: String = "",
-    val price: Double = 0.0,
-    val stock: Int = 0,
-    val discountPercentage: Double = 0.0,
-)
-
-private object ProductCatalog {
-    fun categoryName(raw: String): String = when (raw) {
-        "laptops", "smartphones", "tablets", "mobile-accessories" -> "Tecnologia"
-        "beauty", "fragrances", "skin-care" -> "Beleza"
-        "furniture", "home-decoration", "kitchen-accessories" -> "Casa"
-        "groceries" -> "Mercado"
-        "sports-accessories" -> "Esportes"
-        "motorcycle", "vehicle" -> "Veículos"
-        "womens-bags" -> "Viagem"
-        else -> if (raw.startsWith("mens-") || raw.startsWith("womens-") || raw == "tops" || raw == "sunglasses") {
-            "Moda"
-        } else {
-            raw.replaceFirstChar { it.uppercase() }
-        }
-    }
-
-    fun price(value: Double): String =
-        "US$ " + String.format(java.util.Locale.US, "%.2f", value).replace('.', ',')
-
-    fun badge(product: Product): Pair<String, String> = when {
-        product.stock < 10 -> "Últimas unidades" to "destructive"
-        product.discountPercentage >= 15 -> "Oferta" to "default"
-        else -> "Em estoque" to "secondary"
-    }
-}
-
-@Serializable
-private data class PokedexDetail(
-    val id: Int,
-    val name: String,
-    val height: Int = 0,
-    val weight: Int = 0,
-    val types: List<PokedexTypeSlot> = emptyList(),
-)
-
-@Serializable
-private data class PokedexTypeSlot(
-    val slot: Int,
-    val type: PokedexNamed,
-)
-
-@Serializable
-private data class PokedexNamed(val name: String)
-
-private data class PokedexPaginationState(
-    val nextOffset: Int = 0,
-    val isLoading: Boolean = false,
-    val endReached: Boolean = false,
-)
-
-private val PokedexJson = Json { ignoreUnknownKeys = true }
-
-private object PokedexCatalog {
-    private val typeNames = mapOf(
-        "normal" to "Normal", "fire" to "Fogo", "water" to "Água",
-        "grass" to "Grama", "electric" to "Elétrico", "ice" to "Gelo",
-        "fighting" to "Lutador", "poison" to "Veneno", "ground" to "Terrestre",
-        "flying" to "Voador", "psychic" to "Psíquico", "bug" to "Inseto",
-        "rock" to "Pedra", "ghost" to "Fantasma", "dragon" to "Dragão",
-        "dark" to "Sombrio", "steel" to "Aço", "fairy" to "Fada",
-    )
-
-    fun typeName(raw: String): String =
-        typeNames[raw] ?: raw.replaceFirstChar { it.uppercase() }
-
-    fun number(id: Int): String = id.toString().padStart(3, '0')
-
-    fun imageURL(id: Int): String =
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png"
-
-    fun measure(value: Int, unit: String): String =
-        String.format(java.util.Locale("pt", "BR"), "%.1f %s", value / 10.0, unit)
-
-    fun displayName(raw: String): String = raw.replaceFirstChar { it.uppercase() }
-
-    fun sheetID(detail: PokedexDetail): String = "pokemon-${detail.id}-details"
-}
 
 interface ScreenSheetLayer {
     suspend fun openSheet(id: String): Boolean
@@ -172,9 +45,9 @@ class ScreenViewModel(
     val inputs: StateFlow<List<ScreenInput>> = inputState.asStateFlow()
     private val routeParametersState = MutableStateFlow<Map<String, String>>(emptyMap())
     val routeParameters: StateFlow<Map<String, String>> = routeParametersState.asStateFlow()
-    private val loadedRouteKeys = mutableSetOf<String>()
-    private val paginationMutex = Mutex()
-    private val pokedexPagination = java.util.WeakHashMap<NShiftPluginNode, PokedexPaginationState>()
+    /** Generic list state: datasets, pagination and `ForEach` filters by list id. */
+    val lists = ScreenLists()
+    private var didAppear = false
     var renderingEngine: NShiftEngine? = null
         private set
 
@@ -190,36 +63,17 @@ class ScreenViewModel(
         routeParametersState.value = parameters
     }
 
-    suspend fun loadRouteParameters(engine: NShiftEngine?) {
-        val parameters = routeParameters.value
-        val id = parameters["id"]?.toIntOrNull()
-        if (parameters["resource"] != "pokemon" || id == null) return
-        val tree = engine as? NShiftEngineTree ?: return
-        val container = tree.root.children.firstOrNull {
-            it.model.name.rawValue == "VerticalStack"
-        } ?: return
-        val key = "pokemon:$id"
-        if (!loadedRouteKeys.add(key)) return
-        try {
-            val response = sendHTTPRequest(
-                SendHTTPRequest(
-                    method = "GET",
-                    path = "https://pokeapi.co/api/v2/pokemon/$id",
-                    headers = emptyMap(),
-                    query = emptyMap(),
-                    body = "",
-                ),
-            )
-            val detail = PokedexJson.decodeFromString<PokedexDetail>(response.body)
-            var textIndex = 0
-            val children = container.model.children.map {
-                rewritePokedexModel(it, detail) { textIndex++ }
-            }
-            tree.replaceChildren(container.renderId.rawValue, children)
-            routeParametersState.value = routeParametersState.value.toMap()
-        } catch (_: Exception) {
-            loadedRouteKeys.remove(key)
-        }
+    /** Values templates can read: `{{route.x}}` and `{{input.x}}`. */
+    fun templateContext(): Map<String, Any?> = mapOf(
+        "route" to routeParametersState.value,
+        "input" to inputState.value.associate { it.id to it.value },
+    )
+
+    /** True only the first time, so `OnAppear` fires once per screen instance. */
+    fun markAppeared(): Boolean {
+        if (didAppear) return false
+        didAppear = true
+        return true
     }
 
     fun bind(refresh: ScreenRefreshObserver?) {
@@ -292,354 +146,5 @@ class ScreenViewModel(
 
     override suspend fun sendHTTPRequest(request: SendHTTPRequest): SendHTTPResponse {
         return http.execute(request)
-    }
-
-    suspend fun appendPage(
-        engine: NShiftEngine?,
-        parentID: String,
-        endpoint: String,
-        limit: Int,
-        offsetParameter: String = "offset",
-    ): SendHTTPResponse {
-        if (!paginationMutex.tryLock()) return SendHTTPResponse(status = 204, body = "")
-        val tree = engine as? NShiftEngineTree
-        val container = tree?.node(parentID)
-        try {
-            if (tree == null || container == null) {
-                return SendHTTPResponse(status = 204, body = "")
-            }
-            val state = pokedexPagination[container] ?: PokedexPaginationState()
-            if (state.isLoading || state.endReached) {
-                return SendHTTPResponse(status = 204, body = "")
-            }
-            pokedexPagination[container] = state.copy(isLoading = true)
-
-            val response = sendHTTPRequest(
-                SendHTTPRequest(
-                    method = "GET",
-                    path = endpoint,
-                    headers = emptyMap(),
-                    query = mapOf(
-                        offsetParameter to state.nextOffset.toString(),
-                        "limit" to limit.coerceAtLeast(1).toString(),
-                    ),
-                    body = "",
-                ),
-            )
-            if (response.status !in 200..299) return response
-            val productPage = runCatching {
-                PokedexJson.decodeFromString<ProductPageResponse>(response.body)
-            }.getOrNull()?.takeIf { it.products != null }
-            if (productPage != null) {
-                val selection = CardMetadata.selection(inputs.value)
-                var page: ProductPageResponse = productPage
-                var offset = state.nextOffset
-                var fetched = 0
-                while (true) {
-                    val products = page.products.orEmpty()
-                    val added = withContext(Dispatchers.Main) {
-                        appendProductCards(products, tree, parentID)
-                    }
-                    offset += products.size
-                    fetched += 1
-                    val endReached = products.isEmpty() || page.skip + products.size >= page.total
-                    val showsSomething = added.any { CardMetadata(filter = it).isVisible(selection) }
-                    pokedexPagination[container] = PokedexPaginationState(
-                        nextOffset = offset,
-                        isLoading = true,
-                        endReached = endReached,
-                    )
-                    if (endReached || showsSomething || fetched >= 5) return response
-                    val next = sendHTTPRequest(
-                        SendHTTPRequest(
-                            method = "GET",
-                            path = endpoint,
-                            headers = emptyMap(),
-                            query = mapOf(
-                                offsetParameter to offset.toString(),
-                                "limit" to limit.coerceAtLeast(1).toString(),
-                            ),
-                            body = "",
-                        ),
-                    )
-                    if (next.status !in 200..299) return next
-                    page = PokedexJson.decodeFromString<ProductPageResponse>(next.body)
-                }
-            }
-            val page = PokedexJson.decodeFromString<PokedexPageResponse>(response.body)
-            val details = coroutineScope {
-                page.results.map { result ->
-                    async {
-                        val detail = sendHTTPRequest(
-                            SendHTTPRequest(
-                                method = "GET",
-                                path = result.url,
-                                headers = emptyMap(),
-                                query = emptyMap(),
-                                body = "",
-                            ),
-                        )
-                        PokedexJson.decodeFromString<PokedexDetail>(detail.body)
-                    }
-                }.awaitAll()
-            }
-
-            withContext(Dispatchers.Main) {
-                appendPokedexCards(details, tree, parentID)
-            }
-
-            pokedexPagination[container] = PokedexPaginationState(
-                nextOffset = state.nextOffset + page.results.size,
-                endReached = page.next == null || page.results.isEmpty(),
-            )
-            return response
-        } finally {
-            if (container != null) {
-                pokedexPagination[container]?.let {
-                    pokedexPagination[container] = it.copy(isLoading = false)
-                }
-            }
-            paginationMutex.unlock()
-        }
-    }
-
-    private fun appendProductCards(
-        products: List<Product>,
-        tree: NShiftEngineTree,
-        parentID: String,
-    ): List<String> {
-        val parent = tree.node(parentID) ?: return emptyList()
-        val children = parent.model.children
-        val template = children.lastOrNull { it.name.rawValue == "Card" } ?: return emptyList()
-        val existing = children.mapNotNull(::firstCardText).toSet()
-        val fresh = products.filter { it.title !in existing }
-        val cards = fresh.map { makeProductCard(template, it) }
-        if (cards.isEmpty()) return emptyList()
-        val insertionIndex = children.indexOfLast { it.name.rawValue == "Card" }
-            .let { if (it >= 0) it + 1 else children.size }
-        tree.insertChildren(parent.renderId.rawValue, insertionIndex, cards)
-        return fresh.map { ProductCatalog.categoryName(it.category) }
-    }
-
-    private fun makeProductCard(template: NShiftPluginModel, product: Product): NShiftPluginModel {
-        val category = ProductCatalog.categoryName(product.category)
-        val (badgeText, badgeVariant) = ProductCatalog.badge(product)
-        var textIndex = 0
-        fun rewrite(model: NShiftPluginModel): NShiftPluginModel {
-            val next = when (model.name.rawValue) {
-                "Card" -> model.replacingMetadata(AnyNShiftMetadata(CardMetadata(filter = category)))
-                "Text" -> model.metadata?.unwrap<TextMetadata>()?.let { text ->
-                    val value = when (textIndex++) {
-                        0 -> product.title
-                        1 -> "$category · ${ProductCatalog.price(product.price)}"
-                        else -> text.text
-                    }
-                    model.replacingMetadata(AnyNShiftMetadata(text.copy(text = value)))
-                } ?: model
-                "Badge" -> model.replacingMetadata(
-                    AnyNShiftMetadata(BadgeMetadata(text = badgeText, variant = badgeVariant)),
-                )
-                else -> model
-            }
-            return next.replacingChildren(model.children.map(::rewrite))
-        }
-        return rewrite(template)
-    }
-
-    private fun firstCardText(model: NShiftPluginModel): String? {
-        if (model.name.rawValue != "Card") return null
-        return model.firstModel("Text")?.metadata?.unwrap<TextMetadata>()?.text
-    }
-
-    private fun appendPokedexCards(
-        details: List<PokedexDetail>,
-        tree: NShiftEngineTree,
-        parentID: String,
-    ) {
-        val parent = tree.node(parentID) ?: return
-        val children = parent.model.children
-        val template = children.firstOrNull(::isMultiTypeCard)
-            ?: children.firstOrNull { it.name.rawValue == "Card" }
-            ?: return
-        val existing = children.mapNotNull(::pokedexNumber).toSet()
-        val fresh = details.filter { PokedexCatalog.number(it.id) !in existing }
-        if (fresh.isEmpty()) return
-
-        val screen = tree.root
-        val sheetSlot = ScreenSlot.BottomSheet.slotName
-        val sheets = screen.model.slots[sheetSlot].orEmpty()
-        sheets.firstOrNull { it.name.rawValue == "Sheet" }?.let { sheetTemplate ->
-            tree.appendSlot(
-                screen.renderId.rawValue,
-                sheetSlot,
-                fresh.map { makePokedexSheet(sheetTemplate, template, it) },
-            )
-        }
-
-        val cards = fresh.map { makePokedexCard(template, it) }
-        val insertionIndex = children.indexOfLast { it.name.rawValue == "Card" }
-            .let { if (it >= 0) it + 1 else children.size }
-        tree.insertChildren(parent.renderId.rawValue, insertionIndex, cards)
-    }
-
-    private fun makePokedexCard(
-        template: NShiftPluginModel,
-        detail: PokedexDetail,
-    ): NShiftPluginModel {
-        var textIndex = 0
-        val card = rewritePokedexModel(template, detail) { textIndex++ }
-        return navigatingToDetails(card, detail)
-    }
-
-    private fun navigatingToDetails(
-        model: NShiftPluginModel,
-        detail: PokedexDetail,
-    ): NShiftPluginModel {
-        val events = if (model.name.rawValue == "Card" || model.name.rawValue == "Button") {
-            model.events.map { event ->
-                event.copy(
-                    id = UUID.randomUUID().toString(),
-                    name = NShiftEventName("NavigateEvent"),
-                    metadata = AnyNShiftMetadata(
-                        NavigateEventMetadata(
-                            screenName = "pokemon-details",
-                            parameters = mapOf(
-                                "resource" to "pokemon",
-                                "id" to detail.id.toString(),
-                            ),
-                        ),
-                    ),
-                    events = emptyList(),
-                )
-            }
-        } else {
-            model.events
-        }
-        return model.copy(
-            events = events,
-            children = model.children.map { navigatingToDetails(it, detail) },
-        )
-    }
-
-    private fun makePokedexSheet(
-        template: NShiftPluginModel,
-        card: NShiftPluginModel,
-        detail: PokedexDetail,
-    ): NShiftPluginModel {
-        val number = PokedexCatalog.number(detail.id)
-        val types = sortedTypes(detail).joinToString(" · ")
-        val lines = listOf(
-            "#$number · $types",
-            "Altura ${PokedexCatalog.measure(detail.height, "m")} · Peso ${PokedexCatalog.measure(detail.weight, "kg")}",
-        )
-        var textIndex = 0
-        val children = template.children.map { child ->
-            when (child.name.rawValue) {
-                "Text" -> {
-                    val text = child.metadata?.unwrap<TextMetadata>()
-                    if (text == null) {
-                        child
-                    } else {
-                        val line = lines.getOrNull(textIndex++) ?: text.text
-                        child.replacingMetadata(AnyNShiftMetadata(text.copy(text = line)))
-                    }
-                }
-                "Button" -> child.replacingEvents(
-                    child.events.map { event ->
-                        event.copy(
-                            id = UUID.randomUUID().toString(),
-                            name = NShiftEventName("CloseBottomSheetEvent"),
-                            metadata = AnyNShiftMetadata(
-                                CloseBottomSheetEventMetadata(sheetID = PokedexCatalog.sheetID(detail)),
-                            ),
-                            events = emptyList(),
-                        )
-                    },
-                )
-                else -> child
-            }
-        }
-        val avatar = card.firstModel("Avatar")?.let { model ->
-            var index = 0
-            rewritePokedexModel(model, detail) { index++ }
-        }
-        return template.copy(
-            id = PokedexCatalog.sheetID(detail),
-            metadata = AnyNShiftMetadata(SheetMetadata(title = PokedexCatalog.displayName(detail.name))),
-            children = listOfNotNull(avatar) + children,
-        )
-    }
-
-    private fun rewritePokedexModel(
-        model: NShiftPluginModel,
-        detail: PokedexDetail,
-        nextTextIndex: () -> Int,
-    ): NShiftPluginModel {
-        val number = PokedexCatalog.number(detail.id)
-        return when (model.name.rawValue) {
-            "Avatar" -> {
-                val avatar = model.metadata?.unwrap<AvatarMetadata>() ?: return model
-                model.replacingMetadata(
-                    AnyNShiftMetadata(
-                        avatar.copy(
-                            initials = number,
-                            imageURL = PokedexCatalog.imageURL(detail.id),
-                        ),
-                    ),
-                )
-            }
-            "Text" -> {
-                val text = model.metadata?.unwrap<TextMetadata>() ?: return model
-                val replacement = when (nextTextIndex()) {
-                    0 -> PokedexCatalog.displayName(detail.name)
-                    1 -> "#$number · PokeAPI"
-                    else -> text.text
-                }
-                model.replacingMetadata(AnyNShiftMetadata(text.copy(text = replacement)))
-            }
-            "Badge" -> typeBadges(model, detail).firstOrNull() ?: model
-            "HorizontalStack" -> if (isTypeStack(model)) {
-                model.replacingChildren(typeBadges(model.children.first(), detail))
-            } else {
-                model.replacingChildren(model.children.map { rewritePokedexModel(it, detail, nextTextIndex) })
-            }
-            else -> model.replacingChildren(model.children.map { rewritePokedexModel(it, detail, nextTextIndex) })
-        }
-    }
-
-    private fun sortedTypes(detail: PokedexDetail): List<String> =
-        detail.types.sortedBy { it.slot }.map { PokedexCatalog.typeName(it.type.name) }
-
-    private fun typeBadges(
-        badge: NShiftPluginModel,
-        detail: PokedexDetail,
-    ): List<NShiftPluginModel> =
-        sortedTypes(detail).mapIndexed { index, type ->
-            badge.replacingMetadata(
-                AnyNShiftMetadata(
-                    BadgeMetadata(text = type, variant = if (index == 0) "default" else "outline"),
-                ),
-            )
-        }
-
-    private fun isTypeStack(model: NShiftPluginModel): Boolean =
-        model.name.rawValue == "HorizontalStack" &&
-            model.children.isNotEmpty() &&
-            model.children.all { it.name.rawValue == "Badge" }
-
-    private fun isMultiTypeCard(model: NShiftPluginModel): Boolean {
-        fun contains(node: NShiftPluginModel): Boolean =
-            isTypeStack(node) || node.children.any(::contains)
-        return model.name.rawValue == "Card" && contains(model)
-    }
-
-    private fun pokedexNumber(model: NShiftPluginModel): String? {
-        if (model.name.rawValue != "Card") return null
-        return model.firstModel("Avatar")?.metadata?.unwrap<AvatarMetadata>()?.initials
-    }
-
-    private fun NShiftPluginModel.firstModel(name: String): NShiftPluginModel? {
-        if (this.name.rawValue == name) return this
-        return children.firstNotNullOfOrNull { it.firstModel(name) }
     }
 }

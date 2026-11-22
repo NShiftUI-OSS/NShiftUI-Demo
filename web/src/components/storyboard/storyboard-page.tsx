@@ -32,7 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { renderPreview } from '@/components/screens/preview'
 import { rootItemClass } from '@/components/screens/preview/plugin-layout'
-import { layoutFromRainbow, tabBarFromParsed } from '@/components/screens/rainbow-source'
+import { layoutFromRainbow, searchBarFromParsed, tabBarFromParsed } from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
 import { readScreenChrome } from '@/scn/screen-theme'
@@ -311,6 +311,7 @@ function ScreenPreview({
   const container = useNShift()
   const [nodes, setNodes] = useState<ScreenLayoutNode[] | null>(null)
   const [tabBar, setTabBar] = useState<ScreenLayoutNode | null>(null)
+  const [searchBar, setSearchBar] = useState<ScreenLayoutNode | null>(null)
   const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
@@ -327,6 +328,7 @@ function ScreenPreview({
       }
       setNodes(layout)
       setTabBar(tabBarFromParsed(parsed))
+      setSearchBar(searchBarFromParsed(parsed))
     })
     return () => {
       cancelled = true
@@ -335,7 +337,13 @@ function ScreenPreview({
 
   const chrome = readScreenChrome(screen.rainbow)
   return (
-    <ScreenFrame chrome={chrome} device={device} tabBar={tabBar} interactive={false}>
+    <ScreenFrame
+      chrome={chrome}
+      device={device}
+      tabBar={tabBar}
+      searchBar={searchBar ? <StoryboardLayoutNode node={searchBar} /> : null}
+      interactive={false}
+    >
       <div className="phone-scroll relative flex min-h-0 w-full flex-1 flex-col">
         {missing ? (
           <div className="flex min-h-0 flex-1 items-center justify-center px-5 text-center text-[10px]">

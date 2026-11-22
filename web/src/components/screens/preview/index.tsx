@@ -33,6 +33,8 @@ import { toggleGroupPreview } from '@/components/screens/preview/toggle-group-pr
 import { verticalListPreview } from '@/components/screens/preview/vertical-list-preview'
 import { verticalScrollPreview } from '@/components/screens/preview/vertical-scroll-preview'
 import { verticalStackPreview } from '@/components/screens/preview/vertical-stack-preview'
+import { forEachPreview } from '@/components/screens/preview/for-each-preview'
+import { searchBarPreview } from '@/components/screens/preview/search-bar-preview'
 import type {
   PreviewRenderProps,
   ScreenComponentDefinition,
@@ -54,6 +56,7 @@ const previewCatalog = [
   badgePreview,
   cardPreview,
   inputPreview,
+  searchBarPreview,
   textareaPreview,
   inputOtpPreview,
   fieldPreview,
@@ -77,6 +80,7 @@ const previewCatalog = [
   spinnerPreview,
   containerPreview,
   verticalStackPreview,
+  forEachPreview,
   horizontalStackPreview,
   layerStackPreview,
   verticalScrollPreview,

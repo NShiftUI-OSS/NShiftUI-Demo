@@ -160,6 +160,11 @@
 		E7F311000000000000000007 /* VerticalStackPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F310000000000000000007 /* VerticalStackPlugin.swift */; };
 		N10000000000000000000102 /* NShiftAppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = N10000000000000000000101 /* NShiftAppConfiguration.swift */; };
 		N10000000000000000000202 /* NShiftLaunchScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = N10000000000000000000201 /* NShiftLaunchScreen.swift */; };
+		CD8E68130B68788784EA3D9F /* ScreenLists.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C70EA3D8B96FFBE93835F3 /* ScreenLists.swift */; };
+		A1EEF293B8E979D1B6DDD276 /* ForEachPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E63E603299EB13C9371DF46 /* ForEachPlugin.swift */; };
+		DA3E6F77781FE27E73BF4453 /* UpdateListEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87E70F8E2A7B1F51D82C404 /* UpdateListEvent.swift */; };
+		91CB236C1EC2B9B553F590CA /* SCNSearchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E01B0B5B49BEB093B6F80C /* SCNSearchBar.swift */; };
+		2B9CFA6E091B5B369EFADA86 /* SearchBarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D68175BA8F62EC4CB65F7950 /* SearchBarPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -320,6 +325,11 @@
 		E7F310000000000000000006 /* VerticalScrollPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerticalScrollPlugin.swift; sourceTree = "<group>"; };
 		E7F310000000000000000007 /* VerticalStackPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerticalStackPlugin.swift; sourceTree = "<group>"; };
 		E7F310000000000000000099 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		92C70EA3D8B96FFBE93835F3 /* ScreenLists.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenLists.swift; sourceTree = "<group>"; };
+		5E63E603299EB13C9371DF46 /* ForEachPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForEachPlugin.swift; sourceTree = "<group>"; };
+		C87E70F8E2A7B1F51D82C404 /* UpdateListEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateListEvent.swift; sourceTree = "<group>"; };
+		B1E01B0B5B49BEB093B6F80C /* SCNSearchBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SCNSearchBar.swift; sourceTree = "<group>"; };
+		D68175BA8F62EC4CB65F7950 /* SearchBarPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBarPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -433,6 +443,7 @@
 		A1D5BD6C50E1217632996233 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				B1E01B0B5B49BEB093B6F80C /* SCNSearchBar.swift */,
 				0C89562147D78DFCA8F96F7D /* .gitkeep */,
 				DF64F87DEBFFF55F6ED9563B /* SCNAlert.swift */,
 				12A6277C0B661F9F0560F081 /* SCNAttachment.swift */,
@@ -975,6 +986,7 @@
 		E7F2000000000000000000A1 /* Screen */ = {
 			isa = PBXGroup;
 			children = (
+				92C70EA3D8B96FFBE93835F3 /* ScreenLists.swift */,
 				E7F200000000000000000071 /* ScreenPlugin.swift */,
 				E7F200000000000000000081 /* ScreenViewModel.swift */,
 			);
@@ -1048,6 +1060,7 @@
 		E7F3000000000000000000P1 /* Primitive */ = {
 			isa = PBXGroup;
 			children = (
+				17F87796405BB31F3C174B67 /* ForEach */,
 				E7F312000000000000000001 /* HorizontalList */,
 				E7F312000000000000000002 /* HorizontalScroll */,
 				E7F312000000000000000003 /* HorizontalStack */,
@@ -1062,6 +1075,7 @@
 		E7F3000000000000000000S1 /* SCN */ = {
 			isa = PBXGroup;
 			children = (
+				CD4AEB1EB5CA9DC61B08C51D /* SearchBar */,
 				E7F2000000000000000000A1 /* Screen */,
 				E7F2000000000000000000C1 /* TabBar */,
 				74F626BC72054AFD37708144 /* Alert */,
@@ -1105,6 +1119,7 @@
 		E7F3000000000000000000E1 /* SCN */ = {
 			isa = PBXGroup;
 			children = (
+				F7D0359EC9D4EDE7CEAF0C5E /* UpdateListEvent */,
 				C1F263530E27A2A3AB1C3A55 /* EventDispatch */,
 				38573FC9BFD03244CC9D2582 /* ChangePluginMetadataEvent */,
 				3365234E5ADA97CC6DE537AC /* ChangeEventMetadataEvent */,
@@ -1117,6 +1132,30 @@
 				C4A0E5D5E000000000000001 /* ChangeDSTheme */,
 			);
 			path = SCN;
+			sourceTree = "<group>";
+		};
+		17F87796405BB31F3C174B67 /* ForEach */ = {
+			isa = PBXGroup;
+			children = (
+				5E63E603299EB13C9371DF46 /* ForEachPlugin.swift */,
+			);
+			path = ForEach;
+			sourceTree = "<group>";
+		};
+		F7D0359EC9D4EDE7CEAF0C5E /* UpdateListEvent */ = {
+			isa = PBXGroup;
+			children = (
+				C87E70F8E2A7B1F51D82C404 /* UpdateListEvent.swift */,
+			);
+			path = UpdateListEvent;
+			sourceTree = "<group>";
+		};
+		CD4AEB1EB5CA9DC61B08C51D /* SearchBar */ = {
+			isa = PBXGroup;
+			children = (
+				D68175BA8F62EC4CB65F7950 /* SearchBarPlugin.swift */,
+			);
+			path = SearchBar;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1276,6 +1315,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2B9CFA6E091B5B369EFADA86 /* SearchBarPlugin.swift in Sources */,
+				91CB236C1EC2B9B553F590CA /* SCNSearchBar.swift in Sources */,
+				DA3E6F77781FE27E73BF4453 /* UpdateListEvent.swift in Sources */,
+				A1EEF293B8E979D1B6DDD276 /* ForEachPlugin.swift in Sources */,
+				CD8E68130B68788784EA3D9F /* ScreenLists.swift in Sources */,
 				C1D2E3F40516273849A5B6C7 /* View+Extensions.swift in Sources */,
 				A694B7B2EAB09ADCB21053E8 /* NShiftUIApp.swift in Sources */,
 				D10000000000000000000022 /* CatalogAssembly.swift in Sources */,

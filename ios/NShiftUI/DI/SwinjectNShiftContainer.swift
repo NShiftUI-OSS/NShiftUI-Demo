@@ -4,6 +4,10 @@ import Swinject
 
 final class SwinjectNShiftContainer: @unchecked Sendable, NShiftDependencyContainer {
     private let swinject: Container
+    /// Swinject containers are not thread-safe; events are created from
+    /// concurrent tasks (one per trigger), so every access is serialized.
+    /// Recursive because factories resolve their own dependencies.
+    private let lock = NSRecursiveLock()
 
     init(swinject: Container = Container()) {
         self.swinject = swinject
@@ -16,6 +20,8 @@ final class SwinjectNShiftContainer: @unchecked Sendable, NShiftDependencyContai
         argumentTypes: [Any.Type],
         factory: @escaping @Sendable ([Any]) -> Service?
     ) {
+        lock.lock()
+        defer { lock.unlock() }
         let key = Self.registrationKey(
             service: serviceType,
             name: name,
@@ -59,6 +65,8 @@ final class SwinjectNShiftContainer: @unchecked Sendable, NShiftDependencyContai
         argumentTypes: [Any.Type],
         arguments: [Any]
     ) -> Service? {
+        lock.lock()
+        defer { lock.unlock() }
         if serviceType == NShiftEngine.self,
            let current = NShiftRenderingEngine.current as? Service {
             return current

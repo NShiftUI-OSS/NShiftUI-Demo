@@ -10,6 +10,8 @@ extension NShiftTrigger {
     static let onPresent: NShiftTrigger = "onPresent"
     static let onFailure: NShiftTrigger = "onFailure"
     static let onScrollEndReached: NShiftTrigger = "onScrollEndReached"
+    static let onAppear: NShiftTrigger = "onAppear"
+    static let onSubmit: NShiftTrigger = "onSubmit"
 
     static func onStatusCode(_ statusCode: Int) -> NShiftTrigger? {
         try? NShiftTrigger(validating: "onStatusCode\(statusCode)")

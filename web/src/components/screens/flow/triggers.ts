@@ -1,5 +1,5 @@
 const pluginTriggers: Record<string, readonly string[]> = {
-  Screen: ['OnScrollEndReached'],
+  Screen: ['OnAppear', 'OnScrollEndReached'],
   Button: ['OnTap'],
   ButtonGroup: ['OnSelect'],
   Calendar: ['OnSelect'],
@@ -8,6 +8,7 @@ const pluginTriggers: Record<string, readonly string[]> = {
   Input: ['OnChange'],
   InputOTP: ['OnChange', 'OnComplete'],
   Radio: ['OnChange'],
+  SearchBar: ['OnChange', 'OnSubmit'],
   Select: ['OnSelect'],
   Sheet: ['OnPresent', 'OnDismiss'],
   Slider: ['OnChange'],

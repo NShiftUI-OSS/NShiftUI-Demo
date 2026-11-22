@@ -44,7 +44,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import com.nshiftui.poc.sdui.observers.LocalScreenRefresh
 import com.nshiftui.poc.sdui.plugins.primitive.StackLayoutMetadata
-import com.nshiftui.poc.sdui.plugins.scn.card.CardMetadata
+import com.nshiftui.poc.sdui.plugins.primitive.foreach.ForEachMetadata
+import com.nshiftui.poc.sdui.triggers.onAppear
 import com.nshiftui.poc.sdui.triggers.fire
 import com.nshiftui.poc.sdui.triggers.onScrollEndReached
 import kotlinx.coroutines.launch
@@ -136,6 +137,7 @@ enum class ScreenSlot(override val rawValue: String) : NShiftSlotKey {
     TabBar("tabBar"),
     ScrollHeader("ScrollHeader"),
     ScrollFooter("ScrollFooter"),
+    SearchBar("searchBar"),
 }
 
 val LocalScreenBack = compositionLocalOf<(() -> Unit)?> { null }
@@ -159,8 +161,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         viewModel.bindEngine(engine)
         val routeParameters = LocalScreenRouteParameters.current
         viewModel.bindRouteParameters(routeParameters)
-        LaunchedEffect(routeParameters) {
-            viewModel.loadRouteParameters(engine)
+        // Generic lifecycle trigger: the Rainbow decides what loading means.
+        LaunchedEffect(Unit) {
+            if (viewModel.markAppeared()) fire(NShiftTrigger.onAppear, scope)
         }
         val hosted = LocalTabBarHosted.current
         val slotTabs = tabBarItems(model.slots[ScreenSlot.TabBar.slotName].orEmpty(), hosted)
@@ -341,8 +344,18 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                 )
             }
         }
+        // The SearchBar slot stays pinned at the top, outside the scroll.
+        val hasSearchBar = model.slots[ScreenSlot.SearchBar.slotName].orEmpty().isNotEmpty()
+        androidx.compose.foundation.layout.Column(modifier) {
+        if (hasSearchBar) {
+            androidx.compose.foundation.layout.Box(
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+            ) {
+                slots(ScreenSlot.SearchBar)
+            }
+        }
         BoxWithConstraints(
-            modifier,
+            Modifier.fillMaxWidth().weight(1f),
             contentAlignment = Alignment.TopCenter,
         ) {
                 val scrolling = screen.scroll?.enabled == true || fastRefresh || isLazy
@@ -351,8 +364,16 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                         val stack = lazyRootStack()
                         val stackLayout = stack?.model?.metadata?.unwrap<StackLayoutMetadata>()
                         val inputs by viewModel.inputs.collectAsState()
-                        val itemNodes = (stack?.children ?: screenChildrenNodes())
-                            .filterNot { CardMetadata.isHidden(it.model, inputs) }
+                        // A ForEach is transparent in a lazy list: each generated item
+                        // becomes its own item, filtered by the ForEach filter.
+                        val itemNodes = (stack?.children ?: screenChildrenNodes()).flatMap { child ->
+                            val forEach = child.model.metadata?.unwrap<ForEachMetadata>()
+                            if (child.model.name.rawValue == "ForEach" && forEach != null) {
+                                child.children.filter { viewModel.lists.isVisible(it.model.id, forEach, inputs) }
+                            } else {
+                                listOf(child)
+                            }
+                        }
                         LazyColumn(
                             Modifier
                                 .fillMaxSize()
@@ -436,6 +457,7 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                     page()
                 }
                 slots(ScreenSlot.BottomSheet)
+        }
         }
     }
 

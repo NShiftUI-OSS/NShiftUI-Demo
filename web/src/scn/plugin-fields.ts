@@ -167,6 +167,19 @@ export const pluginFields: Partial<Record<PreviewPluginId, PluginField[]>> = {
   ],
   skeleton: [number('height', 'Altura', '16')],
   calendar: [number('selection', 'Data', '0', true)],
+  'for-each': [
+    text('source', 'Lista (id)', 'items', true),
+    number('spacing', 'Espaçamento', '12'),
+    text('filterInput', 'Input do filtro', ''),
+    text('filterPath', 'Campo filtrado', ''),
+    text('filterAll', 'Valor que mostra tudo', ''),
+    text('searchInput', 'Input da busca', ''),
+    text('searchPath', 'Campo buscado', ''),
+  ],
+  'search-bar': [
+    text('placeholder', 'Placeholder', 'Buscar'),
+    text('text', 'Texto inicial', ''),
+  ],
   'vertical-stack': [
     select('alignment', 'Alinhamento', ['leading', 'center', 'trailing'], 'leading'),
     number('spacing', 'Espaçamento', '0'),

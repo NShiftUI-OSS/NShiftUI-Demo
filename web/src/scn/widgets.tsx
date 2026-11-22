@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 
+import { ScnIconMark } from '@/scn/scn-icon'
+
 type TextStyle = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | 'xl2'
 type ButtonVariant = 'default' | 'outline' | 'secondary' | 'ghost' | 'destructive' | 'link'
 
@@ -58,6 +60,23 @@ export function ScnField({
   return (
     <div className="scn-field" data-placeholder={value ? undefined : 'true'}>
       {value || placeholder}
+    </div>
+  )
+}
+
+/** Search field (shadcn-style): search icon, placeholder or text, clear mark. */
+export function ScnSearchBar({
+  placeholder,
+  value,
+}: {
+  placeholder: string
+  value?: string
+}) {
+  return (
+    <div className="scn-field scn-search-bar" data-placeholder={value ? undefined : 'true'}>
+      <ScnIconMark name="search" size={16} />
+      <span className="scn-search-bar-text">{value || placeholder}</span>
+      {value ? <ScnIconMark name="x" size={16} /> : null}
     </div>
   )
 }

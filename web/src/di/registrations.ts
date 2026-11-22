@@ -39,6 +39,8 @@ import { toggleGroupMetadata } from '@/domain/plugins/previews/toggle-group-meta
 import { verticalListMetadata } from '@/domain/plugins/previews/vertical-list-metadata'
 import { verticalScrollMetadata } from '@/domain/plugins/previews/vertical-scroll-metadata'
 import { verticalStackMetadata } from '@/domain/plugins/previews/vertical-stack-metadata'
+import { forEachMetadata } from '@/domain/plugins/previews/for-each-metadata'
+import { searchBarMetadata } from '@/domain/plugins/previews/search-bar-metadata'
 import { NShiftTrigger } from '@/domain/triggers/nshift-trigger'
 import { NShiftVersion } from '@/domain/version/nshift-version'
 import type { NShiftEventModel } from '@/domain/events/nshift-event-model'
@@ -76,6 +78,8 @@ const previewPlugins = [
   { previewId: 'spinner', metadata: spinnerMetadata },
   { previewId: 'container', metadata: containerMetadata },
   { previewId: 'vertical-stack', metadata: verticalStackMetadata },
+  { previewId: 'for-each', metadata: forEachMetadata },
+  { previewId: 'search-bar', metadata: searchBarMetadata },
   { previewId: 'horizontal-stack', metadata: horizontalStackMetadata },
   { previewId: 'layer-stack', metadata: layerStackMetadata },
   { previewId: 'vertical-scroll', metadata: verticalScrollMetadata },

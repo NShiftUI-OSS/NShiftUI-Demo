@@ -13,15 +13,18 @@ export function ScreenFrame({
   chrome,
   device,
   tabBar = null,
+  searchBar = null,
   children,
 }: {
   chrome: ScreenChrome | null
   device: 'iphone' | 'android'
   tabBar?: ScreenLayoutNode | null
+  /** SearchBar slot, pinned below the navigation bar, outside the scroll. */
+  searchBar?: ReactNode
   children: ReactNode
   interactive?: boolean
 }) {
-  if (!chrome && !tabBar) return children
+  if (!chrome && !tabBar && !searchBar) return children
 
   return (
     <div
@@ -30,6 +33,11 @@ export function ScreenFrame({
     >
       {chrome && navigationBarVisible(chrome) ? (
         <ScreenNavBar chrome={chrome} device={device} />
+      ) : null}
+      {searchBar ? (
+        <div data-screen-search-bar="" className="shrink-0 px-4 pt-2 pb-1">
+          {searchBar}
+        </div>
       ) : null}
       <div
         className={cn(

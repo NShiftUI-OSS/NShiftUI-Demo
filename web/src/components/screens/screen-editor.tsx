@@ -663,7 +663,7 @@ function DevicePreview({
   device: 'iphone' | 'android'
   sheet: PreviewSheet | null
 }) {
-  const { layoutNodes, previewError, rainbowSource, scroll, tabBar } = useScreenLayout()
+  const { layoutNodes, previewError, rainbowSource, scroll, tabBar, searchBar } = useScreenLayout()
   const Frame = device === 'iphone' ? Iphone : Android
 
   return (
@@ -671,7 +671,12 @@ function DevicePreview({
       data-device-preview
       className={`${PHONE_HEIGHT_CLASS} w-auto shrink-0`}
     >
-      <ScreenFrame chrome={readScreenChrome(rainbowSource)} device={device} tabBar={tabBar}>
+      <ScreenFrame
+        chrome={readScreenChrome(rainbowSource)}
+        device={device}
+        tabBar={tabBar}
+        searchBar={searchBar ? <LayoutNodeView node={searchBar} /> : null}
+      >
         <div
           className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col select-none"
           data-preview-static=""

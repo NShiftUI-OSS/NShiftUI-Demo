@@ -5,7 +5,10 @@ import {
   SHEET_PLUGIN,
   TAB_BAR_PLUGIN,
   TAB_BAR_SLOT,
+  SEARCH_BAR_PLUGIN,
+  SEARCH_BAR_SLOT,
   isBottomSheetSlot,
+  isSearchBarSlot,
   isTabBarSlot,
   isTabPlugin,
 } from '@/domain/triggers/rainbow-trigger'
@@ -191,6 +194,25 @@ export function removeTabBar(document: RainbowDocument) {
   return true
 }
 
+export function findSearchBarNode(document: RainbowDocument) {
+  const screen = readFlowRoots(document).screen
+  const slot = screen?.slots?.find((item) => isSearchBarSlot(item.name.value))
+  return slot?.plugins.find((child) => nodeName(child) === SEARCH_BAR_PLUGIN) ?? null
+}
+
+export function removeSearchBar(document: RainbowDocument) {
+  const screen = readFlowRoots(document).screen
+  if (!screen?.slots) return false
+  const index = screen.slots.findIndex((item) => isSearchBarSlot(item.name.value))
+  if (index < 0) return false
+  screen.slots.splice(index, 1)
+  document.uses = document.uses.filter(
+    (declaration) =>
+      declaration.name.kind !== 'ident' || declaration.name.value !== SEARCH_BAR_PLUGIN,
+  )
+  return true
+}
+
 export function findTabBarNode(document: RainbowDocument) {
   const screen = readFlowRoots(document).screen
   const slotted = screen ? slottedTabBar(screen) : null
@@ -222,6 +244,20 @@ export function insertPlugin(
         leading: { comments: [] },
       })
     }
+    return true
+  }
+  if (plugin.name.rawValue === SEARCH_BAR_PLUGIN) {
+    // The SearchBar lives in its own Screen slot, pinned at the top.
+    if (findSearchBarNode(document)) return false
+    const screen = readFlowRoots(document).screen
+    if (!screen) return false
+    screen.slots ??= []
+    ensureUse(document, SEARCH_BAR_PLUGIN, plugin.version.rawValue)
+    screen.slots.push({
+      name: { kind: 'ident', value: SEARCH_BAR_SLOT },
+      plugins: [pluginToNode(plugin, false)],
+      leading: { comments: [] },
+    })
     return true
   }
   if (plugin.name.rawValue === 'Tab') {
@@ -574,6 +610,7 @@ export function updatePlacedPlugin(
 
 export function removePlacedPlugin(document: RainbowDocument, nodeId: string) {
   if (nodeId === 'tabBar') return removeTabBar(document)
+  if (nodeId === 'searchBar') return removeSearchBar(document)
   if (nodeId === 'screen') return false
   const source = parentList(document, nodeId)
   if (!source) return false
@@ -620,7 +657,7 @@ function appendFieldValues(
 }
 
 function parentList(document: RainbowDocument, nodeId: string) {
-  if (nodeId === 'sheet' || nodeId === 'tabBar') return null
+  if (nodeId === 'sheet' || nodeId === 'tabBar' || nodeId === 'searchBar') return null
   const rooted = nodeId.startsWith('sheet/')
     ? 'sheet'
     : nodeId.startsWith('tabBar/')
@@ -705,6 +742,7 @@ function nodeAt(
 ) {
   if (nodeId === 'sheet') return findSheet(document)
   if (nodeId === 'tabBar') return findTabBarNode(document)
+  if (nodeId === 'searchBar') return findSearchBarNode(document)
   const rooted = nodeId.startsWith('sheet/')
     ? 'sheet'
     : nodeId.startsWith('tabBar/')

@@ -162,6 +162,7 @@ enum ScreenSlot: NShiftSlotKey {
     case tabBar
     case scrollHeader
     case scrollFooter
+    case searchBar
 }
 
 private struct ScreenRouteParametersKey: EnvironmentKey {
@@ -211,8 +212,12 @@ struct ScreenPlugin: NShiftPluginContainer {
         .onChange(of: routeParameters) { parameters in
             viewModel.bindRouteParameters(parameters)
         }
-        .task(id: routeParameters) {
-            await viewModel.loadRouteParameters(engine: engine)
+        .task {
+            // Generic lifecycle trigger: the Rainbow decides what loading
+            // means (for example an `UpdateListEvent`).
+            if viewModel.markAppeared() {
+                fire(.onAppear, engine: engine, renderID: renderID)
+            }
         }
         .onChange(of: navigationBar) { bar in
             tabChromeReport?.report(bar)
@@ -304,8 +309,24 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
     }
 
+    /// The `SearchBar` slot stays pinned at the top, outside the scroll.
     @ViewBuilder
     private var screenBody: some View {
+        if slotModels(.searchBar).isEmpty {
+            scrollingBody
+        } else {
+            VStack(spacing: 0) {
+                slots(.searchBar)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+                scrollingBody
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var scrollingBody: some View {
         let fastRefresh = metadata.scroll?.fastRefresh == true
         let isLazy = metadata.scroll?.isLazy == true
         if isLazy {
@@ -692,16 +713,46 @@ private struct LazyStackRows<Row: View>: View {
         case .trailing?: .topTrailing
         default: .topLeading
         }
-        let visible = node.children.filter {
-            CardMetadata.isHidden($0.model, in: screen.inputs) == false
+        let firstID = node.children.first?.renderId
+        ForEach(node.children, id: \.renderId) { child in
+            if child.model.name.rawValue == "ForEach",
+               let forEach = child.model.metadata?.unwrap(as: ForEachMetadata.self) {
+                // A ForEach is transparent in a lazy list: each generated
+                // item becomes its own row.
+                ForEachRows(node: child, screen: screen, metadata: forEach) { item in
+                    row(
+                        NShiftNodeView(node: item, engine: engine, viewModel: viewModel),
+                        child.renderId == firstID && item.renderId == child.children.first?.renderId ? 0 : spacing,
+                        alignment
+                    )
+                }
+            } else {
+                row(
+                    NShiftNodeView(node: child, engine: engine, viewModel: viewModel),
+                    child.renderId == firstID ? 0 : spacing,
+                    alignment
+                )
+            }
         }
-        let firstID = visible.first?.renderId
-        ForEach(visible, id: \.renderId) { child in
-            row(
-                NShiftNodeView(node: child, engine: engine, viewModel: viewModel),
-                child.renderId == firstID ? 0 : spacing,
-                alignment
-            )
+    }
+}
+
+/// Rows of a `ForEach` inside a lazy List, observed so appended items become
+/// new rows and the filter input hides or shows them.
+private struct ForEachRows<Row: View>: View {
+    @ObservedObject var node: NShiftPluginNode
+    @ObservedObject var screen: ScreenViewModel
+    let metadata: ForEachMetadata
+    let row: (NShiftPluginNode) -> Row
+
+    var body: some View {
+        ForEach(
+            node.children.filter {
+                screen.lists.isVisible($0.model.id, filter: metadata, inputs: screen.inputs)
+            },
+            id: \.renderId
+        ) { item in
+            row(item)
         }
     }
 }

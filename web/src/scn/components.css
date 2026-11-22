@@ -529,3 +529,21 @@
   border-radius: var(--scn-radius-md);
   background: var(--scn-muted);
 }
+
+.scn-search-bar {
+  justify-content: flex-start;
+}
+
+.scn-search-bar > svg,
+.scn-search-bar > span:not(.scn-search-bar-text) {
+  flex-shrink: 0;
+  color: var(--scn-muted-foreground);
+}
+
+.scn-search-bar-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

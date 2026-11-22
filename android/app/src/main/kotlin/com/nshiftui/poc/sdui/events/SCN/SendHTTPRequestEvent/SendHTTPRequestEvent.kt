@@ -1,7 +1,6 @@
 package com.nshiftui.poc.sdui.events.scn.sendhttprequestevent
 
 import com.nshiftui.NShiftEventWithMetadata
-import com.nshiftui.NShiftEngine
 import com.nshiftui.NShiftMetadata
 import com.nshiftui.NShiftTrigger
 import com.nshiftui.macro.NShiftEvent
@@ -11,7 +10,6 @@ import com.nshiftui.poc.sdui.triggers.onComplete
 import com.nshiftui.poc.sdui.triggers.onFailure
 import com.nshiftui.poc.sdui.triggers.onStatusCode
 import com.nshiftui.poc.services.requests.SendHTTPRequest
-import com.nshiftui.resolveOrThrow
 
 @kotlinx.serialization.Serializable
 @com.nshiftui.NShiftJSONTagged(["body"])
@@ -21,9 +19,6 @@ data class SendHTTPRequestEventMetadata(
     val headers: Map<String, String> = emptyMap(),
     val query: Map<String, String> = emptyMap(),
     val body: String = "",
-    val appendTo: String = "",
-    val pageSize: Int = 3,
-    val offsetParameter: String = "offset",
 ) : NShiftMetadata
 
 @NShiftEvent(
@@ -43,25 +38,15 @@ class SendHTTPRequestEvent : NShiftEventWithMetadata<SendHTTPRequestEventMetadat
             return
         }
         val response = try {
-            if (metadata.appendTo.isNotBlank()) {
-                http.appendPage(
-                    engine = http.renderingEngine ?: resolver.resolveOrThrow<NShiftEngine>(),
-                    parentID = metadata.appendTo,
-                    endpoint = metadata.path,
-                    limit = metadata.pageSize,
-                    offsetParameter = metadata.offsetParameter.ifBlank { "offset" },
-                )
-            } else {
-                http.sendHTTPRequest(
-                    SendHTTPRequest(
-                        method = metadata.method,
-                        path = metadata.path,
-                        headers = metadata.headers,
-                        query = metadata.query,
-                        body = metadata.body,
-                    ),
-                )
-            }
+            http.sendHTTPRequest(
+                SendHTTPRequest(
+                    method = metadata.method,
+                    path = metadata.path,
+                    headers = metadata.headers,
+                    query = metadata.query,
+                    body = metadata.body,
+                ),
+            )
         } catch (_: Exception) {
             dispatch(this, NShiftTrigger.onFailure)
             return

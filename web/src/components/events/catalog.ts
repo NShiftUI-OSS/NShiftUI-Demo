@@ -9,6 +9,7 @@ import { backNavigationEventMetadata } from '@/domain/events/previews/back-navig
 import { navigateEventMetadata } from '@/domain/events/previews/navigate-metadata'
 import { openBottomSheetEventMetadata } from '@/domain/events/previews/open-bottom-sheet-metadata'
 import { sendHttpRequestEventMetadata } from '@/domain/events/previews/send-http-request-metadata'
+import { updateListEventMetadata } from '@/domain/events/previews/update-list-metadata'
 import type { PluginField } from '@/scn/plugin-fields'
 import { scnPresets } from '@/scn/presets'
 
@@ -112,10 +113,27 @@ export const flowEvents: FlowEventDefinition[] = [
     fields: [
       select('method', 'Método', ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
       text('path', 'Endpoint', '/', true),
-      text('appendTo', 'Acrescentar no container', ''),
-      number('pageSize', 'Itens por página', '3'),
-      text('offsetParameter', 'Parâmetro de offset', 'offset'),
       { ...text('body', 'Corpo'), embedded: 'JSON' },
+    ],
+  },
+  {
+    id: 'update-list',
+    name: updateListEventMetadata.kind,
+    description: 'Carrega JSON em uma lista por id; o ForEach dessa lista renderiza os itens',
+    triggers: ['OnComplete', 'OnFailure'],
+    metadata: updateListEventMetadata,
+    fields: [
+      text('listID', 'Lista (id)', '', true),
+      text('url', 'URL (aceita {{route.x}} e {{input.x}})', '', true),
+      text('itemsPath', 'Caminho dos itens no JSON', ''),
+      select('mode', 'Modo', ['append', 'replace']),
+      number('pageSize', 'Itens por página', '0'),
+      text('offsetParameter', 'Parâmetro de offset', 'offset'),
+      text('limitParameter', 'Parâmetro de limite', 'limit'),
+      text('nextPath', 'Caminho da próxima página', ''),
+      text('totalPath', 'Caminho do total', ''),
+      text('expandPath', 'Campo com URL de detalhe', ''),
+      number('maxPages', 'Páginas por disparo', '1'),
     ],
   },
   {

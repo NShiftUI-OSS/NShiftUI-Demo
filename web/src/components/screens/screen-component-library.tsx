@@ -27,6 +27,7 @@ const libraryGroups = [
   {
     label: 'Entrada',
     ids: [
+      'search-bar',
       'input',
       'textarea',
       'input-otp',
@@ -48,6 +49,7 @@ const libraryGroups = [
     ids: [
       'container',
       'vertical-stack',
+      'for-each',
       'horizontal-stack',
       'layer-stack',
       'vertical-scroll',

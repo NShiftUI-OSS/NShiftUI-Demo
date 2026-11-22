@@ -1,6 +1,7 @@
 export { backNavigationEventMetadata } from '@/domain/events/previews/back-navigation-metadata'
 export { changeDsThemeMetadata } from '@/domain/events/previews/change-ds-theme-metadata'
 export { navigateEventMetadata } from '@/domain/events/previews/navigate-metadata'
+export { updateListEventMetadata } from '@/domain/events/previews/update-list-metadata'
 export { sendHttpRequestEventMetadata } from '@/domain/events/previews/send-http-request-metadata'
 export { openBottomSheetEventMetadata } from '@/domain/events/previews/open-bottom-sheet-metadata'
 export { closeBottomSheetEventMetadata } from '@/domain/events/previews/close-bottom-sheet-metadata'

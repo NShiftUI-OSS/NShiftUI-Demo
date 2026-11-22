@@ -1,6 +1,7 @@
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { isBottomSheetSlot, isRainbowTrigger, isTabBarSlot, isTabPlugin } from '@/domain/triggers/rainbow-trigger'
 import {
+  findSearchBarNode,
   findSheet,
   findTabBarNode,
   readFlowRoots,
@@ -53,6 +54,8 @@ const previewIds: Record<string, string> = {
   Spinner: 'spinner',
   Container: 'container',
   VerticalStack: 'vertical-stack',
+  ForEach: 'for-each',
+  SearchBar: 'search-bar',
   HorizontalStack: 'horizontal-stack',
   LayerStack: 'layer-stack',
   VerticalScroll: 'vertical-scroll',
@@ -243,6 +246,16 @@ function plainValue(value: RainbowValue): string | number | boolean | string[] |
 
 function nodeName(node: RainbowNode) {
   return node.name.kind === 'ident' ? node.name.value : node.name.value
+}
+
+export function searchBarFromParsed(parsed: unknown): ScreenLayoutNode | null {
+  const document = readRainbowDocument(parsed)
+  return document ? searchBarFromDocument(document) : null
+}
+
+export function searchBarFromDocument(document: RainbowDocument): ScreenLayoutNode | null {
+  const bar = findSearchBarNode(document)
+  return bar ? toLayoutNode(bar, 'searchBar') : null
 }
 
 export function tabBarFromParsed(parsed: unknown): ScreenLayoutNode | null {

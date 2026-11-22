@@ -39,6 +39,14 @@ export {
   type TextMetadata,
 } from '@/domain/plugins/previews/text-metadata'
 export {
+  searchBarMetadata,
+  type SearchBarMetadata,
+} from '@/domain/plugins/previews/search-bar-metadata'
+export {
+  forEachMetadata,
+  type ForEachMetadata,
+} from '@/domain/plugins/previews/for-each-metadata'
+export {
   verticalStackMetadata,
   type VerticalStackMetadata,
 } from '@/domain/plugins/previews/vertical-stack-metadata'

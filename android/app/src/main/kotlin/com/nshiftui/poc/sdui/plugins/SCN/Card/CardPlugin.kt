@@ -23,53 +23,21 @@ import com.nshiftui.poc.sdui.triggers.onSelect
 import com.nshiftui.poc.sdui.triggers.onTap
 import com.nshiftui.poc.ui.components.SCNCard
 
-@kotlinx.serialization.Serializable
-data class CardMetadata(
-    val filter: String = "",
-) : NShiftMetadata {
-    fun isVisible(selection: String): Boolean =
-        filter.isBlank() ||
-            selection.equals("Todos", ignoreCase = true) ||
-            filter.equals(selection, ignoreCase = true)
-
-    companion object {
-        const val FILTER_INPUT_ID = "product-filter"
-
-        fun selection(inputs: List<ScreenInput>): String =
-            inputs.firstOrNull { it.id == FILTER_INPUT_ID }?.value ?: "Todos"
-
-        fun isHidden(model: NShiftPluginModel, inputs: List<ScreenInput>): Boolean {
-            if (model.name.rawValue != "Card") return false
-            val metadata = model.metadata?.unwrap<CardMetadata>() ?: return false
-            return !metadata.isVisible(selection(inputs))
-        }
-    }
-}
-
 @NShiftPluginMacro(
     name = "Card",
     version = "1.0.0",
-    metadata = CardMetadata::class,
 )
-class CardPlugin : NShiftPluginWithMetadata<CardMetadata>(
+class CardPlugin : NShiftPlugin(
     "Card",
     "1.0.0",
-    CardMetadata::class,
 ) {
     @Composable
     override fun Content() {
         val scope = rememberCoroutineScope()
-        val screen = optionalViewModel<ScreenViewModel>()
-        val inputs by (screen?.inputs ?: kotlinx.coroutines.flow.flowOf(emptyList())).collectAsState(emptyList())
-        val visible = metadata.isVisible(CardMetadata.selection(inputs))
-        if (visible) {
-            SCNCard(
-                onClick = { fire(NShiftTrigger.onTap, scope) },
-            ) {
-                children()
-            }
-        } else {
-            Spacer(Modifier.height(0.dp))
+        SCNCard(
+            onClick = { fire(NShiftTrigger.onTap, scope) },
+        ) {
+            children()
         }
     }
 }

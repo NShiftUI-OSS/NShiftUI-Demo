@@ -7,6 +7,12 @@ export const SHEET_PLUGIN = 'Sheet'
 export const TAB_BAR_SLOT = 'TabBar'
 export const TAB_BAR_PLUGIN = 'TabBar'
 export const TAB_PLUGIN = 'Tab'
+export const SEARCH_BAR_SLOT = 'SearchBar'
+export const SEARCH_BAR_PLUGIN = 'SearchBar'
+
+export function isSearchBarSlot(name: string) {
+  return name === SEARCH_BAR_SLOT
+}
 
 export function isBottomSheetSlot(name: string) {
   return name === BOTTOM_SHEET_SLOT

@@ -27,6 +27,8 @@ const fillsWidth = new Set([
   'vertical-list',
   'vertical-scroll',
   'vertical-stack',
+  'for-each',
+  'search-bar',
 ])
 
 export function layoutNumber(values: ChromeValues, key: string) {
