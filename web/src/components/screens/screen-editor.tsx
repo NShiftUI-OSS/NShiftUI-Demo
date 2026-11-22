@@ -663,7 +663,7 @@ function DevicePreview({
   device: 'iphone' | 'android'
   sheet: PreviewSheet | null
 }) {
-  const { layoutNodes, previewError, rainbowSource, scroll, tabBar, searchBar } = useScreenLayout()
+  const { layoutNodes, previewError, rainbowSource, scroll, tabBar, searchBar, floatingButton } = useScreenLayout()
   const Frame = device === 'iphone' ? Iphone : Android
 
   return (
@@ -677,6 +677,7 @@ function DevicePreview({
         tabBar={tabBar}
         searchBar={searchBar ? <LayoutNodeView node={searchBar} /> : null}
         searchBarInset={searchBar && searchBar.children.length > 0 ? 100 : 60}
+        floatingButton={floatingButton ? <LayoutNodeView node={floatingButton} /> : null}
       >
         <div
           className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col select-none"

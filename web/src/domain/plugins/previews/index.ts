@@ -50,3 +50,4 @@ export {
   verticalStackMetadata,
   type VerticalStackMetadata,
 } from '@/domain/plugins/previews/vertical-stack-metadata'
+export { floatingButtonMetadata, type FloatingButtonMetadata } from '@/domain/plugins/previews/floating-button-metadata'

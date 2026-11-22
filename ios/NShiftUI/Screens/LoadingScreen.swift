@@ -20,6 +20,7 @@ struct LoadingScreen: View {
 }
 
 struct StandaloneNavigationBar: ViewModifier {
+    @Environment(\.modalDismiss) private var modalDismiss
     let hosted: Bool
     let title: String
     var leading: SCNNavigationBarLeading = .none
@@ -28,6 +29,14 @@ struct StandaloneNavigationBar: ViewModifier {
     func body(content: Content) -> some View {
         if hosted {
             content
+        } else if let modalDismiss {
+            // A modal screen closes from the right; it has no back button.
+            content
+                .navigationBarBackButtonHidden(true)
+                .scnNavigationBar(
+                    title: title,
+                    trailing: .close(action: modalDismiss)
+                )
         } else {
             content
                 .navigationBarBackButtonHidden(true)
@@ -36,5 +45,17 @@ struct StandaloneNavigationBar: ViewModifier {
                     leading: leading
                 )
         }
+    }
+}
+
+private struct ModalDismissKey: EnvironmentKey {
+    static let defaultValue: (() -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    /// Set on screens presented with `presentation: "modal"`: closes the modal.
+    var modalDismiss: (() -> Void)? {
+        get { self[ModalDismissKey.self] }
+        set { self[ModalDismissKey.self] = newValue }
     }
 }

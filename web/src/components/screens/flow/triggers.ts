@@ -5,6 +5,7 @@ const pluginTriggers: Record<string, readonly string[]> = {
   Calendar: ['OnSelect'],
   Card: ['OnTap'],
   Checkbox: ['OnChange'],
+  FloatingButton: ['OnTap'],
   Input: ['OnChange'],
   InputOTP: ['OnChange', 'OnComplete'],
   Radio: ['OnChange'],

@@ -7,6 +7,7 @@ import {
   isTabPlugin,
 } from '@/domain/triggers/rainbow-trigger'
 import {
+  findFloatingButtonNode,
   findSearchBarNode,
   findSheet,
   findTabBarNode,
@@ -62,6 +63,7 @@ const previewIds: Record<string, string> = {
   VerticalStack: 'vertical-stack',
   ForEach: 'for-each',
   SearchBar: 'search-bar',
+  FloatingButton: 'floating-button',
   HorizontalStack: 'horizontal-stack',
   LayerStack: 'layer-stack',
   VerticalScroll: 'vertical-scroll',
@@ -271,6 +273,16 @@ export function searchBarFromParsed(parsed: unknown): ScreenLayoutNode | null {
 export function searchBarFromDocument(document: RainbowDocument): ScreenLayoutNode | null {
   const bar = findSearchBarNode(document)
   return bar ? toLayoutNode(bar, 'searchBar') : null
+}
+
+export function floatingButtonFromParsed(parsed: unknown): ScreenLayoutNode | null {
+  const document = readRainbowDocument(parsed)
+  return document ? floatingButtonFromDocument(document) : null
+}
+
+export function floatingButtonFromDocument(document: RainbowDocument): ScreenLayoutNode | null {
+  const button = findFloatingButtonNode(document)
+  return button ? toLayoutNode(button, 'floatingButton') : null
 }
 
 export function tabBarFromParsed(parsed: unknown): ScreenLayoutNode | null {

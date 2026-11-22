@@ -166,6 +166,12 @@
 		91CB236C1EC2B9B553F590CA /* SCNSearchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E01B0B5B49BEB093B6F80C /* SCNSearchBar.swift */; };
 		2B9CFA6E091B5B369EFADA86 /* SearchBarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D68175BA8F62EC4CB65F7950 /* SearchBarPlugin.swift */; };
 		06279A883A81E8F79A211CC5 /* ChangeTabEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99D718C0DFEB95CE4A911030 /* ChangeTabEvent.swift */; };
+		DB54284B2282079368953E2E /* CloseAppEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62844E045E64590B6BD10AC /* CloseAppEvent.swift */; };
+		96FB3EB241390B0907C025B5 /* AppListEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAFF05FDB0575B16591D329 /* AppListEvents.swift */; };
+		2D04ABA436858A62ADF5F71B /* ShowSuccessEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A659177F2CC9AE40793A13B2 /* ShowSuccessEvent.swift */; };
+		3A43C7AB4DA7EA2B9D5CE607 /* AppLists.swift in Sources */ = {isa = PBXBuildFile; fileRef = B622B6EFAF58DE02F4BD0D65 /* AppLists.swift */; };
+		10A2AB57CFC145453CC11ADF /* SCNFloatingButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2561F877C039D0727A0FC6 /* SCNFloatingButton.swift */; };
+		4C6A27A92B94DB14CA21F40D /* FloatingButtonPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DDD2A1CC64A0D9E96883C0A /* FloatingButtonPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -332,6 +338,12 @@
 		B1E01B0B5B49BEB093B6F80C /* SCNSearchBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SCNSearchBar.swift; sourceTree = "<group>"; };
 		D68175BA8F62EC4CB65F7950 /* SearchBarPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBarPlugin.swift; sourceTree = "<group>"; };
 		99D718C0DFEB95CE4A911030 /* ChangeTabEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangeTabEvent.swift; sourceTree = "<group>"; };
+		A62844E045E64590B6BD10AC /* CloseAppEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloseAppEvent.swift; sourceTree = "<group>"; };
+		0BAFF05FDB0575B16591D329 /* AppListEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppListEvents.swift; sourceTree = "<group>"; };
+		A659177F2CC9AE40793A13B2 /* ShowSuccessEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowSuccessEvent.swift; sourceTree = "<group>"; };
+		B622B6EFAF58DE02F4BD0D65 /* AppLists.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLists.swift; sourceTree = "<group>"; };
+		9E2561F877C039D0727A0FC6 /* SCNFloatingButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SCNFloatingButton.swift; sourceTree = "<group>"; };
+		8DDD2A1CC64A0D9E96883C0A /* FloatingButtonPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingButtonPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -445,6 +457,7 @@
 		A1D5BD6C50E1217632996233 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				9E2561F877C039D0727A0FC6 /* SCNFloatingButton.swift */,
 				B1E01B0B5B49BEB093B6F80C /* SCNSearchBar.swift */,
 				0C89562147D78DFCA8F96F7D /* .gitkeep */,
 				DF64F87DEBFFF55F6ED9563B /* SCNAlert.swift */,
@@ -988,6 +1001,7 @@
 		E7F2000000000000000000A1 /* Screen */ = {
 			isa = PBXGroup;
 			children = (
+				B622B6EFAF58DE02F4BD0D65 /* AppLists.swift */,
 				92C70EA3D8B96FFBE93835F3 /* ScreenLists.swift */,
 				E7F200000000000000000071 /* ScreenPlugin.swift */,
 				E7F200000000000000000081 /* ScreenViewModel.swift */,
@@ -1077,6 +1091,7 @@
 		E7F3000000000000000000S1 /* SCN */ = {
 			isa = PBXGroup;
 			children = (
+				656DF8BA412E35FBE5AE4F6C /* FloatingButton */,
 				CD4AEB1EB5CA9DC61B08C51D /* SearchBar */,
 				E7F2000000000000000000A1 /* Screen */,
 				E7F2000000000000000000C1 /* TabBar */,
@@ -1121,6 +1136,9 @@
 		E7F3000000000000000000E1 /* SCN */ = {
 			isa = PBXGroup;
 			children = (
+				CE844D41D64EDF5972DCE6A2 /* ShowSuccessEvent */,
+				D7FE87693608270019813135 /* AppListEvents */,
+				B6BAD77824B50908D728B538 /* CloseAppEvent */,
 				77F95BBD951B4227D024F7F3 /* ChangeTabEvent */,
 				F7D0359EC9D4EDE7CEAF0C5E /* UpdateListEvent */,
 				C1F263530E27A2A3AB1C3A55 /* EventDispatch */,
@@ -1167,6 +1185,38 @@
 				99D718C0DFEB95CE4A911030 /* ChangeTabEvent.swift */,
 			);
 			path = ChangeTabEvent;
+			sourceTree = "<group>";
+		};
+		B6BAD77824B50908D728B538 /* CloseAppEvent */ = {
+			isa = PBXGroup;
+			children = (
+				A62844E045E64590B6BD10AC /* CloseAppEvent.swift */,
+			);
+			path = CloseAppEvent;
+			sourceTree = "<group>";
+		};
+		D7FE87693608270019813135 /* AppListEvents */ = {
+			isa = PBXGroup;
+			children = (
+				0BAFF05FDB0575B16591D329 /* AppListEvents.swift */,
+			);
+			path = AppListEvents;
+			sourceTree = "<group>";
+		};
+		CE844D41D64EDF5972DCE6A2 /* ShowSuccessEvent */ = {
+			isa = PBXGroup;
+			children = (
+				A659177F2CC9AE40793A13B2 /* ShowSuccessEvent.swift */,
+			);
+			path = ShowSuccessEvent;
+			sourceTree = "<group>";
+		};
+		656DF8BA412E35FBE5AE4F6C /* FloatingButton */ = {
+			isa = PBXGroup;
+			children = (
+				8DDD2A1CC64A0D9E96883C0A /* FloatingButtonPlugin.swift */,
+			);
+			path = FloatingButton;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1326,6 +1376,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C6A27A92B94DB14CA21F40D /* FloatingButtonPlugin.swift in Sources */,
+				10A2AB57CFC145453CC11ADF /* SCNFloatingButton.swift in Sources */,
+				3A43C7AB4DA7EA2B9D5CE607 /* AppLists.swift in Sources */,
+				2D04ABA436858A62ADF5F71B /* ShowSuccessEvent.swift in Sources */,
+				96FB3EB241390B0907C025B5 /* AppListEvents.swift in Sources */,
+				DB54284B2282079368953E2E /* CloseAppEvent.swift in Sources */,
 				06279A883A81E8F79A211CC5 /* ChangeTabEvent.swift in Sources */,
 				2B9CFA6E091B5B369EFADA86 /* SearchBarPlugin.swift in Sources */,
 				91CB236C1EC2B9B553F590CA /* SCNSearchBar.swift in Sources */,

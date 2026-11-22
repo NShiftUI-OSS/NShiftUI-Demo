@@ -35,6 +35,7 @@ import { verticalScrollPreview } from '@/components/screens/preview/vertical-scr
 import { verticalStackPreview } from '@/components/screens/preview/vertical-stack-preview'
 import { forEachPreview } from '@/components/screens/preview/for-each-preview'
 import { searchBarPreview } from '@/components/screens/preview/search-bar-preview'
+import { floatingButtonPreview } from '@/components/screens/preview/floating-button-preview'
 import type {
   PreviewRenderProps,
   ScreenComponentDefinition,
@@ -57,6 +58,7 @@ const previewCatalog = [
   cardPreview,
   inputPreview,
   searchBarPreview,
+  floatingButtonPreview,
   textareaPreview,
   inputOtpPreview,
   fieldPreview,

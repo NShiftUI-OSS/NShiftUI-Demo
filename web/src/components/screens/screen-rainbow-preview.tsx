@@ -15,6 +15,7 @@ import {
   scrollFromParsed,
   tabBarFromParsed,
   searchBarFromParsed,
+  floatingButtonFromParsed,
 } from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { useNShift } from '@/di/nshift-provider'
@@ -63,6 +64,7 @@ function RainbowPreviewBody({
   const [scroll, setScroll] = useState<ReturnType<typeof scrollFromParsed>>(null)
   const [tabBar, setTabBar] = useState<ScreenLayoutNode | null>(null)
   const [searchBar, setSearchBar] = useState<ScreenLayoutNode | null>(null)
+  const [floatingButton, setFloatingButton] = useState<ScreenLayoutNode | null>(null)
   const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
@@ -83,6 +85,7 @@ function RainbowPreviewBody({
       setScroll(scrollFromParsed(parsed))
       setTabBar(tabBarFromParsed(parsed))
       setSearchBar(searchBarFromParsed(parsed))
+      setFloatingButton(floatingButtonFromParsed(parsed))
     })
     return () => {
       cancelled = true
@@ -96,6 +99,7 @@ function RainbowPreviewBody({
       tabBar={tabBar}
       searchBar={searchBar ? <PreviewNode node={searchBar} /> : null}
       searchBarInset={searchBar && searchBar.children.length > 0 ? 100 : 60}
+      floatingButton={floatingButton ? <PreviewNode node={floatingButton} /> : null}
       interactive={false}
     >
       <div className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col">

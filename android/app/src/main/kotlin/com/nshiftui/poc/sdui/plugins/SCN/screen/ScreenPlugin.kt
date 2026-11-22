@@ -70,6 +70,7 @@ import com.nshiftui.NShiftRainbowMetadataDecodingContext
 import com.nshiftui.NShiftRainbowPluginMetadata
 import com.nshiftui.NShiftSlotKey
 import com.nshiftui.macro.NShiftPlugin
+import com.nshiftui.poc.screens.LocalModalPresentation
 import com.nshiftui.poc.theme.LocalSCNTheme
 import com.nshiftui.poc.theme.SCNFont
 import com.nshiftui.poc.theme.SCNTheme
@@ -139,6 +140,7 @@ enum class ScreenSlot(override val rawValue: String) : NShiftSlotKey {
     ScrollHeader("ScrollHeader"),
     ScrollFooter("ScrollFooter"),
     SearchBar("searchBar"),
+    FloatingButton("floatingButton"),
 }
 
 val LocalScreenBack = compositionLocalOf<(() -> Unit)?> { null }
@@ -165,6 +167,13 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         // Generic lifecycle trigger: the Rainbow decides what loading means.
         LaunchedEffect(Unit) {
             if (viewModel.markAppeared()) fire(NShiftTrigger.onAppear, scope)
+        }
+        // App-scoped lists (a cart, for example) are rendered and kept in sync
+        // while the screen is shown.
+        LaunchedEffect(Unit) {
+            AppLists.lists.collect { lists ->
+                viewModel.lists.showAppLists(lists, requireEngineTree(), viewModel)
+            }
         }
         val hosted = LocalTabBarHosted.current
         val slotTabs = tabBarItems(model.slots[ScreenSlot.TabBar.slotName].orEmpty(), hosted)
@@ -352,6 +361,8 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         val density = androidx.compose.ui.platform.LocalDensity.current
         var searchBarHeight by remember { mutableStateOf(0.dp) }
         val topInset = if (hasSearchBar) searchBarHeight else 0.dp
+        val hasFloatingButton = model.slots[ScreenSlot.FloatingButton.slotName].orEmpty().isNotEmpty()
+        val bottomInset = if (hasFloatingButton) 88.dp else 0.dp
         Box(modifier) {
         BoxWithConstraints(
             Modifier.fillMaxSize(),
@@ -382,7 +393,7 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                                 top = 16.dp + topInset,
                                 start = 16.dp,
                                 end = 16.dp,
-                                bottom = 16.dp,
+                                bottom = 16.dp + bottomInset,
                             ),
                             horizontalAlignment = stackLayout?.horizontalAlignment()
                                 ?: Alignment.CenterHorizontally,
@@ -468,6 +479,16 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                 slots(ScreenSlot.SearchBar)
             }
         }
+        // The FloatingButton slot floats over the content at the bottom end.
+        if (hasFloatingButton) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 16.dp),
+            ) {
+                slots(ScreenSlot.FloatingButton)
+            }
+        }
         }
     }
 
@@ -524,7 +545,7 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
 private fun AndroidNavigationBar(navigationBar: ScreenNavigationBarMetadata) {
     val theme = LocalSCNTheme.current
     val onBack = LocalScreenBack.current
-    val leading = leadingIcon(navigationBar, onBack)
+    val leading = leadingIcon(navigationBar, onBack, LocalModalPresentation.current)
     val trailing = trailingIcon(navigationBar)
     val container = barColor(navigationBar.background, theme)
     Column(
@@ -563,7 +584,9 @@ private fun AndroidNavigationBar(navigationBar: ScreenNavigationBarMetadata) {
                 }
                 Spacer(Modifier.weight(1f))
                 if (trailing != null) {
-                    BarButton(trailing, onClick = {})
+                    BarButton(trailing) {
+                        if (navigationBar.trailing == "close") onBack?.invoke()
+                    }
                 }
             }
             if (navigationBar.centerIcon.isNotEmpty()) {
@@ -596,12 +619,17 @@ private fun BarButton(icon: String, onClick: () -> Unit) {
     }
 }
 
-private fun leadingIcon(navigationBar: ScreenNavigationBarMetadata, onBack: (() -> Unit)?): String? {
+private fun leadingIcon(
+    navigationBar: ScreenNavigationBarMetadata,
+    onBack: (() -> Unit)?,
+    modal: Boolean,
+): String? {
     if (navigationBar.leadingIcon.isNotBlank()) return navigationBar.leadingIcon
     return when (navigationBar.leading) {
         "none" -> null
         "back", "button" -> "arrow-left"
-        else -> if (onBack != null) "arrow-left" else null
+        // `auto`: a modal screen closes from the right, never goes back.
+        else -> if (onBack != null && !modal) "arrow-left" else null
     }
 }
 

@@ -107,6 +107,25 @@ struct SCNButton: View {
         self.action = action
     }
 
+    /// Icon followed by the title (shadcn's leading-icon button).
+    init(
+        title: String,
+        icon: SCNIconName,
+        variant: Variant = .default,
+        size: Size = .default,
+        isEnabled: Bool = true,
+        isGrouped: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.icon = icon
+        self.variant = variant
+        self.size = size
+        self.isEnabled = isEnabled
+        self.isGrouped = isGrouped
+        self.action = action
+    }
+
     init(
         icon: SCNIconName,
         variant: Variant = .default,
@@ -127,7 +146,21 @@ struct SCNButton: View {
     var body: some View {
         Button(action: action) {
             Group {
-                if let icon {
+                if let icon, title.isEmpty == false {
+                    HStack(spacing: theme.spacing.s2) {
+                        SCNIcon(
+                            icon,
+                            size: theme.spacing.s4,
+                            color: iconColor
+                        )
+                        SCNText(
+                            title,
+                            style: textStyle,
+                            weight: .medium,
+                            color: textColor
+                        )
+                    }
+                } else if let icon {
                     SCNIcon(
                         icon,
                         size: theme.spacing.s4,

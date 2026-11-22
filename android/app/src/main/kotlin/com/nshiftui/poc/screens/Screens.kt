@@ -13,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -27,6 +28,9 @@ import com.nshiftui.poc.ui.components.SCNSpinner
 import com.nshiftui.poc.ui.components.SCNText
 import com.nshiftui.poc.ui.components.SCNTextColor
 import com.nshiftui.poc.ui.components.SCNTextStyle
+
+/** True on screens presented with `presentation: "modal"`. */
+val LocalModalPresentation = compositionLocalOf { false }
 
 @Composable
 fun NShiftLaunchScreen() {
@@ -112,6 +116,8 @@ private fun ScreenBar(
     content: @Composable () -> Unit,
 ) {
     val colors = LocalSCNTheme.current.palette
+    // A modal screen closes from the right; it has no back button.
+    val modal = LocalModalPresentation.current
     Scaffold(
         containerColor = colors.background,
         topBar = {
@@ -121,8 +127,24 @@ private fun ScreenBar(
                         SCNText(title, weight = FontWeight.SemiBold)
                     }
                 },
+                actions = {
+                    if (modal && onBack != null) {
+                        Box(
+                            Modifier
+                                .size(SCNSpace.s11)
+                                .clickable(onClick = onBack),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            SCNIcon(
+                                "x",
+                                size = SCNSpace.s5,
+                                tint = colors.foreground,
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
-                    if (onBack != null) {
+                    if (!modal && onBack != null) {
                         Box(
                             Modifier
                                 .size(SCNSpace.s11)

@@ -30,6 +30,11 @@ const slotsByPlugin: Record<string, PluginSlot[]> = {
       name: 'Search bar',
       description: 'Busca flutuante no topo; o conteúdo rola por baixo dela.',
     },
+    {
+      id: 'floatingButton',
+      name: 'Floating button',
+      description: 'Botão redondo flutuante no canto inferior direito, sobre o conteúdo.',
+    },
   ],
 }
 

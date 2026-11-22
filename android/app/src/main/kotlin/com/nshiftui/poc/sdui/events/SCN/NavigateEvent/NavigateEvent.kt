@@ -15,6 +15,8 @@ import kotlinx.coroutines.withContext
 data class NavigateEventMetadata(
     val screenName: String? = null,
     val parameters: Map<String, String> = emptyMap(),
+    /** `push` (default) or `modal`. */
+    val presentation: String = "push",
 ) : NShiftMetadata
 
 @NShiftEvent(
@@ -31,7 +33,11 @@ class NavigateEvent : NShiftEventWithMetadata<NavigateEventMetadata>(
         val navigator = resolver.resolveOrThrow<AppNavigator>()
         val screenName = metadata.screenName?.takeIf { it.isNotBlank() } ?: return
         withContext(Dispatchers.Main) {
-            navigator.pushScreen(screenName, metadata.parameters)
+            if (metadata.presentation.removePrefix(".") == "modal") {
+                navigator.presentModal(screenName, metadata.parameters)
+            } else {
+                navigator.pushScreen(screenName, metadata.parameters)
+            }
         }
         dispatch(this, NShiftTrigger.onComplete)
     }

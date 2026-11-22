@@ -163,6 +163,7 @@ enum ScreenSlot: NShiftSlotKey {
     case scrollHeader
     case scrollFooter
     case searchBar
+    case floatingButton
 }
 
 private struct ScreenRouteParametersKey: EnvironmentKey {
@@ -188,6 +189,7 @@ struct ScreenPlugin: NShiftPluginContainer {
     @Environment(\.screenRouteParameters) private var routeParameters
     @Environment(\.screenRefresh) private var screenRefresh
     @Environment(\.tabBarHosted) private var tabBarHosted
+    @Environment(\.modalDismiss) private var modalDismiss
     @Environment(\.tabChromeReport) private var tabChromeReport
     @StateObject private var scrollEnd = ScrollEndState()
     @State private var chromeByRoute: [String: ScreenNavigationBarMetadata] = [:]
@@ -214,6 +216,9 @@ struct ScreenPlugin: NShiftPluginContainer {
         .task {
             // Generic lifecycle trigger: the Rainbow decides what loading
             // means (for example an `UpdateListEvent`).
+            if let tree = engine as? any NShiftEngineTree {
+                viewModel.bindAppLists(tree: tree)
+            }
             if viewModel.markAppeared() {
                 fire(.onAppear, engine: engine, renderID: renderID)
             }
@@ -314,14 +319,30 @@ struct ScreenPlugin: NShiftPluginContainer {
     @ViewBuilder
     private var screenBody: some View {
         if slotModels(.searchBar).isEmpty {
-            scrollingBody
+            floatingBody
         } else {
-            scrollingBody
+            floatingBody
                 .safeAreaInset(edge: .top, spacing: 0) {
                     slots(.searchBar)
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
                         .padding(.bottom, 8)
+                }
+        }
+    }
+
+    /// The `FloatingButton` slot floats over the content at the bottom
+    /// trailing corner, above the tab bar and the home indicator.
+    @ViewBuilder
+    private var floatingBody: some View {
+        if slotModels(.floatingButton).isEmpty {
+            scrollingBody
+        } else {
+            scrollingBody
+                .overlay(alignment: .bottomTrailing) {
+                    slots(.floatingButton)
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 16)
                 }
         }
     }
@@ -524,7 +545,7 @@ struct ScreenPlugin: NShiftPluginContainer {
             // Back only where there is somewhere to go back to: never on a
             // screen hosted as a tab, and only when the stack can pop.
             let canPop = resolver.resolve(AppNavigator.self)?.canPop ?? false
-            return tabBarHosted == false && canPop ? .back() : .none
+            return tabBarHosted == false && canPop && modalDismiss == nil ? .back() : .none
         default:
             return .none
         }
@@ -536,6 +557,10 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
         switch bar.trailing {
         case "close", "button":
+            // On a modal screen the close button dismisses the modal.
+            if let modalDismiss {
+                return .close(action: modalDismiss)
+            }
             return .close()
         default:
             return .none

@@ -2,11 +2,17 @@ package com.nshiftui.poc.navigation
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import com.nshiftui.poc.screens.LocalModalPresentation
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -23,6 +29,7 @@ import com.nshiftui.poc.sdui.plugandplay.Screen
 import com.nshiftui.poc.theme.LocalSCNTheme
 
 private const val ScreenRoute = "screen/{name}?context={context}"
+private const val ModalRoute = "modal/{name}?context={context}"
 
 @Composable
 fun NavigationHost(navigator: AppNavigator) {
@@ -56,8 +63,29 @@ fun NavigationHost(navigator: AppNavigator) {
         ) { entry ->
             ScreenDestination(entry, navController, navigator)
         }
+        // `presentation: "modal"`: slides up from the bottom and back down.
+        composable(
+            route = ModalRoute,
+            arguments = listOf(
+                navArgument("name") { type = NavType.StringType },
+                navArgument("context") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
+            enterTransition = { slideInVertically(modalMotion) { fullHeight -> fullHeight } },
+            exitTransition = { fadeOut(tween(300)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { slideOutVertically(modalMotion) { fullHeight -> fullHeight } },
+        ) { entry ->
+            CompositionLocalProvider(LocalModalPresentation provides true) {
+                ScreenDestination(entry, navController, navigator)
+            }
+        }
     }
 }
+
+private val modalMotion = tween<IntOffset>(durationMillis = 350, easing = FastOutSlowInEasing)
 
 @Composable
 private fun ScreenDestination(

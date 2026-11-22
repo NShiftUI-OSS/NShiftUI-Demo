@@ -3,6 +3,8 @@ import SwiftUI
 
 final class AppNavigator: ObservableObject, @unchecked Sendable {
     @Published private(set) var entries: [NavigationEntry]
+    /// Screen presented modally over the stack (`presentation: "modal"`).
+    @Published var modal: NavigationEntry?
 
     init() {
         let root = Deeplink.parse(Deeplink.home)
@@ -79,6 +81,33 @@ final class AppNavigator: ObservableObject, @unchecked Sendable {
                 preloadedModel: model
             )
         )
+        return true
+    }
+
+    func present(
+        screenName: String?,
+        parameters: [String: String] = [:]
+    ) {
+        guard let screenName, screenName.isEmpty == false else {
+            return
+        }
+        var components = URLComponents(
+            string: "nshift://screen/\(screenName)"
+        )
+        components?.queryItems = parameters.map {
+            URLQueryItem(name: $0.key, value: $0.value)
+        }
+        guard let parsed = Deeplink.parse(components?.string ?? "nshift://screen/\(screenName)") else {
+            return
+        }
+        modal = NavigationEntry(deeplink: parsed)
+    }
+
+    /// Closes the modal screen; false when none is presented.
+    @discardableResult
+    func dismissModal() -> Bool {
+        guard modal != nil else { return false }
+        modal = nil
         return true
     }
 

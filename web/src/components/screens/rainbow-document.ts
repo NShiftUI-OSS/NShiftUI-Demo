@@ -6,6 +6,9 @@ import {
   TAB_BAR_PLUGIN,
   TAB_BAR_SLOT,
   SEARCH_BAR_PLUGIN,
+  FLOATING_BUTTON_PLUGIN,
+  FLOATING_BUTTON_SLOT,
+  isFloatingButtonSlot,
   SEARCH_BAR_SLOT,
   SEARCH_BAR_BADGES_SLOT,
   isBottomSheetSlot,
@@ -214,6 +217,25 @@ export function removeSearchBar(document: RainbowDocument) {
   return true
 }
 
+export function findFloatingButtonNode(document: RainbowDocument) {
+  const screen = readFlowRoots(document).screen
+  const slot = screen?.slots?.find((item) => isFloatingButtonSlot(item.name.value))
+  return slot?.plugins.find((child) => nodeName(child) === FLOATING_BUTTON_PLUGIN) ?? null
+}
+
+export function removeFloatingButton(document: RainbowDocument) {
+  const screen = readFlowRoots(document).screen
+  if (!screen?.slots) return false
+  const index = screen.slots.findIndex((item) => isFloatingButtonSlot(item.name.value))
+  if (index < 0) return false
+  screen.slots.splice(index, 1)
+  document.uses = document.uses.filter(
+    (declaration) =>
+      declaration.name.kind !== 'ident' || declaration.name.value !== FLOATING_BUTTON_PLUGIN,
+  )
+  return true
+}
+
 export function findTabBarNode(document: RainbowDocument) {
   const screen = readFlowRoots(document).screen
   const slotted = screen ? slottedTabBar(screen) : null
@@ -256,6 +278,20 @@ export function insertPlugin(
     ensureUse(document, SEARCH_BAR_PLUGIN, plugin.version.rawValue)
     screen.slots.push({
       name: { kind: 'ident', value: SEARCH_BAR_SLOT },
+      plugins: [pluginToNode(plugin, false)],
+      leading: { comments: [] },
+    })
+    return true
+  }
+  if (plugin.name.rawValue === FLOATING_BUTTON_PLUGIN) {
+    // The FloatingButton lives in its own Screen slot, over the content.
+    if (findFloatingButtonNode(document)) return false
+    const screen = readFlowRoots(document).screen
+    if (!screen) return false
+    screen.slots ??= []
+    ensureUse(document, FLOATING_BUTTON_PLUGIN, plugin.version.rawValue)
+    screen.slots.push({
+      name: { kind: 'ident', value: FLOATING_BUTTON_SLOT },
       plugins: [pluginToNode(plugin, false)],
       leading: { comments: [] },
     })
@@ -626,6 +662,7 @@ export function updatePlacedPlugin(
 export function removePlacedPlugin(document: RainbowDocument, nodeId: string) {
   if (nodeId === 'tabBar') return removeTabBar(document)
   if (nodeId === 'searchBar') return removeSearchBar(document)
+  if (nodeId === 'floatingButton') return removeFloatingButton(document)
   if (nodeId === 'screen') return false
   const source = parentList(document, nodeId)
   if (!source) return false
@@ -672,7 +709,9 @@ function appendFieldValues(
 }
 
 function parentList(document: RainbowDocument, nodeId: string) {
-  if (nodeId === 'sheet' || nodeId === 'tabBar' || nodeId === 'searchBar') return null
+  if (nodeId === 'sheet' || nodeId === 'tabBar' || nodeId === 'searchBar' || nodeId === 'floatingButton') {
+    return null
+  }
   const rooted = nodeId.startsWith('sheet/')
     ? 'sheet'
     : nodeId.startsWith('tabBar/')
@@ -758,6 +797,7 @@ function nodeAt(
   if (nodeId === 'sheet') return findSheet(document)
   if (nodeId === 'tabBar') return findTabBarNode(document)
   if (nodeId === 'searchBar') return findSearchBarNode(document)
+  if (nodeId === 'floatingButton') return findFloatingButtonNode(document)
   const rooted = nodeId.startsWith('sheet/')
     ? 'sheet'
     : nodeId.startsWith('tabBar/')

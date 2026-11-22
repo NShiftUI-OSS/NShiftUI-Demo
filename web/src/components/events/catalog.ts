@@ -11,6 +11,10 @@ import { openBottomSheetEventMetadata } from '@/domain/events/previews/open-bott
 import { sendHttpRequestEventMetadata } from '@/domain/events/previews/send-http-request-metadata'
 import { updateListEventMetadata } from '@/domain/events/previews/update-list-metadata'
 import { changeTabEventMetadata } from '@/domain/events/previews/change-tab-metadata'
+import { closeAppEventMetadata } from '@/domain/events/previews/close-app-metadata'
+import { addListItemEventMetadata } from '@/domain/events/previews/add-list-item-metadata'
+import { clearListEventMetadata } from '@/domain/events/previews/clear-list-metadata'
+import { showSuccessEventMetadata } from '@/domain/events/previews/show-success-metadata'
 import type { PluginField } from '@/scn/plugin-fields'
 import { scnPresets } from '@/scn/presets'
 
@@ -69,7 +73,10 @@ export const flowEvents: FlowEventDefinition[] = [
     description: 'Abre uma tela na pilha',
     triggers: complete,
     metadata: navigateEventMetadata,
-    fields: [text('screenName', 'Tela', '', true)],
+    fields: [
+      text('screenName', 'Tela', '', true),
+      select('presentation', 'Apresentação', ['push', 'modal']),
+    ],
   },
   {
     id: 'change-ds-theme',
@@ -124,6 +131,39 @@ export const flowEvents: FlowEventDefinition[] = [
     triggers: complete,
     metadata: changeTabEventMetadata,
     fields: [number('index', 'Índice da aba', '0')],
+  },
+  {
+    id: 'close-app',
+    name: closeAppEventMetadata.kind,
+    description: 'Fecha o aplicativo',
+    triggers: [],
+    metadata: closeAppEventMetadata,
+    fields: [],
+  },
+  {
+    id: 'add-list-item',
+    name: addListItemEventMetadata.kind,
+    description:
+      'Adiciona um item a uma lista do app (compartilhada entre telas). O item é um objeto (chave: "valor") e aceita {{campo}} dentro de um ForEach',
+    triggers: complete,
+    metadata: addListItemEventMetadata,
+    fields: [text('listID', 'Lista (id)', 'cart', true)],
+  },
+  {
+    id: 'clear-list',
+    name: clearListEventMetadata.kind,
+    description: 'Remove todos os itens de uma lista do app',
+    triggers: complete,
+    metadata: clearListEventMetadata,
+    fields: [text('listID', 'Lista (id)', 'cart', true)],
+  },
+  {
+    id: 'show-success',
+    name: showSuccessEventMetadata.kind,
+    description: 'Mostra uma animação de sucesso; os próximos eventos rodam quando ela termina',
+    triggers: complete,
+    metadata: showSuccessEventMetadata,
+    fields: [text('title', 'Título', 'Sucesso!'), text('message', 'Mensagem', '')],
   },
   {
     id: 'update-list',

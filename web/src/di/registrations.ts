@@ -41,6 +41,7 @@ import { verticalScrollMetadata } from '@/domain/plugins/previews/vertical-scrol
 import { verticalStackMetadata } from '@/domain/plugins/previews/vertical-stack-metadata'
 import { forEachMetadata } from '@/domain/plugins/previews/for-each-metadata'
 import { searchBarMetadata } from '@/domain/plugins/previews/search-bar-metadata'
+import { floatingButtonMetadata } from '@/domain/plugins/previews/floating-button-metadata'
 import { NShiftTrigger } from '@/domain/triggers/nshift-trigger'
 import { NShiftVersion } from '@/domain/version/nshift-version'
 import type { NShiftEventModel } from '@/domain/events/nshift-event-model'
@@ -80,6 +81,7 @@ const previewPlugins = [
   { previewId: 'vertical-stack', metadata: verticalStackMetadata },
   { previewId: 'for-each', metadata: forEachMetadata },
   { previewId: 'search-bar', metadata: searchBarMetadata },
+  { previewId: 'floating-button', metadata: floatingButtonMetadata },
   { previewId: 'horizontal-stack', metadata: horizontalStackMetadata },
   { previewId: 'layer-stack', metadata: layerStackMetadata },
   { previewId: 'vertical-scroll', metadata: verticalScrollMetadata },

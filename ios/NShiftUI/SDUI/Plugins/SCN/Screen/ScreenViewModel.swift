@@ -39,6 +39,7 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
     /// the `ForEach` filter values, keyed by list id.
     let lists = ScreenLists()
     private var didFireAppear = false
+    private var appListsSubscription: AnyCancellable?
     private var presentWaiters: [String: CheckedContinuation<Void, Never>] = [:]
     private var dismissWaiters: [String: CheckedContinuation<Void, Never>] = [:]
 
@@ -64,6 +65,18 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         guard didFireAppear == false else { return false }
         didFireAppear = true
         return true
+    }
+
+    /// Shows the app-scoped lists this screen renders and keeps them in sync
+    /// as items are added or cleared from any screen.
+    func bindAppLists(tree: any NShiftEngineTree) {
+        guard appListsSubscription == nil else { return }
+        lists.showAppLists(tree: tree, screen: self)
+        weak var weakTree = tree as AnyObject
+        appListsSubscription = AppLists.shared.changes.sink { [weak self] listID in
+            guard let self, let tree = weakTree as? any NShiftEngineTree else { return }
+            self.lists.showAppLists(listID, tree: tree, screen: self)
+        }
     }
 
     func bind(refresh: ScreenRefreshObserver?) {

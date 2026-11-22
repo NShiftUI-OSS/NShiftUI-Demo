@@ -32,7 +32,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { renderPreview } from '@/components/screens/preview'
 import { rootItemClass } from '@/components/screens/preview/plugin-layout'
-import { layoutFromRainbow, searchBarFromParsed, tabBarFromParsed } from '@/components/screens/rainbow-source'
+import {
+  floatingButtonFromParsed,
+  layoutFromRainbow,
+  searchBarFromParsed,
+  tabBarFromParsed,
+} from '@/components/screens/rainbow-source'
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
 import { ScreenFrame } from '@/components/screens/preview/screen-frame'
 import { readScreenChrome } from '@/scn/screen-theme'
@@ -312,6 +317,7 @@ function ScreenPreview({
   const [nodes, setNodes] = useState<ScreenLayoutNode[] | null>(null)
   const [tabBar, setTabBar] = useState<ScreenLayoutNode | null>(null)
   const [searchBar, setSearchBar] = useState<ScreenLayoutNode | null>(null)
+  const [floatingButton, setFloatingButton] = useState<ScreenLayoutNode | null>(null)
   const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
@@ -329,6 +335,7 @@ function ScreenPreview({
       setNodes(layout)
       setTabBar(tabBarFromParsed(parsed))
       setSearchBar(searchBarFromParsed(parsed))
+      setFloatingButton(floatingButtonFromParsed(parsed))
     })
     return () => {
       cancelled = true
@@ -343,6 +350,7 @@ function ScreenPreview({
       tabBar={tabBar}
       searchBar={searchBar ? <StoryboardLayoutNode node={searchBar} /> : null}
       searchBarInset={searchBar && searchBar.children.length > 0 ? 100 : 60}
+      floatingButton={floatingButton ? <StoryboardLayoutNode node={floatingButton} /> : null}
       interactive={false}
     >
       <div className="phone-scroll relative flex min-h-0 w-full flex-1 flex-col">

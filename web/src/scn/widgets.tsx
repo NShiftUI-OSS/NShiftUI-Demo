@@ -64,6 +64,16 @@ export function ScnField({
   )
 }
 
+/** Round floating action button with a top-right notification badge. */
+export function ScnFloatingButton({ icon, badge }: { icon: string; badge?: string }) {
+  return (
+    <div className="scn-floating-button">
+      <ScnIconMark name={icon} size={24} />
+      {badge ? <span className="scn-floating-button-badge">{badge}</span> : null}
+    </div>
+  )
+}
+
 /** Search field (shadcn-style): search icon, placeholder or text, clear mark. */
 export function ScnSearchBar({
   placeholder,

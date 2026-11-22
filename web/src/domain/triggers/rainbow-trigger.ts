@@ -11,6 +11,12 @@ export const SEARCH_BAR_SLOT = 'SearchBar'
 export const SEARCH_BAR_PLUGIN = 'SearchBar'
 
 export const SEARCH_BAR_BADGES_SLOT = 'Badges'
+export const FLOATING_BUTTON_SLOT = 'FloatingButton'
+export const FLOATING_BUTTON_PLUGIN = 'FloatingButton'
+
+export function isFloatingButtonSlot(name: string) {
+  return name === FLOATING_BUTTON_SLOT
+}
 
 export function isSearchBarSlot(name: string) {
   return name === SEARCH_BAR_SLOT

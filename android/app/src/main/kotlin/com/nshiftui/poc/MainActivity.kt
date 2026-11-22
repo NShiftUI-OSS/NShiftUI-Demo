@@ -12,6 +12,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import com.nshiftui.NShiftConfig
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import com.nshiftui.poc.navigation.AppCloser
+import com.nshiftui.poc.ui.components.SCNSuccessOverlayHost
 import com.nshiftui.poc.navigation.AppNavigator
 import com.nshiftui.poc.navigation.NavigationHost
 import com.nshiftui.poc.theme.LocalSCNTheme
@@ -24,8 +29,14 @@ import com.nshiftui.resolveOrThrow
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppCloser.attach(this)
         enableEdgeToEdge()
         setContent { SCNPocApp() }
+    }
+
+    override fun onDestroy() {
+        AppCloser.detach(this)
+        super.onDestroy()
     }
 }
 
@@ -44,6 +55,9 @@ private fun SCNPocApp() {
         val navigator = remember {
             NShiftConfig.shared.hostContainer!!.resolveOrThrow<AppNavigator>()
         }
-        NavigationHost(navigator)
+        Box(Modifier.fillMaxSize()) {
+            NavigationHost(navigator)
+            SCNSuccessOverlayHost()
+        }
     }
 }

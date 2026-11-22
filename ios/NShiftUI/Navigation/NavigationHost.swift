@@ -8,6 +8,26 @@ struct NavigationHost: View {
             NavigationRoute<RouteMarker>(index: 0)
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .fullScreenCover(item: $navigator.modal) { entry in
+            ModalRoute(entry: entry)
+                .environmentObject(navigator)
+                .environment(\.modalDismiss, { navigator.dismissModal() })
+        }
+    }
+}
+
+/// A screen presented with `presentation: "modal"`: full screen, in its own
+/// navigation bar, closed from the right.
+private struct ModalRoute: View {
+    let entry: NavigationEntry
+
+    var body: some View {
+        NavigationView {
+            ScreenPage(entry: entry, isRoot: false)
+                .id(entry.id)
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .themeSync()
     }
 }
 

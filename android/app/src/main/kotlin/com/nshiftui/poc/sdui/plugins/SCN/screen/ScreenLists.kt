@@ -283,6 +283,26 @@ class ScreenLists {
         return added
     }
 
+    /** Renders the app-scoped lists ([AppLists]) this screen shows, replacing their items. */
+    fun showAppLists(lists: Map<String, List<JsonElement>>, tree: NShiftEngineTree, screen: ScreenViewModel) {
+        val sources = forEachSources(tree.root).toSet()
+        for ((listID, items) in lists) {
+            if (listID !in sources) continue
+            states.remove(listID)
+            materialize(items, listID, 0, true, tree, screen.templateContext())
+        }
+    }
+
+    private fun forEachSources(node: NShiftPluginNode): List<String> {
+        val found = mutableListOf<String>()
+        if (node.model.name.rawValue == "ForEach") {
+            node.model.metadata?.unwrap<ForEachMetadata>()?.source?.let { found += it }
+        }
+        node.children.forEach { found += forEachSources(it) }
+        node.slotChildren.values.flatten().forEach { found += forEachSources(it) }
+        return found
+    }
+
     private fun forEachNodes(listID: String, node: NShiftPluginNode): List<NShiftPluginNode> {
         val found = mutableListOf<NShiftPluginNode>()
         if (node.model.name.rawValue == "ForEach" && node.model.metadata?.unwrap<ForEachMetadata>()?.source == listID) {

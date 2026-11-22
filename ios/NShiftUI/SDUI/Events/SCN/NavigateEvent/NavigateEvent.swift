@@ -4,13 +4,17 @@ import NShiftUI
 struct NavigateEventMetadata: NShiftMetadata, Decodable {
     let screenName: String?
     let parameters: [String: String]
+    /// `push` (default) or `modal`.
+    let presentation: String
 
     init(
         screenName: String,
-        parameters: [String: String] = [:]
+        parameters: [String: String] = [:],
+        presentation: String = "push"
     ) {
         self.screenName = screenName
         self.parameters = parameters
+        self.presentation = presentation
     }
 
     init(from decoder: Decoder) throws {
@@ -21,11 +25,14 @@ struct NavigateEventMetadata: NShiftMetadata, Decodable {
             [String: String].self,
             forKey: .parameters
         ) ?? [:]
+        let raw = try container.decodeIfPresent(String.self, forKey: .presentation) ?? "push"
+        presentation = raw.hasPrefix(".") ? String(raw.dropFirst()) : raw
     }
 
     private enum CodingKeys: String, CodingKey {
         case screenName
         case parameters
+        case presentation
     }
 }
 
@@ -43,11 +50,19 @@ struct NavigateEvent: NShiftEvent {
               screenName.isEmpty == false else {
             return
         }
+        let modal = metadata.presentation == "modal"
         await MainActor.run {
-            navigator.push(
-                screenName: screenName,
-                parameters: metadata.parameters
-            )
+            if modal {
+                navigator.present(
+                    screenName: screenName,
+                    parameters: metadata.parameters
+                )
+            } else {
+                navigator.push(
+                    screenName: screenName,
+                    parameters: metadata.parameters
+                )
+            }
         }
         await dispatch(
             .onComplete,
@@ -98,6 +113,10 @@ struct BackNavigationEvent: NShiftEvent {
         let destination = metadata.destination
         let steps = metadata.steps
         await MainActor.run {
+            // A modal screen closes first; the stack under it is untouched.
+            if navigator.dismissModal() {
+                return
+            }
             if destination == "root" {
                 navigator.popToRoot()
             } else if destination.isEmpty == false {

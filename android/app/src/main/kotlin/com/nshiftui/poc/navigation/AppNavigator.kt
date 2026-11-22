@@ -8,6 +8,8 @@ import com.nshiftui.NShiftPluginModel
 import com.nshiftui.poc.config.NShiftAppConfiguration
 import com.nshiftui.poc.sdui.plugandplay.Screen
 
+const val ModalRoutePrefix = "modal/"
+
 class AppNavigator {
     private var controller: NavHostController? = null
     private val preloaded = mutableMapOf<String, NShiftPluginModel>()
@@ -48,6 +50,24 @@ class AppNavigator {
         parameters: Map<String, String> = emptyMap(),
     ): NShiftPluginModel? = preloaded.remove(routeKey(screenName, parameters))
 
+    /** Presents a screen modally (it slides up over the current one). */
+    fun presentModal(
+        screenName: String?,
+        parameters: Map<String, String> = emptyMap(),
+    ) {
+        val name = screenName?.takeIf { it.isNotBlank() } ?: return
+        onMain { controller?.navigate(route(name, parameters, ModalRoutePrefix)) }
+    }
+
+    /** Closes the modal screen on top; false when the top screen is not modal. */
+    fun dismissModal(): Boolean {
+        val controller = controller ?: return false
+        val top = controller.currentBackStackEntry?.destination?.route ?: return false
+        if (!top.startsWith(ModalRoutePrefix)) return false
+        controller.popBackStack()
+        return true
+    }
+
     fun pop() {
         pop(steps = 1)
     }
@@ -84,8 +104,9 @@ class AppNavigator {
     private fun route(
         name: String,
         parameters: Map<String, String> = emptyMap(),
+        prefix: String = "screen/",
     ): String {
-        val base = "screen/${Uri.encode(name)}"
+        val base = "$prefix${Uri.encode(name)}"
         if (parameters.isEmpty()) return base
         return "$base?context=${Uri.encode(Deeplink.encodeParameters(parameters))}"
     }

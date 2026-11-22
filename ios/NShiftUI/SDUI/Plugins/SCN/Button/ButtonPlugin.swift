@@ -54,7 +54,22 @@ struct ButtonPlugin: NShiftPlugin {
 
     @ViewBuilder
     private var labeledButton: some View {
-        if let icon = metadata.icon.flatMap(SCNIconName.init(rawValue:)) {
+        if let icon = metadata.icon.flatMap(SCNIconName.init(rawValue:)),
+           metadata.title.isEmpty == false {
+            SCNButton(
+                title: metadata.title,
+                icon: icon,
+                variant: metadata.scnVariant(),
+                size: metadata.scnSize(),
+                isEnabled: metadata.isEnabled
+            ) {
+                fire(
+                    .onTap,
+                    engine: engine,
+                    renderID: renderID
+                )
+            }
+        } else if let icon = metadata.icon.flatMap(SCNIconName.init(rawValue:)) {
             SCNButton(
                 icon: icon,
                 variant: metadata.scnVariant(),

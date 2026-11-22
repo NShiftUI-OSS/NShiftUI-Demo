@@ -33,6 +33,8 @@ class BackNavigationEvent : NShiftEventWithMetadata<BackNavigationEventMetadata>
         val navigator = resolver.resolveOrThrow<AppNavigator>()
         val destination = metadata.destination.removePrefix(".")
         withContext(Dispatchers.Main) {
+            // A modal screen closes first; the stack under it is untouched.
+            if (navigator.dismissModal()) return@withContext
             when {
                 destination == "root" -> navigator.popToRoot()
                 destination.isNotBlank() -> navigator.popToScreen(destination)

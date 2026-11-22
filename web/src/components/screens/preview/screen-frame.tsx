@@ -15,6 +15,7 @@ export function ScreenFrame({
   tabBar = null,
   searchBar = null,
   searchBarInset = 104,
+  floatingButton = null,
   children,
 }: {
   chrome: ScreenChrome | null
@@ -24,10 +25,12 @@ export function ScreenFrame({
   searchBar?: ReactNode
   /** Height reserved above the first item when a search bar is shown. */
   searchBarInset?: number
+  /** FloatingButton slot, floating at the bottom-right corner over the content. */
+  floatingButton?: ReactNode
   children: ReactNode
   interactive?: boolean
 }) {
-  if (!chrome && !tabBar && !searchBar) return children
+  if (!chrome && !tabBar && !searchBar && !floatingButton) return children
 
   return (
     <div
@@ -53,6 +56,17 @@ export function ScreenFrame({
             className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-2 pb-2"
           >
             {searchBar}
+          </div>
+        ) : null}
+        {floatingButton ? (
+          <div
+            data-screen-floating-button=""
+            className={cn(
+              'pointer-events-none absolute right-5 z-10',
+              device === 'iphone' && tabBar ? 'bottom-20' : 'bottom-4',
+            )}
+          >
+            {floatingButton}
           </div>
         ) : null}
       </div>

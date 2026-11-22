@@ -267,6 +267,42 @@ final class ScreenLists {
         return response
     }
 
+    /// Renders an app-scoped list (`AppLists`) in every `ForEach` bound to
+    /// it, replacing what was there. With no id, every app list the screen
+    /// shows is rendered.
+    func showAppLists(_ listID: String? = nil, tree: any NShiftEngineTree, screen: ScreenViewModel) {
+        let store = AppLists.shared
+        let ids = listID.map { [$0] } ?? Array(Set(Self.forEachSources(in: tree.root)))
+        for id in ids where store.contains(id) {
+            states[id] = State()
+            _ = materialize(
+                store.items(id),
+                listID: id,
+                startIndex: 0,
+                replacing: true,
+                tree: tree,
+                context: screen.templateContext()
+            )
+        }
+    }
+
+    private static func forEachSources(in node: NShiftPluginNode) -> [String] {
+        var sources: [String] = []
+        if node.model.name.rawValue == "ForEach",
+           let source = node.model.metadata?.unwrap(as: ForEachMetadata.self)?.source {
+            sources.append(source)
+        }
+        for child in node.children {
+            sources += forEachSources(in: child)
+        }
+        for slot in node.slotChildren.values {
+            for child in slot {
+                sources += forEachSources(in: child)
+            }
+        }
+        return sources
+    }
+
     private static func items(in value: Any?) -> [Any] {
         if let array = value as? [Any] { return array }
         if let value { return [value] }
