@@ -15,10 +15,14 @@ struct SCNSelect: View {
     }
 
     var body: some View {
-        Picker(selection: $selection) {
-            ForEach(options, id: \.self) { option in
-                Text(option).tag(option)
+        Menu {
+            Picker("", selection: $selection) {
+                ForEach(options, id: \.self) { option in
+                    Text(option).tag(option)
+                }
             }
+            .pickerStyle(.inline)
+            .labelsHidden()
         } label: {
             HStack(spacing: theme.spacing.s2) {
                 SCNText(
@@ -39,16 +43,16 @@ struct SCNSelect: View {
                 alignment: .leading
             )
             .background(fill)
-            .clipShape(fieldShape)
-            .overlay(
-                fieldShape.strokeBorder(
-                    theme.palette.input,
-                    lineWidth: theme.border.hairline
-                )
-            )
         }
-        .pickerStyle(.menu)
-        .tint(theme.palette.foreground)
+        .buttonStyle(.plain)
+        .clipShape(fieldShape)
+        .overlay(
+            fieldShape.strokeBorder(
+                theme.palette.input,
+                lineWidth: theme.border.hairline
+            )
+        )
+        .contentShape(fieldShape)
     }
 
     private var fieldShape: RoundedRectangle {
