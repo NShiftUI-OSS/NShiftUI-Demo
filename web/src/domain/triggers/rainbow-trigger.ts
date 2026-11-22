@@ -10,6 +10,8 @@ export const TAB_PLUGIN = 'Tab'
 export const SEARCH_BAR_SLOT = 'SearchBar'
 export const SEARCH_BAR_PLUGIN = 'SearchBar'
 
+export const SEARCH_BAR_BADGES_SLOT = 'Badges'
+
 export function isSearchBarSlot(name: string) {
   return name === SEARCH_BAR_SLOT
 }

@@ -1,5 +1,11 @@
 import type { ScreenLayoutNode } from '@/components/screens/screen-layout-context'
-import { isBottomSheetSlot, isRainbowTrigger, isTabBarSlot, isTabPlugin } from '@/domain/triggers/rainbow-trigger'
+import {
+  SEARCH_BAR_BADGES_SLOT,
+  isBottomSheetSlot,
+  isRainbowTrigger,
+  isTabBarSlot,
+  isTabPlugin,
+} from '@/domain/triggers/rainbow-trigger'
 import {
   findSearchBarNode,
   findSheet,
@@ -184,6 +190,15 @@ function toLayoutNode(
     const mapped = toLayoutNode(child, `${path}/${index}`)
     if (!mapped) return null
     children.push(mapped)
+  }
+
+  // The SearchBar's Badges slot is previewed as its children.
+  if (nodeName(node) === 'SearchBar') {
+    const slot = node.slots?.find((item) => item.name.value === SEARCH_BAR_BADGES_SLOT)
+    for (const [index, plugin] of (slot?.plugins ?? []).entries()) {
+      const mapped = toLayoutNode(plugin, `${path}/badges/${index}`)
+      if (mapped) children.push(mapped)
+    }
   }
 
   return {

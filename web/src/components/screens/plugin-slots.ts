@@ -7,6 +7,13 @@ export type PluginSlot = {
 }
 
 const slotsByPlugin: Record<string, PluginSlot[]> = {
+  'search-bar': [
+    {
+      id: 'badges',
+      name: 'Badges',
+      description: 'Badges abaixo da busca; com scroll horizontal quando não cabem.',
+    },
+  ],
   'nshift-screen': [
     {
       id: 'bottomSheet',
@@ -17,6 +24,11 @@ const slotsByPlugin: Record<string, PluginSlot[]> = {
       id: 'tabBar',
       name: 'Tab bar',
       description: 'Barra fixa no rodapé. As abas vivem neste slot, fora do conteúdo.',
+    },
+    {
+      id: 'searchBar',
+      name: 'Search bar',
+      description: 'Busca flutuante no topo; o conteúdo rola por baixo dela.',
     },
   ],
 }

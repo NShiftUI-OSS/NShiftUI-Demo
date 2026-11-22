@@ -57,10 +57,16 @@ struct SCNSearchBar: View {
         )
     }
 
-    private var fill: Color {
-        theme.interfaceStyle == .dark
-            ? theme.palette.input.opacity(theme.opacity.field)
-            : theme.palette.background
+    /// Opaque, so content scrolling under the floating bar never shows
+    /// through the field.
+    @ViewBuilder
+    private var fill: some View {
+        if theme.interfaceStyle == .dark {
+            theme.palette.background
+                .overlay(theme.palette.input.opacity(theme.opacity.field))
+        } else {
+            theme.palette.background
+        }
     }
 }
 

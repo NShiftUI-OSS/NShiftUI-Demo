@@ -17,13 +17,22 @@ struct SearchBarMetadata: NShiftMetadata, Decodable {
     }
 }
 
+@NShiftSlotKey
+enum SearchBarSlot: NShiftSlotKey {
+    /// Plugins (usually `Badge`s) in a horizontal row under the field,
+    /// scrollable when they do not fit.
+    case badges
+}
+
 /// `SearchBar(placeholder:)`: its text is a screen input (by its `.id`), so
 /// templates (`{{input.id}}`) and `ForEach(searchInput:)` can read it.
 /// Fires `OnChange` while typing and `OnSubmit` on search or clear.
+/// `.slots { Badges { Badge(...) ... } }` adds a scrollable row of badges.
 @NShiftPlugin(
     name: "SearchBar",
     version: "1.0.0",
-    metadata: SearchBarMetadata.self
+    metadata: SearchBarMetadata.self,
+    slots: SearchBarSlot.self
 )
 struct SearchBarPlugin: NShiftPlugin {
     @State private var text: String?
@@ -42,8 +51,21 @@ struct SearchBarPlugin: NShiftPlugin {
                 fire(.onChange, engine: engine, renderID: renderID)
             }
         )
-        SCNSearchBar(text: binding, placeholder: metadata.placeholder) {
-            fire(.onSubmit, engine: engine, renderID: renderID)
+        VStack(alignment: .leading, spacing: 8) {
+            SCNSearchBar(text: binding, placeholder: metadata.placeholder) {
+                fire(.onSubmit, engine: engine, renderID: renderID)
+            }
+            if slotModels(.badges).isEmpty == false {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        slots(.badges)
+                    }
+                    .padding(.horizontal, 16)
+                }
+                // Full-bleed row: badges slide edge to edge under the 16 pt
+                // screen gutter instead of being clipped by it.
+                .padding(.horizontal, -16)
+            }
         }
         .onAppear {
             screen?.registerInput(engine: engine, renderID: renderID, value: current)

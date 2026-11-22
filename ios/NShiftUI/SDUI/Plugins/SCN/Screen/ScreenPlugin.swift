@@ -309,19 +309,21 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
     }
 
-    /// The `SearchBar` slot stays pinned at the top, outside the scroll.
+    /// The `SearchBar` slot floats at the top with no background: the field
+    /// and badges are clipped shapes, content scrolls under them, and the
+    /// first item starts below the bar (it is a top safe-area inset).
     @ViewBuilder
     private var screenBody: some View {
         if slotModels(.searchBar).isEmpty {
             scrollingBody
         } else {
-            VStack(spacing: 0) {
-                slots(.searchBar)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 4)
-                scrollingBody
-            }
+            scrollingBody
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    slots(.searchBar)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 8)
+                }
         }
     }
 
@@ -519,6 +521,11 @@ struct ScreenPlugin: NShiftPluginContainer {
                 return .back(action: { selectedTab = 0 })
             }
             return .back()
+        case "auto":
+            // Back only where there is somewhere to go back to: never on a
+            // screen hosted as a tab, and only when the stack can pop.
+            let canPop = resolver.resolve(AppNavigator.self)?.canPop ?? false
+            return tabBarHosted == false && canPop ? .back() : .none
         default:
             return .none
         }

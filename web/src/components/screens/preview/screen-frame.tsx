@@ -14,13 +14,16 @@ export function ScreenFrame({
   device,
   tabBar = null,
   searchBar = null,
+  searchBarInset = 104,
   children,
 }: {
   chrome: ScreenChrome | null
   device: 'iphone' | 'android'
   tabBar?: ScreenLayoutNode | null
-  /** SearchBar slot, pinned below the navigation bar, outside the scroll. */
+  /** SearchBar slot, floating below the navigation bar over the content. */
   searchBar?: ReactNode
+  /** Height reserved above the first item when a search bar is shown. */
+  searchBarInset?: number
   children: ReactNode
   interactive?: boolean
 }) {
@@ -34,18 +37,24 @@ export function ScreenFrame({
       {chrome && navigationBarVisible(chrome) ? (
         <ScreenNavBar chrome={chrome} device={device} />
       ) : null}
-      {searchBar ? (
-        <div data-screen-search-bar="" className="shrink-0 px-4 pt-2 pb-1">
-          {searchBar}
-        </div>
-      ) : null}
       <div
         className={cn(
-          'flex min-h-0 min-w-0 flex-1 flex-col',
+          'relative flex min-h-0 min-w-0 flex-1 flex-col',
           device === 'iphone' && tabBar && '[&>.phone-scroll]:pb-16',
         )}
+        style={searchBar ? ({ '--scn-search-bar-inset': `${searchBarInset}px` } as CSSProperties) : undefined}
       >
         {children}
+        {searchBar ? (
+          // Floats over the content with no background; content scrolls under it
+          // and starts below it (the scroll is padded by the bar's height).
+          <div
+            data-screen-search-bar=""
+            className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-2 pb-2"
+          >
+            {searchBar}
+          </div>
+        ) : null}
       </div>
       {tabBar ? <ScreenTabBar node={tabBar} device={device} /> : null}
     </div>

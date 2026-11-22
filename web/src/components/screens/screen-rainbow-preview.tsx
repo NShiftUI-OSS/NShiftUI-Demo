@@ -95,6 +95,7 @@ function RainbowPreviewBody({
       device={device}
       tabBar={tabBar}
       searchBar={searchBar ? <PreviewNode node={searchBar} /> : null}
+      searchBarInset={searchBar && searchBar.children.length > 0 ? 100 : 60}
       interactive={false}
     >
       <div className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col">

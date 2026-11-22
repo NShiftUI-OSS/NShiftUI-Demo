@@ -7,6 +7,7 @@ import {
   TAB_BAR_SLOT,
   SEARCH_BAR_PLUGIN,
   SEARCH_BAR_SLOT,
+  SEARCH_BAR_BADGES_SLOT,
   isBottomSheetSlot,
   isSearchBarSlot,
   isTabBarSlot,
@@ -519,6 +520,7 @@ function childrenOf(document: RainbowDocument, targetId: string | null) {
   if (targetId?.startsWith('sheet/')) {
     return walkChildren(sheetChildren(document), targetId.slice('sheet/'.length))
   }
+  if (targetId === 'searchBar') return searchBarBadges(document)
   if (targetId === 'tabBar') return tabBarChildren(document)
   if (targetId?.startsWith('tabBar/')) {
     return walkChildren(tabBarChildren(document), targetId.slice('tabBar/'.length))
@@ -547,6 +549,19 @@ function sheetChildren(document: RainbowDocument) {
   if (!sheet) return null
   sheet.block ??= { children: [] }
   return sheet.block.children
+}
+
+/** Plugins of the SearchBar's Badges slot (created on first use). */
+function searchBarBadges(document: RainbowDocument) {
+  const bar = findSearchBarNode(document)
+  if (!bar) return null
+  bar.slots ??= []
+  let slot = bar.slots.find((item) => item.name.value === SEARCH_BAR_BADGES_SLOT)
+  if (!slot) {
+    slot = { name: { kind: 'ident', value: SEARCH_BAR_BADGES_SLOT }, plugins: [], leading: { comments: [] } }
+    bar.slots.push(slot)
+  }
+  return slot.plugins
 }
 
 function tabBarChildren(document: RainbowDocument) {

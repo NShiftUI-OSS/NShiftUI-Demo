@@ -337,3 +337,8 @@ html[data-theme-reveal='center']::view-transition-new(root) {
     animation: none;
   }
 }
+
+/* Content starts below the floating search bar and scrolls under it. */
+[style*='--scn-search-bar-inset'] > .phone-scroll {
+  padding-top: var(--scn-search-bar-inset);
+}

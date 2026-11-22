@@ -135,8 +135,14 @@ export const pluginFields: Partial<Record<PreviewPluginId, PluginField[]>> = {
     bool('isEnabled', 'Habilitado'),
   ],
   'button-group': [list('titles', 'Títulos', 'Day, Week, Month', true), text('selection', 'Seleção', 'Day')],
-  badge: [text('text', 'Texto', 'Default', true), select('variant', 'Variante', ['default', 'secondary', 'destructive', 'outline', 'ghost', 'link'])],
-  card: [text('filter', 'Filtro', '')],
+  badge: [
+    text('text', 'Texto', 'Default', true),
+    select('variant', 'Variante', ['default', 'secondary', 'destructive', 'outline', 'ghost', 'link']),
+    text('input', 'Input selecionável (id)', ''),
+    text('value', 'Valor ao selecionar', ''),
+    select('selectedVariant', 'Variante selecionada', ['default', 'secondary', 'destructive', 'outline', 'ghost', 'link']),
+  ],
+  card: [],
   avatar: [
     text('initials', 'Iniciais', 'NS', true),
     text('imageURL', 'URL da imagem'),

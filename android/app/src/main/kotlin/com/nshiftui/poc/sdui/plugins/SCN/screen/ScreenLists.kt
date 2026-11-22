@@ -69,7 +69,11 @@ object JSONPath {
 object RainbowTemplate {
     /** Fills a URL: values are percent-encoded so user input cannot break it. */
     fun renderURL(template: String, context: Map<String, Any?>): String =
-        render(template, context) { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+        render(template, context) {
+            // Same rule as iOS: path separators are kept, everything else that
+            // could break the URL (spaces, accents, & = + ? #) is encoded.
+            java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20").replace("%2F", "/")
+        }
 
     fun render(template: String, context: Map<String, Any?>, escaping: Boolean): String =
         render(template, context) { if (escaping) escape(it) else it }

@@ -676,6 +676,7 @@ function DevicePreview({
         device={device}
         tabBar={tabBar}
         searchBar={searchBar ? <LayoutNodeView node={searchBar} /> : null}
+        searchBarInset={searchBar && searchBar.children.length > 0 ? 100 : 60}
       >
         <div
           className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col select-none"

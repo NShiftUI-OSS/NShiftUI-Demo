@@ -48,6 +48,8 @@ fun SCNSearchBar(
             .fillMaxWidth()
             .heightIn(min = SCNSpace.s11)
             .clip(shape)
+            // Opaque, so content scrolling under the floating bar never shows through.
+            .background(colors.background)
             .background(if (theme.dark) colors.input.copy(alpha = SCNOpacity.field) else colors.background)
             .border(1.dp, colors.input, shape)
             .padding(horizontal = SCNSpace.s3),

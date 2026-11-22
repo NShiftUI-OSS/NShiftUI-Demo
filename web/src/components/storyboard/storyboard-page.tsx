@@ -342,6 +342,7 @@ function ScreenPreview({
       device={device}
       tabBar={tabBar}
       searchBar={searchBar ? <StoryboardLayoutNode node={searchBar} /> : null}
+      searchBarInset={searchBar && searchBar.children.length > 0 ? 100 : 60}
       interactive={false}
     >
       <div className="phone-scroll relative flex min-h-0 w-full flex-1 flex-col">

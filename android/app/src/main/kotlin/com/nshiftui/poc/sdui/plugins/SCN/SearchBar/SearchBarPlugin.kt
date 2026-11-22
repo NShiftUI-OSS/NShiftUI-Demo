@@ -1,6 +1,17 @@
 package com.nshiftui.poc.sdui.plugins.scn.searchbar
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.dp
+import com.nshiftui.NShiftSlotKey
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,10 +39,16 @@ data class SearchBarMetadata(
  * templates (`{{input.id}}`) and `ForEach(searchInput:)` can read it. Fires
  * `OnChange` while typing and `OnSubmit` on search or clear.
  */
+/** Plugins (usually `Badge`s) in a horizontal row under the field, scrollable when they overflow. */
+enum class SearchBarSlot(override val rawValue: String) : NShiftSlotKey {
+    Badges("badges"),
+}
+
 @NShiftPlugin(
     name = "SearchBar",
     version = "1.0.0",
     metadata = SearchBarMetadata::class,
+    slots = SearchBarSlot::class,
 )
 class SearchBarPlugin : NShiftPluginWithMetadata<SearchBarMetadata>(
     "SearchBar",
@@ -49,15 +66,36 @@ class SearchBarPlugin : NShiftPluginWithMetadata<SearchBarMetadata>(
             mutableStateOf(screen?.inputs?.value?.firstOrNull { it.id == id }?.value ?: metadata.text)
         }
         LaunchedEffect(id) { screen?.registerInput(id, text) }
-        SCNSearchBar(
-            value = text,
-            onValueChange = { value ->
-                text = value
-                screen?.registerInput(id, value)
-                fire(NShiftTrigger.onChange, scope)
-            },
-            placeholder = metadata.placeholder,
-            onSubmit = { fire(NShiftTrigger.onSubmit, scope) },
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SCNSearchBar(
+                value = text,
+                onValueChange = { value ->
+                    text = value
+                    screen?.registerInput(id, value)
+                    fire(NShiftTrigger.onChange, scope)
+                },
+                placeholder = metadata.placeholder,
+                onSubmit = { fire(NShiftTrigger.onSubmit, scope) },
+            )
+            if (model.slots[SearchBarSlot.Badges.slotName].orEmpty().isNotEmpty()) {
+                // Full-bleed row: badges slide edge to edge past the 16 dp gutter.
+                Row(
+                    modifier = Modifier
+                        .layout { measurable, constraints ->
+                            val extra = 32.dp.roundToPx()
+                            val placeable = measurable.measure(
+                                constraints.copy(maxWidth = constraints.maxWidth + extra, minWidth = constraints.minWidth + extra),
+                            )
+                            layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
+                        }
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    slots(SearchBarSlot.Badges)
+                }
+            }
+        }
     }
 }

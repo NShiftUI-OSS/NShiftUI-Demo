@@ -52,6 +52,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -250,11 +251,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
             containerColor = colors.background,
             topBar = {
                 val outerBack = LocalScreenBack.current
-                val back: (() -> Unit)? = if (selected > 0) {
-                    { onSelect(0) }
-                } else {
-                    outerBack
-                }
+                // A tab is a destination of its own: its bar shows only the title,
+                // never a back button to the first tab.
+                val back: (() -> Unit)? = if (selected > 0) null else outerBack
                 CompositionLocalProvider(LocalScreenBack provides back) {
                     AndroidNavigationBar(bar)
                 }
@@ -344,18 +343,16 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                 )
             }
         }
-        // The SearchBar slot stays pinned at the top, outside the scroll.
+        // The SearchBar slot floats at the top with no background: the field and
+        // badges are clipped shapes, content scrolls under them, and the first item
+        // starts below the bar (its measured height pads the content).
         val hasSearchBar = model.slots[ScreenSlot.SearchBar.slotName].orEmpty().isNotEmpty()
-        androidx.compose.foundation.layout.Column(modifier) {
-        if (hasSearchBar) {
-            androidx.compose.foundation.layout.Box(
-                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
-            ) {
-                slots(ScreenSlot.SearchBar)
-            }
-        }
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        var searchBarHeight by remember { mutableStateOf(0.dp) }
+        val topInset = if (hasSearchBar) searchBarHeight else 0.dp
+        Box(modifier) {
         BoxWithConstraints(
-            Modifier.fillMaxWidth().weight(1f),
+            Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopCenter,
         ) {
                 val scrolling = screen.scroll?.enabled == true || fastRefresh || isLazy
@@ -380,7 +377,7 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                                 .fillMaxWidth(),
                             state = lazyListState,
                             contentPadding = PaddingValues(
-                                top = 16.dp,
+                                top = 16.dp + topInset,
                                 start = 16.dp,
                                 end = 16.dp,
                                 bottom = 16.dp,
@@ -457,6 +454,17 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                     page()
                 }
                 slots(ScreenSlot.BottomSheet)
+        }
+        if (hasSearchBar) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .onSizeChanged { size -> searchBarHeight = with(density) { size.height.toDp() } }
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            ) {
+                slots(ScreenSlot.SearchBar)
+            }
         }
         }
     }
