@@ -55,7 +55,7 @@ extension EnvironmentValues {
     }
 }
 
-struct TabChromeReport {
+struct TabChromeReport: @unchecked Sendable {
     let report: (ScreenNavigationBarMetadata) -> Void
 }
 

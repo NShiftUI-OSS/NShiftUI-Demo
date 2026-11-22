@@ -1,5 +1,6 @@
 import NShiftUI
 import SwiftUI
+import UIKit
 
 struct ScreenNavigationBarMetadata: Decodable, Hashable, Sendable {
     let title: String
@@ -124,10 +125,10 @@ struct ScreenMetadata: NShiftMetadata, Decodable, NShiftRainbowPluginMetadata {
         let header = try context.compilePlugins("scroll.header")
         let footer = try context.compilePlugins("scroll.footer")
         if header.isEmpty == false {
-            slots[.scrollHeader] = header
+            slots[ScreenSlot.scrollHeader.slotName] = header
         }
         if footer.isEmpty == false {
-            slots[.scrollFooter] = footer
+            slots[ScreenSlot.scrollFooter.slotName] = footer
         }
         let enrichedScroll = scroll.map {
             ScreenScrollMetadata(
@@ -274,7 +275,7 @@ struct ScreenPlugin: NShiftPluginContainer {
                 scrollRows
             }
             .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .hiddenScrollContentBackground()
             .background(theme.palette.background)
             .modifier(
                 FastRefreshModifier(enabled: fastRefresh) {
@@ -355,7 +356,6 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
     }
 
-    @ViewBuilder
     private func tabLabel(_ item: TabMetadata) -> some View {
         let icon = tabBarIcon(item.icon)
         return Label {
@@ -447,7 +447,7 @@ struct ScreenPlugin: NShiftPluginContainer {
 
 private struct FastRefreshModifier: ViewModifier {
     let enabled: Bool
-    let action: () async -> Void
+    let action: @Sendable () async -> Void
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -456,5 +456,64 @@ private struct FastRefreshModifier: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func hiddenScrollContentBackground() -> some View {
+        if #available(iOS 16.0, *) {
+            scrollContentBackground(.hidden)
+        } else {
+            background(LegacyListBackgroundClearer())
+        }
+    }
+}
+
+private struct LegacyListBackgroundClearer: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        DispatchQueue.main.async {
+            clearNearestTable(from: uiView)
+        }
+    }
+
+    private func clearNearestTable(from view: UIView) {
+        var current: UIView? = view
+        while let node = current {
+            if let table = node as? UITableView {
+                clear(table)
+                return
+            }
+            if let table = table(in: node.subviews) {
+                clear(table)
+                return
+            }
+            current = node.superview
+        }
+    }
+
+    private func table(in views: [UIView]) -> UITableView? {
+        for view in views {
+            if let table = view as? UITableView {
+                return table
+            }
+            if let table = table(in: view.subviews) {
+                return table
+            }
+        }
+        return nil
+    }
+
+    private func clear(_ table: UITableView) {
+        table.backgroundColor = .clear
+        table.backgroundView = UIView()
+        table.backgroundView?.backgroundColor = .clear
     }
 }
