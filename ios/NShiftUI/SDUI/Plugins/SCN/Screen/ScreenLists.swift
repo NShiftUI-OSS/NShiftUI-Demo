@@ -187,8 +187,14 @@ final class ScreenLists {
         screen: ScreenViewModel
     ) async throws -> SendHTTPResponse {
         let listID = request.listID
-        var state = states[listID] ?? State()
         let replacing = request.mode == "replace"
+        // A replace (new category, new search) must not be lost while a page
+        // is loading: it waits for that load. Appends are dropped instead, so
+        // repeated scroll triggers never queue up.
+        while replacing, states[listID]?.isLoading == true {
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        var state = states[listID] ?? State()
         guard state.isLoading == false else {
             return SendHTTPResponse(status: 204, body: Data())
         }

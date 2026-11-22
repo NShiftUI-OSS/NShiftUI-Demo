@@ -190,7 +190,6 @@ struct ScreenPlugin: NShiftPluginContainer {
     @Environment(\.tabBarHosted) private var tabBarHosted
     @Environment(\.tabChromeReport) private var tabChromeReport
     @StateObject private var scrollEnd = ScrollEndState()
-    @State private var selectedTab = 0
     @State private var chromeByRoute: [String: ScreenNavigationBarMetadata] = [:]
 
     var body: some View {
@@ -285,7 +284,7 @@ struct ScreenPlugin: NShiftPluginContainer {
         if tabs.isEmpty {
             screenBody
         } else {
-            TabView(selection: $selectedTab) {
+            TabView(selection: $viewModel.selectedTab) {
                 screenBody
                     .tabItem { tabLabel(tabs[0]) }
                     .tag(0)
@@ -499,10 +498,10 @@ struct ScreenPlugin: NShiftPluginContainer {
         let tabs = slotTabs.isEmpty
             ? tabBarItems(in: pluginChildren, hosted: tabBarHosted)
             : slotTabs
-        guard selectedTab > 0, selectedTab < tabs.count else {
+        guard viewModel.selectedTab > 0, viewModel.selectedTab < tabs.count else {
             return navigationBar
         }
-        let tab = tabs[selectedTab]
+        let tab = tabs[viewModel.selectedTab]
         return chromeByRoute[tab.route] ?? ScreenNavigationBarMetadata(
             title: tab.title,
             theme: navigationBar.theme
@@ -517,8 +516,8 @@ struct ScreenPlugin: NShiftPluginContainer {
         case "none":
             return .none
         case "back", "button":
-            if selectedTab > 0 {
-                return .back(action: { selectedTab = 0 })
+            if viewModel.selectedTab > 0 {
+                return .back(action: { viewModel.selectedTab = 0 })
             }
             return .back()
         case "auto":

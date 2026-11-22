@@ -165,6 +165,7 @@
 		DA3E6F77781FE27E73BF4453 /* UpdateListEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87E70F8E2A7B1F51D82C404 /* UpdateListEvent.swift */; };
 		91CB236C1EC2B9B553F590CA /* SCNSearchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E01B0B5B49BEB093B6F80C /* SCNSearchBar.swift */; };
 		2B9CFA6E091B5B369EFADA86 /* SearchBarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D68175BA8F62EC4CB65F7950 /* SearchBarPlugin.swift */; };
+		06279A883A81E8F79A211CC5 /* ChangeTabEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99D718C0DFEB95CE4A911030 /* ChangeTabEvent.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -330,6 +331,7 @@
 		C87E70F8E2A7B1F51D82C404 /* UpdateListEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateListEvent.swift; sourceTree = "<group>"; };
 		B1E01B0B5B49BEB093B6F80C /* SCNSearchBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SCNSearchBar.swift; sourceTree = "<group>"; };
 		D68175BA8F62EC4CB65F7950 /* SearchBarPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBarPlugin.swift; sourceTree = "<group>"; };
+		99D718C0DFEB95CE4A911030 /* ChangeTabEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangeTabEvent.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -1119,6 +1121,7 @@
 		E7F3000000000000000000E1 /* SCN */ = {
 			isa = PBXGroup;
 			children = (
+				77F95BBD951B4227D024F7F3 /* ChangeTabEvent */,
 				F7D0359EC9D4EDE7CEAF0C5E /* UpdateListEvent */,
 				C1F263530E27A2A3AB1C3A55 /* EventDispatch */,
 				38573FC9BFD03244CC9D2582 /* ChangePluginMetadataEvent */,
@@ -1156,6 +1159,14 @@
 				D68175BA8F62EC4CB65F7950 /* SearchBarPlugin.swift */,
 			);
 			path = SearchBar;
+			sourceTree = "<group>";
+		};
+		77F95BBD951B4227D024F7F3 /* ChangeTabEvent */ = {
+			isa = PBXGroup;
+			children = (
+				99D718C0DFEB95CE4A911030 /* ChangeTabEvent.swift */,
+			);
+			path = ChangeTabEvent;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1315,6 +1326,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				06279A883A81E8F79A211CC5 /* ChangeTabEvent.swift in Sources */,
 				2B9CFA6E091B5B369EFADA86 /* SearchBarPlugin.swift in Sources */,
 				91CB236C1EC2B9B553F590CA /* SCNSearchBar.swift in Sources */,
 				DA3E6F77781FE27E73BF4453 /* UpdateListEvent.swift in Sources */,

@@ -154,13 +154,19 @@ class ScreenLists {
     private val filterValues = java.util.concurrent.ConcurrentHashMap<String, String>()
     private val searchValues = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    /** One request cycle at a time: concurrent triggers are dropped, never queued. */
+    /** One request cycle at a time: appends are dropped while loading, replaces wait. */
     suspend fun update(
         request: UpdateListEventMetadata,
         tree: NShiftEngineTree,
         screen: ScreenViewModel,
     ): SendHTTPResponse {
-        if (!mutex.tryLock()) return SendHTTPResponse(status = 204, body = "")
+        // A replace (new category, new search) waits for a load in progress so it
+        // is never lost; appends are dropped instead, so scroll triggers never queue.
+        if (request.mode == "replace") {
+            mutex.lock()
+        } else if (!mutex.tryLock()) {
+            return SendHTTPResponse(status = 204, body = "")
+        }
         try {
             val listID = request.listID
             val replacing = request.mode == "replace"

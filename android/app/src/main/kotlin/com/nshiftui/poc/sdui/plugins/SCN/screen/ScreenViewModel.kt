@@ -45,6 +45,9 @@ class ScreenViewModel(
     val inputs: StateFlow<List<ScreenInput>> = inputState.asStateFlow()
     private val routeParametersState = MutableStateFlow<Map<String, String>>(emptyMap())
     val routeParameters: StateFlow<Map<String, String>> = routeParametersState.asStateFlow()
+    /** Selected tab of a screen with a TabBar; `ChangeTabEvent` changes it. */
+    val selectedTab = MutableStateFlow(0)
+
     /** Generic list state: datasets, pagination and `ForEach` filters by list id. */
     val lists = ScreenLists()
     private var didAppear = false

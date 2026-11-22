@@ -51,6 +51,7 @@ struct CatalogAssembly: NShiftDependencyAssembly {
         ChangeEventEvent.self,
         SendHTTPRequestEvent.self,
         UpdateListEvent.self,
+        ChangeTabEvent.self,
         OpenBottomSheetEvent.self,
         CloseBottomSheetEvent.self,
         NavigateEvent.self,

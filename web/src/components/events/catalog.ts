@@ -10,6 +10,7 @@ import { navigateEventMetadata } from '@/domain/events/previews/navigate-metadat
 import { openBottomSheetEventMetadata } from '@/domain/events/previews/open-bottom-sheet-metadata'
 import { sendHttpRequestEventMetadata } from '@/domain/events/previews/send-http-request-metadata'
 import { updateListEventMetadata } from '@/domain/events/previews/update-list-metadata'
+import { changeTabEventMetadata } from '@/domain/events/previews/change-tab-metadata'
 import type { PluginField } from '@/scn/plugin-fields'
 import { scnPresets } from '@/scn/presets'
 
@@ -115,6 +116,14 @@ export const flowEvents: FlowEventDefinition[] = [
       text('path', 'Endpoint', '/', true),
       { ...text('body', 'Corpo'), embedded: 'JSON' },
     ],
+  },
+  {
+    id: 'change-tab',
+    name: changeTabEventMetadata.kind,
+    description: 'Troca a aba selecionada da TabBar da tela (0 é a primeira)',
+    triggers: complete,
+    metadata: changeTabEventMetadata,
+    fields: [number('index', 'Índice da aba', '0')],
   },
   {
     id: 'update-list',

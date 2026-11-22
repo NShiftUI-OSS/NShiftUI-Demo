@@ -29,6 +29,8 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
     @Published private(set) var bottomSheets: [ScreenBottomSheet] = []
     @Published private(set) var inputs: [ScreenInput] = []
     @Published private(set) var routeParameters: [String: String] = [:]
+    /// Selected tab of a screen with a TabBar; `ChangeTabEvent` changes it.
+    @Published var selectedTab = 0
 
     private let http: any SendHTTPRequestUseCaseProtocol
     private var refreshObserver: ScreenRefreshObserver?

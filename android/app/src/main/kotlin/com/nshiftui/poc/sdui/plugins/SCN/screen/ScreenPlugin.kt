@@ -169,7 +169,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         val hosted = LocalTabBarHosted.current
         val slotTabs = tabBarItems(model.slots[ScreenSlot.TabBar.slotName].orEmpty(), hosted)
         val tabs = if (slotTabs.isNotEmpty()) slotTabs else tabBarItems(model.children, hosted)
-        var selected by rememberSaveable { mutableStateOf(0) }
+        // Kept in the view model (retained with the screen) so ChangeTabEvent
+        // can select a tab and the selection survives navigation.
+        val selected by viewModel.selectedTab.collectAsState()
         var chromeByRoute by remember { mutableStateOf<Map<String, ScreenNavigationBarMetadata>>(emptyMap()) }
         val ownerBar = screen.navigationBar ?: ScreenNavigationBarMetadata()
         val activeBar = if (!hosted && selected > 0) {
@@ -193,7 +195,7 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
             screen = screen,
             tabs = tabs,
             selected = selected,
-            onSelect = { selected = it },
+            onSelect = { viewModel.selectedTab.value = it },
             bar = activeBar,
             hosted = hosted,
             onChrome = { route, chrome ->
