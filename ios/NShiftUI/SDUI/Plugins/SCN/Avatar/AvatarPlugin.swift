@@ -7,6 +7,12 @@ struct AvatarMetadata: NShiftMetadata, Decodable {
     let size: String
     let imageURL: String
 
+    init(initials: String, size: String, imageURL: String = "") {
+        self.initials = initials
+        self.size = size
+        self.imageURL = imageURL
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         initials = try container.decodeIfPresent(String.self, forKey: .initials) ?? ""

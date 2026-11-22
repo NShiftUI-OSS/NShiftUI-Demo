@@ -112,6 +112,8 @@ export const flowEvents: FlowEventDefinition[] = [
     fields: [
       select('method', 'Método', ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
       text('path', 'Caminho', '/', true),
+      text('appendTo', 'Acrescentar no container', ''),
+      number('pageSize', 'Itens por página', '3'),
       { ...text('body', 'Corpo'), embedded: 'JSON' },
     ],
   },

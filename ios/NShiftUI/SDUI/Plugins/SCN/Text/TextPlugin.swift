@@ -9,6 +9,20 @@ struct TextMetadata: NShiftMetadata, Decodable {
     let color: String
     let alignment: String
 
+    init(
+        text: String,
+        style: String = "sm",
+        weight: String = "regular",
+        color: String = "foreground",
+        alignment: String = "leading"
+    ) {
+        self.text = text
+        self.style = style
+        self.weight = weight
+        self.color = color
+        self.alignment = alignment
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         text = try container.decodeIfPresent(String.self, forKey: .text) ?? ""

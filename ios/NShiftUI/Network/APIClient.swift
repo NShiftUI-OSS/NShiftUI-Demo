@@ -5,6 +5,7 @@ import Security
 final class APIClient: @unchecked Sendable {
     private let baseURL: String
     private let session: Session
+    private let externalSession: Session
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
@@ -18,6 +19,7 @@ final class APIClient: @unchecked Sendable {
             baseURL: baseURL,
             trustLocalCertificate: trustLocalCertificate
         )
+        self.externalSession = Session()
     }
 
     func send<Request: APIRequest>(
@@ -40,7 +42,8 @@ final class APIClient: @unchecked Sendable {
             )
         }
 
-        let response = await session
+        let activeSession = url.host == "127.0.0.1" ? session : externalSession
+        let response = await activeSession
             .request(urlRequest)
             .serializingData()
             .response
@@ -95,7 +98,8 @@ final class APIClient: @unchecked Sendable {
                 forHTTPHeaderField: header.name
             )
         }
-        let response = await session
+        let activeSession = url.host == "127.0.0.1" ? session : externalSession
+        let response = await activeSession
             .request(urlRequest)
             .serializingData()
             .response

@@ -31,6 +31,9 @@ val NShiftTrigger.Companion.onPresent: NShiftTrigger
 val NShiftTrigger.Companion.onFailure: NShiftTrigger
     get() = NShiftTrigger("onFailure")
 
+val NShiftTrigger.Companion.onScrollEndReached: NShiftTrigger
+    get() = NShiftTrigger("onScrollEndReached")
+
 fun NShiftTrigger.Companion.onStatusCode(statusCode: Int): NShiftTrigger? =
     runCatching { NShiftTrigger("onStatusCode$statusCode") }.getOrNull()
 

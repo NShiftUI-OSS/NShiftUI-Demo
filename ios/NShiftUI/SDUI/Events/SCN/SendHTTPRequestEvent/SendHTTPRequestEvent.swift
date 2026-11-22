@@ -10,6 +10,8 @@ struct SendHTTPRequestEventMetadata: NShiftMetadata, NShiftJSONTaggedMetadata, D
     let headers: [String: String]
     let query: [String: String]
     let body: String
+    let appendTo: String
+    let pageSize: Int
 
     private enum CodingKeys: String, CodingKey {
         case method
@@ -17,6 +19,8 @@ struct SendHTTPRequestEventMetadata: NShiftMetadata, NShiftJSONTaggedMetadata, D
         case headers
         case query
         case body
+        case appendTo
+        case pageSize
     }
 
     init(from decoder: Decoder) throws {
@@ -26,6 +30,8 @@ struct SendHTTPRequestEventMetadata: NShiftMetadata, NShiftJSONTaggedMetadata, D
         headers = try container.decodeIfPresent([String: String].self, forKey: .headers) ?? [:]
         query = try container.decodeIfPresent([String: String].self, forKey: .query) ?? [:]
         body = try container.decodeIfPresent(String.self, forKey: .body) ?? ""
+        appendTo = try container.decodeIfPresent(String.self, forKey: .appendTo) ?? ""
+        pageSize = try container.decodeIfPresent(Int.self, forKey: .pageSize) ?? 3
     }
 }
 
@@ -48,16 +54,26 @@ struct SendHTTPRequestEvent: NShiftEvent {
             )
             return
         }
-        let request = SendHTTPRequest(
-            method: metadata.method,
-            path: metadata.path,
-            headers: metadata.headers,
-            query: metadata.query,
-            body: metadata.body
-        )
         let response: SendHTTPResponse
         do {
-            response = try await http.sendHTTPRequest(request)
+            if metadata.appendTo.isEmpty == false {
+                response = try await http.appendPokedexPage(
+                    engine: engine,
+                    parentID: metadata.appendTo,
+                    endpoint: metadata.path,
+                    limit: metadata.pageSize
+                )
+            } else {
+                response = try await http.sendHTTPRequest(
+                    SendHTTPRequest(
+                        method: metadata.method,
+                        path: metadata.path,
+                        headers: metadata.headers,
+                        query: metadata.query,
+                        body: metadata.body
+                    )
+                )
+            }
         } catch {
             await dispatch(
                 .onFailure,

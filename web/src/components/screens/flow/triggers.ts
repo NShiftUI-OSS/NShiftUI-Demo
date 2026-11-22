@@ -1,4 +1,5 @@
 const pluginTriggers: Record<string, readonly string[]> = {
+  Screen: ['OnScrollEndReached'],
   Button: ['OnTap'],
   ButtonGroup: ['OnSelect'],
   Calendar: ['OnSelect'],

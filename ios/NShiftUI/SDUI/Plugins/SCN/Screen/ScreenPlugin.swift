@@ -268,15 +268,30 @@ struct ScreenPlugin: NShiftPluginContainer {
 
     @ViewBuilder
     private var screenBody: some View {
+        let contentRevision = viewModel.contentRevision
         let fastRefresh = metadata.scroll?.fastRefresh == true
         let isLazy = metadata.scroll?.isLazy == true
         if isLazy {
             List {
                 scrollRows
+                Color.clear
+                    .frame(height: 1)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
             }
             .listStyle(.plain)
             .hiddenScrollContentBackground()
             .background(ListContentInsetNormalizer())
+            .background(
+                ScrollEndDetector(contentRevision: contentRevision) {
+                    fire(
+                        .onScrollEndReached,
+                        engine: engine,
+                        renderID: renderID
+                    )
+                }
+            )
             .background(theme.palette.background)
             .modifier(
                 FastRefreshModifier(enabled: fastRefresh) {
@@ -304,6 +319,15 @@ struct ScreenPlugin: NShiftPluginContainer {
                 .modifier(
                     FastRefreshModifier(enabled: fastRefresh) {
                         await viewModel.refresh()
+                    }
+                )
+                .background(
+                    ScrollEndDetector(contentRevision: contentRevision) {
+                        fire(
+                            .onScrollEndReached,
+                            engine: engine,
+                            renderID: renderID
+                        )
                     }
                 )
                 .frame(
@@ -575,5 +599,141 @@ private struct ListContentInsetNormalizer: UIViewRepresentable {
         scrollView.contentInset.right = 0
         scrollView.contentInset.bottom = 0
         scrollView.layoutMargins = .zero
+    }
+}
+
+@MainActor
+private struct ScrollEndDetector: UIViewRepresentable {
+    let contentRevision: Int
+    let onReached: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            contentRevision: contentRevision,
+            onReached: onReached
+        )
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.onReached = onReached
+        context.coordinator.contentRevision = contentRevision
+        DispatchQueue.main.async {
+            context.coordinator.attach(to: uiView)
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, @unchecked Sendable {
+        var onReached: () -> Void
+        var contentRevision: Int
+        private weak var scrollView: UIScrollView?
+        private var offsetObservation: NSKeyValueObservation?
+        private var sizeObservation: NSKeyValueObservation?
+        private var endReachedArmed = true
+        private var attachAttempts = 0
+
+        init(
+            contentRevision: Int,
+            onReached: @escaping () -> Void
+        ) {
+            self.contentRevision = contentRevision
+            self.onReached = onReached
+        }
+
+        func attach(to view: UIView) {
+            let scrollView = findScrollView(from: view)
+                ?? view.window?.rootViewController.flatMap {
+                    findScrollView(in: $0.view.subviews)
+                }
+            guard let scrollView else {
+                guard attachAttempts < 20 else { return }
+                attachAttempts += 1
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    self.attach(to: view)
+                }
+                return
+            }
+            attachAttempts = 0
+            if self.scrollView !== scrollView {
+                self.scrollView = scrollView
+                offsetObservation?.invalidate()
+                sizeObservation?.invalidate()
+                offsetObservation = scrollView.observe(\.contentOffset, options: [.new]) {
+                    [weak self] _, _ in
+                    let coordinator = self
+                    DispatchQueue.main.async { [weak coordinator] in
+                        coordinator?.scheduleCheck()
+                    }
+                }
+                sizeObservation = scrollView.observe(\.contentSize, options: [.new]) {
+                    [weak self] _, _ in
+                    let coordinator = self
+                    DispatchQueue.main.async { [weak coordinator] in
+                        coordinator?.scheduleCheck()
+                    }
+                }
+            }
+            scheduleCheck()
+        }
+
+        private func scheduleCheck() {
+            DispatchQueue.main.async { [weak self] in
+                self?.check()
+            }
+        }
+
+        private func check() {
+            guard let scrollView,
+                  scrollView.contentSize.height > 0 else {
+                return
+            }
+            let visibleBottom = scrollView.contentOffset.y
+                + scrollView.bounds.height
+                - scrollView.adjustedContentInset.bottom
+            let contentBottom = scrollView.contentSize.height
+                - scrollView.adjustedContentInset.bottom
+            guard visibleBottom >= contentBottom - 8 else {
+                endReachedArmed = true
+                return
+            }
+            guard endReachedArmed else {
+                return
+            }
+            endReachedArmed = false
+            onReached()
+        }
+
+        private func findScrollView(from view: UIView) -> UIScrollView? {
+            var current: UIView? = view
+            while let node = current {
+                if let scrollView = node as? UIScrollView {
+                    return scrollView
+                }
+                if let scrollView = findScrollView(in: node.subviews) {
+                    return scrollView
+                }
+                current = node.superview
+            }
+            return nil
+        }
+
+        private func findScrollView(in views: [UIView]) -> UIScrollView? {
+            for view in views {
+                if let scrollView = view as? UIScrollView {
+                    return scrollView
+                }
+                if let scrollView = findScrollView(in: view.subviews) {
+                    return scrollView
+                }
+            }
+            return nil
+        }
     }
 }

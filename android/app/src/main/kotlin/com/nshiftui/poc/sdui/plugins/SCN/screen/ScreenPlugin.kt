@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.NavigationBar
@@ -30,14 +31,19 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import com.nshiftui.poc.sdui.observers.LocalScreenRefresh
+import com.nshiftui.poc.sdui.triggers.fire
+import com.nshiftui.poc.sdui.triggers.onScrollEndReached
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.nshiftui.NShiftMetadata
 import com.nshiftui.NShiftPluginNode
 import com.nshiftui.NShiftNodeView
+import com.nshiftui.NShiftTrigger
 import com.nshiftui.NShiftPluginContainer
 import com.nshiftui.AnyNShiftMetadata
 import com.nshiftui.NShiftPluginModel
@@ -142,6 +149,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
     @Composable
     override fun Content() {
         val screen = metadata<ScreenMetadata>()
+        val scope = rememberCoroutineScope()
+        viewModel.bindEngine(engine)
+        val contentRevision by viewModel.contentRevision.collectAsState()
         val hosted = LocalTabBarHosted.current
         val slotTabs = tabBarItems(model.slots[ScreenSlot.TabBar.slotName].orEmpty(), hosted)
         val tabs = if (slotTabs.isNotEmpty()) slotTabs else tabBarItems(model.children, hosted)
@@ -172,10 +182,14 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
             onSelect = { selected = it },
             bar = activeBar,
             hosted = hosted,
+            contentRevision = contentRevision,
             onChrome = { route, chrome ->
                 if (chromeByRoute[route] != chrome) {
                     chromeByRoute = chromeByRoute + (route to chrome)
                 }
+            },
+            onScrollEnd = {
+                fire(NShiftTrigger.onScrollEndReached, scope)
             },
         )
     }
@@ -188,7 +202,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         onSelect: (Int) -> Unit,
         bar: ScreenNavigationBarMetadata,
         hosted: Boolean,
+        contentRevision: Int,
         onChrome: (String, ScreenNavigationBarMetadata) -> Unit,
+        onScrollEnd: () -> Unit,
     ) {
         val theme = LocalSCNTheme.current
         val colors = theme.palette
@@ -212,6 +228,8 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                     }
                 },
                 onChrome = onChrome,
+                onScrollEnd = onScrollEnd,
+                contentRevision = contentRevision,
                 modifier = Modifier
                     .fillMaxSize()
                     .background(colors.background),
@@ -275,6 +293,8 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                     }
                 },
                 onChrome = onChrome,
+                onScrollEnd = onScrollEnd,
+                contentRevision = contentRevision,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
@@ -290,10 +310,42 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
         refreshing: Boolean,
         onRefresh: () -> Unit,
         onChrome: (String, ScreenNavigationBarMetadata) -> Unit,
+        onScrollEnd: () -> Unit,
+        contentRevision: Int,
         modifier: Modifier,
     ) {
         val fastRefresh = screen.scroll?.fastRefresh == true
         val isLazy = screen.scroll?.isLazy == true
+        val lazyListState = rememberLazyListState()
+        val scrollState = rememberScrollState()
+        var endReachedArmed by remember { mutableStateOf(true) }
+        if (isLazy) {
+            LaunchedEffect(lazyListState) {
+                snapshotFlow { lazyListState.canScrollForward }
+                    .distinctUntilChanged()
+                    .collect { canScrollForward ->
+                        if (canScrollForward) {
+                            endReachedArmed = true
+                        } else if (endReachedArmed) {
+                            endReachedArmed = false
+                            onScrollEnd()
+                        }
+                    }
+            }
+        } else if (screen.scroll?.enabled == true || fastRefresh) {
+            LaunchedEffect(scrollState) {
+                snapshotFlow { scrollState.value to scrollState.maxValue }
+                    .distinctUntilChanged()
+                    .collect { (value, max) ->
+                        if (max > 0 && value < max) {
+                            endReachedArmed = true
+                        } else if (max > 0 && endReachedArmed) {
+                            endReachedArmed = false
+                            onScrollEnd()
+                        }
+                    }
+            }
+        }
         BoxWithConstraints(
             modifier,
             contentAlignment = Alignment.TopCenter,
@@ -305,6 +357,7 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                             Modifier
                                 .fillMaxSize()
                                 .fillMaxWidth(),
+                            state = lazyListState,
                             contentPadding = PaddingValues(
                                 top = 16.dp,
                                 start = 16.dp,
@@ -318,11 +371,15 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                                 screenChildrenNodes(),
                                 key = { node -> node.renderId.rawValue },
                             ) { node ->
-                                NShiftNodeView(
-                                    node = node,
-                                    engine = requireEngineTree(),
-                                    viewModel = parentViewModel(),
-                                )
+                                androidx.compose.runtime.key(
+                                    "${node.renderId.rawValue}:$contentRevision",
+                                ) {
+                                    NShiftNodeView(
+                                        node = node,
+                                        engine = requireEngineTree(),
+                                        viewModel = parentViewModel(),
+                                    )
+                                }
                             }
                             lazySlotItems(ScreenSlot.ScrollFooter)
                         }
@@ -332,7 +389,7 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                                 .fillMaxSize()
                                 .fillMaxWidth()
                                 .heightIn(min = maxHeight)
-                                .verticalScroll(rememberScrollState()),
+                                .verticalScroll(scrollState),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Top,
                         ) {
@@ -345,7 +402,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                                         end = 16.dp,
                                     ),
                             ) {
-                                scrollChildren()
+                                androidx.compose.runtime.key(contentRevision) {
+                                    scrollChildren()
+                                }
                             }
                         }
                     } else {
@@ -358,7 +417,9 @@ class ScreenPlugin : NShiftPluginContainer<ScreenViewModel>(
                                     end = 16.dp,
                                 ),
                         ) {
-                            screenChildren()
+                            androidx.compose.runtime.key(contentRevision) {
+                                screenChildren()
+                            }
                         }
                     }
                 }
