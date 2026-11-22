@@ -199,11 +199,21 @@ struct ScreenPlugin: NShiftPluginContainer {
         }
     }
 
-    /// Re-identified on every content revision so sheets appended at runtime
-    /// (Pokédex details) are rendered and registered.
+    /// Observes the screen node so sheets appended at runtime (Pokédex
+    /// details) are rendered without rebuilding the existing ones.
+    @ViewBuilder
     private var bottomSheets: some View {
-        slots(.bottomSheet)
-            .id(viewModel.contentRevision)
+        if let tree = engine as? any NShiftEngineTree,
+           let node = tree.node(withRenderID: renderID) {
+            ObservedSlotChildren(
+                node: node,
+                name: ScreenSlot.bottomSheet.slotName,
+                engine: tree,
+                viewModel: viewModel
+            )
+        } else {
+            slots(.bottomSheet)
+        }
     }
 
     private var hostedBody: some View {
@@ -278,7 +288,6 @@ struct ScreenPlugin: NShiftPluginContainer {
 
     @ViewBuilder
     private var screenBody: some View {
-        let contentRevision = viewModel.contentRevision
         let fastRefresh = metadata.scroll?.fastRefresh == true
         let isLazy = metadata.scroll?.isLazy == true
         if isLazy {
@@ -286,14 +295,12 @@ struct ScreenPlugin: NShiftPluginContainer {
                 scrollRows
             }
             .listStyle(.plain)
+            .environment(\.defaultMinListRowHeight, 0)
             .hiddenScrollContentBackground()
             .hiddenScrollIndicators()
             .background(ListContentInsetNormalizer())
             .background(
-                ScrollEndDetector(
-                    contentRevision: contentRevision,
-                    target: .list
-                ) {
+                ScrollEndDetector(target: .list) {
                     fire(
                         .onScrollEndReached,
                         engine: engine,
@@ -331,10 +338,7 @@ struct ScreenPlugin: NShiftPluginContainer {
                     }
                 )
                 .background(
-                    ScrollEndDetector(
-                        contentRevision: contentRevision,
-                        target: .scrollView
-                    ) {
+                    ScrollEndDetector(target: .scrollView) {
                         fire(
                             .onScrollEndReached,
                             engine: engine,
@@ -366,14 +370,41 @@ struct ScreenPlugin: NShiftPluginContainer {
         slots(.scrollHeader) { _, view in
             listRow(view, edge: .bottom)
         }
-        children { model, view in
-            if model.name.rawValue != "TabBar" {
-                listRow(view)
+        if let tree = engine as? any NShiftEngineTree,
+           let stack = lazyRootStack(in: tree) {
+            LazyStackRows(node: stack, engine: tree, viewModel: viewModel) { view, spacing, alignment in
+                view
+                    .frame(maxWidth: .infinity, alignment: alignment)
+                    .padding(.top, spacing)
+                    .padding(.horizontal, 16)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
+        } else {
+            children { model, view in
+                if model.name.rawValue != "TabBar" {
+                    listRow(view)
+                }
             }
         }
         slots(.scrollFooter) { _, view in
             listRow(view, edge: .top)
         }
+    }
+
+    /// The single root `VerticalStack` of a lazy screen, rendered as one List
+    /// row per child so rows are created lazily and reused.
+    private func lazyRootStack(in tree: any NShiftEngineTree) -> NShiftPluginNode? {
+        guard let screen = tree.node(withRenderID: renderID) else { return nil }
+        let content = screen.children.filter { $0.model.name.rawValue != "TabBar" }
+        guard content.count == 1,
+              let stack = content.first,
+              stack.model.name.rawValue == "VerticalStack",
+              stack.model.metadata?.unwrap(as: StackLayoutMetadata.self) != nil else {
+            return nil
+        }
+        return stack
     }
 
     @ViewBuilder
@@ -629,6 +660,49 @@ private struct ListContentInsetNormalizer: UIViewRepresentable {
     }
 }
 
+/// Renders each child of a stack node as its own List row. It observes the
+/// node, so appended children become new rows while existing rows keep their
+/// identity and are not rebuilt.
+private struct LazyStackRows<Row: View>: View {
+    @ObservedObject var node: NShiftPluginNode
+    let engine: any NShiftEngineTree
+    let viewModel: (any NShiftPluginViewModel)?
+    let row: (NShiftNodeView, CGFloat, Alignment) -> Row
+
+    var body: some View {
+        let layout = node.model.metadata?.unwrap(as: StackLayoutMetadata.self)
+        let spacing = CGFloat(layout?.spacing ?? 0)
+        let alignment: Alignment = switch layout?.horizontalAlignment() {
+        case .center?: .top
+        case .trailing?: .topTrailing
+        default: .topLeading
+        }
+        let firstID = node.children.first?.renderId
+        ForEach(node.children, id: \.renderId) { child in
+            row(
+                NShiftNodeView(node: child, engine: engine, viewModel: viewModel),
+                child.renderId == firstID ? 0 : spacing,
+                alignment
+            )
+        }
+    }
+}
+
+/// Renders a slot from the observed node, adding new slot children without
+/// rebuilding the existing ones.
+private struct ObservedSlotChildren: View {
+    @ObservedObject var node: NShiftPluginNode
+    let name: NShiftSlotName
+    let engine: any NShiftEngineTree
+    let viewModel: (any NShiftPluginViewModel)?
+
+    var body: some View {
+        ForEach(node.slotChildren[name] ?? [], id: \.renderId) { child in
+            NShiftNodeView(node: child, engine: engine, viewModel: viewModel)
+        }
+    }
+}
+
 /// Registers the retained `@StateObject` view model for this screen's engine.
 private struct EngineViewModelBinder: UIViewRepresentable {
     let engine: (any NShiftEngine)?
@@ -652,7 +726,6 @@ private struct ScrollEndDetector: UIViewRepresentable {
         case scrollView
     }
 
-    let contentRevision: Int
     let target: Target
     let onReached: () -> Void
 

@@ -92,7 +92,6 @@ protocol ScreenHTTPLayer: AnyObject {
 final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenSheetLayer, ScreenHTTPLayer {
     @Published private(set) var bottomSheets: [ScreenBottomSheet] = []
     @Published private(set) var inputs: [ScreenInput] = []
-    @Published private(set) var contentRevision = 0
 
     private let http: any SendHTTPRequestUseCaseProtocol
     private var refreshObserver: ScreenRefreshObserver?
@@ -308,26 +307,26 @@ final class ScreenViewModel: ObservableObject, NShiftPluginViewModel, ScreenShee
         let sheetSlot = ScreenSlot.bottomSheet.slotName
         let sheets = screen.model.slots[sheetSlot] ?? []
         if let sheetTemplate = sheets.first(where: { $0.name.rawValue == "Sheet" }) {
-            tree.replaceSlot(
+            tree.appendSlot(
                 pluginID: screen.id.rawValue,
                 name: sheetSlot,
-                with: sheets + fresh.map {
+                with: fresh.map {
                     makePokedexSheet(from: sheetTemplate, card: template, detail: $0)
                 }
             )
         }
 
+        // Insert only the new cards: existing card nodes keep their identity,
+        // so their rendered rows are not rebuilt on every page.
         let cards = fresh.map { makePokedexCard(from: template, detail: $0) }
-        var nextChildren = children
         let insertionIndex = children.lastIndex(where: {
             $0.name.rawValue == "Card"
         }).map { $0 + 1 } ?? children.count
-        nextChildren.insert(contentsOf: cards, at: insertionIndex)
-        tree.replaceChildren(
+        tree.insertChildren(
             pluginID: parent.id.rawValue,
-            with: nextChildren
+            at: insertionIndex,
+            with: cards
         )
-        contentRevision += 1
     }
 
     private func makePokedexCard(

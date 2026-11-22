@@ -127,8 +127,6 @@ class ScreenViewModel(
 
     private val inputState = MutableStateFlow<List<ScreenInput>>(emptyList())
     val inputs: StateFlow<List<ScreenInput>> = inputState.asStateFlow()
-    private val contentRevisionState = MutableStateFlow(0)
-    val contentRevision: StateFlow<Int> = contentRevisionState.asStateFlow()
     private val paginationMutex = Mutex()
     // Keyed by the container node instance: a reloaded tree builds new nodes,
     // so its pagination starts from the first page again.
@@ -299,19 +297,19 @@ class ScreenViewModel(
         val sheetSlot = ScreenSlot.BottomSheet.slotName
         val sheets = screen.model.slots[sheetSlot].orEmpty()
         sheets.firstOrNull { it.name.rawValue == "Sheet" }?.let { sheetTemplate ->
-            tree.replaceSlot(
+            tree.appendSlot(
                 screen.renderId.rawValue,
                 sheetSlot,
-                sheets + fresh.map { makePokedexSheet(sheetTemplate, template, it) },
+                fresh.map { makePokedexSheet(sheetTemplate, template, it) },
             )
         }
 
+        // Insert only the new cards: existing card nodes keep their identity,
+        // so their composed items are not rebuilt on every page.
         val cards = fresh.map { makePokedexCard(template, it) }
         val insertionIndex = children.indexOfLast { it.name.rawValue == "Card" }
             .let { if (it >= 0) it + 1 else children.size }
-        val nextChildren = children.toMutableList().apply { addAll(insertionIndex, cards) }
-        tree.replaceChildren(parent.renderId.rawValue, nextChildren)
-        contentRevisionState.value += 1
+        tree.insertChildren(parent.renderId.rawValue, insertionIndex, cards)
     }
 
     private fun makePokedexCard(
