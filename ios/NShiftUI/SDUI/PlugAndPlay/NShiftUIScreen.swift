@@ -6,7 +6,7 @@ struct Screen {
     enum Phase {
         case pending
         case failed
-        case loaded(NShiftPluginModel)
+        case loaded(NShiftPluginModel, renderToken: UUID)
     }
 
     fileprivate let screenURL: String?
@@ -69,7 +69,7 @@ struct Screen {
     }
 
     var loadedModel: NShiftPluginModel? {
-        if case .loaded(let model) = phase {
+        if case .loaded(let model, _) = phase {
             return model
         }
         return nil
@@ -80,7 +80,7 @@ struct Screen {
             screenURL: screenURL,
             screenTitle: screenTitle,
             routeParameters: routeParameters,
-            phase: .loaded(model)
+            phase: .loaded(model, renderToken: UUID())
         )
     }
 
@@ -104,7 +104,7 @@ struct Screen {
                 screenURL: screenURL,
                 screenTitle: screenTitle,
                 routeParameters: routeParameters,
-                phase: .loaded(model)
+                phase: .loaded(model, renderToken: UUID())
             )
         } catch {
             return Self(
@@ -138,7 +138,7 @@ struct Screen {
 }
 
 private struct StableNShiftScreen: View, Equatable {
-    let token: String
+    let token: UUID
     let model: NShiftPluginModel
     var retainKey: String? = nil
 
@@ -170,7 +170,7 @@ private final class RetainedScreenStore {
 
     private struct Entry {
         var phase: Screen.Phase
-        var token: String?
+        var token: UUID?
         var engine: (any NShiftEngine)?
     }
 
@@ -184,12 +184,12 @@ private final class RetainedScreenStore {
         entries[key, default: Entry(phase: phase)].phase = phase
     }
 
-    func engine(for key: String, token: String, model: NShiftPluginModel) -> any NShiftEngine {
+    func engine(for key: String, token: UUID, model: NShiftPluginModel) -> any NShiftEngine {
         if let entry = entries[key], entry.token == token, let engine = entry.engine {
             return engine
         }
         let engine = NShiftView.makeEngine(for: model)
-        entries[key, default: Entry(phase: .loaded(model))].token = token
+        entries[key, default: Entry(phase: .loaded(model, renderToken: token))].token = token
         entries[key]?.engine = engine
         return engine
     }
@@ -201,7 +201,6 @@ private struct ResolvedScreen: View {
     let retainKey: String?
     @StateObject private var refresh = ScreenRefreshObserver()
     @State private var phase: Screen.Phase
-    @State private var generation = 0
     @State private var retrying = false
 
     init(builder: Screen, onBack: (() -> Void)?, retainKey: String? = nil) {
@@ -231,7 +230,6 @@ private struct ResolvedScreen: View {
                     let loaded = await builder.load()
                     if loaded.isLoaded {
                         phase = loaded.phase
-                        generation += 1
                         if let retainKey {
                             RetainedScreenStore.shared.store(loaded.phase, for: retainKey)
                         }
@@ -258,13 +256,15 @@ private struct ResolvedScreen: View {
                     retrying = false
                 }
             }
-        case .loaded(let model):
+        case .loaded(let model, let renderToken):
             StableNShiftScreen(
-                token: "\(builder.screenURL ?? "")#\(generation)",
+                token: renderToken,
                 model: model,
                 retainKey: retainKey
             )
             .equatable()
+            // A new definition needs a new host because NShiftView retains its engine in state.
+            .id(renderToken)
             .environment(\.screenRefresh, refresh)
             .environment(
                 \.screenRouteParameters,
