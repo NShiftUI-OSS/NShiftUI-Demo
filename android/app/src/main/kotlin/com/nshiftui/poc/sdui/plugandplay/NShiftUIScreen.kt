@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -148,7 +149,11 @@ private fun ResolvedScreen(
             LocalScreenRefresh provides refresh,
             LocalScreenRouteParameters provides builder.routeParameters,
         ) {
-            NShiftView(retained.engine(current.model))
+            val engine = retained.engine(current.model)
+            // A refreshed engine needs its own composition and screen effects.
+            key(engine) {
+                NShiftView(engine)
+            }
         }
     }
 }
