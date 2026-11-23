@@ -15,8 +15,7 @@ import { cn } from '@/lib/utils'
 const STORAGE_KEY = 'nshift.phone-flows'
 const LEGACY_KEY = 'nshift.phone-devices'
 
-export const PREVIEW_PHONE_HEIGHT_CLASS =
-  'h-[min(78svh,760px,calc(100svh-9rem))]'
+export const PREVIEW_PHONE_HEIGHT_CLASS = 'h-(--preview-phone-height)'
 
 export function previewPhoneHeight() {
   if (typeof document === 'undefined') return 720

@@ -84,10 +84,14 @@ export function pluginChromeStyle(values: ChromeValues): CSSProperties {
   const paddingLeading = paddingEdge('leading', 'horizontal')
   const paddingTrailing = paddingEdge('trailing', 'horizontal')
   if (paddingTop || paddingBottom || paddingLeading || paddingTrailing) {
-    style.marginTop = paddingTop || undefined
-    style.marginBottom = paddingBottom || undefined
-    style.marginLeft = paddingLeading || undefined
-    style.marginRight = paddingTrailing || undefined
+    // Native padding sits outside the background and inside the parent width.
+    // Margin on a full-width box overflows and gets clipped, so the inset disappears.
+    style.boxSizing = 'border-box'
+    style.backgroundClip = 'content-box'
+    if (paddingTop) style.paddingTop = paddingTop
+    if (paddingBottom) style.paddingBottom = paddingBottom
+    if (paddingLeading) style.paddingLeft = paddingLeading
+    if (paddingTrailing) style.paddingRight = paddingTrailing
   }
   const background = typeof values['style.background.color'] === 'string' ? values['style.background.color'].trim() : ''
   if (background) style.backgroundColor = previewColor(background)

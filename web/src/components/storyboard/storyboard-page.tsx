@@ -124,13 +124,15 @@ export function StoryboardPage() {
   }
 
   return (
-    <main className="relative h-full min-h-0 w-full flex-1 overflow-hidden">
-      {loading ? <StoryboardLoading /> : null}
-      {!loading && error ? (
-        <StoryboardError message={error} disabled={retrying} onRetry={retryStoryboard} />
-      ) : null}
-      {!loading && !error && data ? <StoryboardGraph data={data} /> : null}
+    <main className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <PreviewFidelityNotice />
+      <div className="relative min-h-0 flex-1">
+        {loading ? <StoryboardLoading /> : null}
+        {!loading && error ? (
+          <StoryboardError message={error} disabled={retrying} onRetry={retryStoryboard} />
+        ) : null}
+        {!loading && !error && data ? <StoryboardGraph data={data} /> : null}
+      </div>
     </main>
   )
 }
@@ -377,7 +379,7 @@ function ScreenPreview({
             Tela vazia
           </div>
         ) : (
-          <div className="flex min-h-full w-full shrink-0 flex-col items-center justify-center">
+          <div className="phone-screen-content">
             {nodes.map((node) => (
               <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
                 <StoryboardLayoutNode node={node} />

@@ -1,8 +1,9 @@
 package com.nshiftui.poc.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
@@ -12,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import com.nshiftui.poc.screens.LocalModalPresentation
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -25,6 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.nshiftui.poc.config.NShiftAppConfiguration
+import com.nshiftui.poc.screens.LocalModalPresentation
 import com.nshiftui.poc.sdui.plugandplay.Screen
 import com.nshiftui.poc.theme.LocalSCNTheme
 
@@ -47,8 +48,20 @@ fun NavigationHost(navigator: AppNavigator) {
             .fillMaxSize()
             .background(LocalSCNTheme.current.palette.background),
         enterTransition = { slideInHorizontally(motion) { fullWidth -> fullWidth } },
-        exitTransition = { slideOutHorizontally(motion) { fullWidth -> -fullWidth / 5 } },
-        popEnterTransition = { slideInHorizontally(motion) { fullWidth -> -fullWidth / 5 } },
+        exitTransition = {
+            if (targetState.destination.route == ModalRoute) {
+                ExitTransition.KeepUntilTransitionsFinished
+            } else {
+                slideOutHorizontally(motion) { fullWidth -> -fullWidth / 5 }
+            }
+        },
+        popEnterTransition = {
+            if (initialState.destination.route == ModalRoute) {
+                EnterTransition.None
+            } else {
+                slideInHorizontally(motion) { fullWidth -> -fullWidth / 5 }
+            }
+        },
         popExitTransition = { slideOutHorizontally(motion) { fullWidth -> fullWidth } },
     ) {
         composable(
@@ -74,8 +87,14 @@ fun NavigationHost(navigator: AppNavigator) {
                 },
             ),
             enterTransition = { slideInVertically(modalMotion) { fullHeight -> fullHeight } },
-            exitTransition = { fadeOut(tween(300)) },
-            popEnterTransition = { fadeIn(tween(300)) },
+            exitTransition = {
+                if (targetState.destination.route == ModalRoute) {
+                    ExitTransition.KeepUntilTransitionsFinished
+                } else {
+                    fadeOut(tween(300))
+                }
+            },
+            popEnterTransition = { EnterTransition.None },
             popExitTransition = { slideOutVertically(modalMotion) { fullHeight -> fullHeight } },
         ) { entry ->
             CompositionLocalProvider(LocalModalPresentation provides true) {
@@ -116,9 +135,7 @@ private fun ScreenDestination(
         .url(url)
         .routeParameters(parameters)
         .title(name)
-        .let { base ->
-        preloaded?.let(base::preloaded) ?: base
-    }
+        .let { base -> preloaded?.let(base::preloaded) ?: base }
     if (isRoot && preloaded == null) {
         builder.startup(onBack)
     } else {

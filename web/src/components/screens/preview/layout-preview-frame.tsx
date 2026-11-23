@@ -20,8 +20,8 @@ type LayoutPreviewFrameProps = PreviewRenderProps & {
 }
 
 const trackClass: Record<PreviewLayout, string> = {
-  vertical: 'w-full flex-col',
-  horizontal: 'w-fit max-w-full flex-row',
+  vertical: 'w-full min-w-0 flex-col',
+  horizontal: 'w-full min-w-0 flex-row',
   layer: 'grid w-full grid-cols-1',
   'vertical-scroll': 'w-full flex-col',
   'horizontal-scroll': 'w-max flex-row flex-nowrap',
@@ -66,7 +66,7 @@ function LayoutPreviewFrame({
     <div
       className={cn(
         'pointer-events-none bg-transparent',
-        layout === 'horizontal' ? 'flex w-fit max-w-full' : 'flex w-full min-w-0 flex-col',
+        layout === 'horizontal' ? 'flex w-full min-w-0' : 'flex w-full min-w-0 flex-col',
       )}
       style={frameHeight(catalog, scrolling, definition.size.height)}
       data-layout={layout}
@@ -74,8 +74,8 @@ function LayoutPreviewFrame({
       <div
         className={cn(
           'min-h-0',
-          layout === 'vertical-scroll' && 'scn-hide-scrollbar w-full flex-1 overflow-y-auto',
-          layout === 'horizontal-scroll' && 'scn-hide-scrollbar w-full flex-1 overflow-x-auto',
+          layout === 'vertical-scroll' && 'scn-hide-scrollbar pointer-events-auto w-full flex-1 overflow-y-auto',
+          layout === 'horizontal-scroll' && 'scn-hide-scrollbar pointer-events-auto w-full flex-1 overflow-x-auto',
           layered && 'w-full',
         )}
       >
@@ -92,9 +92,9 @@ function LayoutPreviewFrame({
               {layout === 'vertical' || layout === 'vertical-scroll' ? (
                 <div
                   className={
-                    widthMode(node.componentId, node.props) === 'hug'
-                      ? 'w-fit max-w-full'
-                      : 'w-full min-w-0'
+                    node.componentId === 'text' || widthMode(node.componentId, node.props) !== 'hug'
+                      ? 'w-full min-w-0'
+                      : 'w-fit max-w-full min-w-0'
                   }
                 >
                   {renderNode?.(node, sizing)}
@@ -127,7 +127,11 @@ function childFrameClass(layout: PreviewLayout, alignment: string, node: Preview
     const hug = widthMode(node.componentId, node.props) === 'hug'
     return cn('col-start-1 row-start-1 max-w-full', hug ? 'w-fit' : 'w-full', layerPlace(alignment))
   }
-  if (layout === 'horizontal' || layout === 'horizontal-scroll') return 'w-fit shrink-0'
+  if (layout === 'horizontal-scroll') return 'w-fit shrink-0'
+  if (layout === 'horizontal') {
+    const flexible = node.componentId === 'text' || widthMode(node.componentId, node.props) !== 'hug'
+    return flexible ? 'min-w-0 flex-1' : 'w-fit max-w-full shrink-0'
+  }
   return cn('flex w-full min-w-0', lineJustify(alignment))
 }
 

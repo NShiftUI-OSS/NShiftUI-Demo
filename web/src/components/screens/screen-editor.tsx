@@ -277,9 +277,9 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
               : 'Screen editor'
           }
           actions={
-            <div className="flex items-center gap-3 text-xs">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-xs">
               {versions.length > 0 && viewedVersion ? (
-                <label className="flex items-center gap-2">
+                <label className="flex min-w-0 max-w-full items-center gap-2">
                   <span className="text-muted-foreground">Versão</span>
                   <Select value={viewedVersion} onValueChange={showVersion}>
                     <SelectTrigger aria-label="Versão da tela" className="w-40" size="sm">
@@ -296,7 +296,6 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                 </label>
               ) : null}
               {visibleScreen?.isRoot ? <Badge variant="outline">Root</Badge> : null}
-              <span aria-hidden className="bg-border h-6 w-px" />
               <BottomSheetSelect
                 sheets={sheets}
                 value={selectedSheet?.id ?? 'none'}
@@ -307,7 +306,6 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                 value={selectedToast?.id ?? 'none'}
                 onChange={setSelectedToastId}
               />
-              <span aria-hidden className="bg-border h-6 w-px" />
               <ContainerSelect
                 value={rootKind}
                 disabled={frozen || !rootKind}
@@ -331,10 +329,8 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                 <GitBranchIcon />
                 Árvore
               </Button>
-              <span aria-hidden className="bg-border h-6 w-px" />
               <ScnPresetSelect label="Tema" />
-              <span aria-hidden className="bg-border h-6 w-px" />
-              <label className="flex items-center gap-2">
+              <label className="flex min-w-0 max-w-full items-center gap-2">
                 <span className="text-muted-foreground">Editor</span>
                 <Switch
                   aria-label="Mostrar editor Rainbow"
@@ -342,7 +338,6 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
                   onCheckedChange={setEditorOpen}
                 />
               </label>
-              <span aria-hidden className="bg-border h-6 w-px" />
               <Button
                 disabled={publishing || (!frozen && (!unpublished || hasMergeMarkers(rainbowSource)))}
                 size="sm"
@@ -380,15 +375,19 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
           </div>
         ) : null}
 
+        {flowFocus ? null : <PreviewFidelityNotice />}
+
         <div
           ref={editorRowRef}
           data-editor-row
           data-split={panesEven ? 'even' : 'fixed'}
-          className="relative flex min-h-0 min-w-0 flex-1"
+          className={`relative flex min-w-0 flex-1 ${
+            flowFocus ? 'min-h-0' : 'min-h-[calc(var(--preview-phone-height)+2rem)]'
+          }`}
           style={
             {
               '--phone-reserve':
-                'calc(min(78svh, 760px, 100svh - 9rem) * 433 / 882 + 10.5rem)',
+                'calc(var(--preview-phone-height) * 433 / 882 + 10.5rem)',
             } as CSSProperties
           }
         >
@@ -398,10 +397,10 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
               panesEven
                 ? flowFocus
                   ? 'flex w-1/2 min-w-0 shrink-0 grow-0 basis-1/2 items-stretch overflow-hidden p-4'
-                  : 'flex w-1/2 min-w-0 shrink-0 grow-0 basis-1/2 items-center justify-center overflow-hidden p-6 sm:p-10'
+                  : 'flex w-1/2 min-w-0 shrink-0 grow-0 basis-1/2 items-center justify-center overflow-hidden px-6 py-4 sm:px-10'
                 : flowFocus
                   ? 'flex w-0 min-w-0 grow items-stretch overflow-hidden p-4'
-                  : 'flex w-0 min-w-(--phone-reserve) grow items-center justify-center overflow-hidden p-6 sm:p-10'
+                  : 'flex w-0 min-w-(--phone-reserve) grow items-center justify-center overflow-hidden px-6 py-4 sm:px-10'
             }${frozen ? ' pointer-events-none' : ''}`}
           >
             {flowFocus ? (
@@ -445,7 +444,6 @@ export function ScreenEditor({ screenId }: { screenId: string }) {
               </p>
             )}
           </div>
-          {flowFocus ? null : <PreviewFidelityNotice />}
         </div>
       </section>
       <AlertDialog
@@ -631,11 +629,11 @@ function PhoneWheel({
     if (!viewport) return
 
     function onWheel(event: WheelEvent) {
-      const delta =
-        Math.abs(event.deltaY) >= Math.abs(event.deltaX)
-          ? event.deltaY
-          : event.deltaX
-      if (Math.abs(delta) < 8) return
+      // A gesture inside the phone belongs to the screen or its nested scroll.
+      if (event.target instanceof Element && event.target.closest('[data-device-preview]')) return
+      // Vertical gestures on the stage scroll the editor page.
+      const delta = event.deltaX
+      if (Math.abs(delta) < 8 || Math.abs(event.deltaY) >= Math.abs(delta)) return
       event.preventDefault()
       if (lockRef.current) return
       select(indexRef.current + (delta > 0 ? 1 : -1))
@@ -667,6 +665,7 @@ function PhoneWheel({
               key={device}
               className="absolute inset-0 flex items-center justify-center"
               data-wheel-pose={selected ? 'selected' : 'away'}
+              inert={!selected}
               style={{
                 transform: selected
                   ? 'rotateX(0deg) translateY(0)'
@@ -792,7 +791,7 @@ function DevicePreview({
         }
       >
         <div
-          className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col select-none"
+          className="phone-scroll pointer-events-auto relative flex min-h-0 w-full flex-1 flex-col select-none"
           data-preview-static=""
         >
           {hasMergeMarkers(rainbowSource) ? (
@@ -818,23 +817,25 @@ function DevicePreview({
                   A tela ainda não tem plugins.
                 </div>
               )}
-              {scroll.header.map((node) => (
-                <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
-                  <LayoutNodeView node={node} />
+              <div className="phone-screen-content">
+                {scroll.header.map((node) => (
+                  <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
+                    <LayoutNodeView node={node} />
+                  </div>
+                ))}
+                <div className="pointer-events-none flex w-full min-w-0 shrink-0 flex-col items-center justify-start">
+                  {layoutNodes.map((node) => (
+                    <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
+                      <LayoutNodeView node={node} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-              <div className="pointer-events-none flex min-h-full w-full shrink-0 flex-col items-center justify-start">
-                {layoutNodes.map((node) => (
+                {scroll.footer.map((node) => (
                   <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
                     <LayoutNodeView node={node} />
                   </div>
                 ))}
               </div>
-              {scroll.footer.map((node) => (
-                <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
-                  <LayoutNodeView node={node} />
-                </div>
-              ))}
               {sheet ? <BottomSheetPreview sheet={sheet} /> : null}
             </>
           )}
@@ -935,7 +936,7 @@ function BottomSheetSelect({
   onChange: (id: string | null) => void
 }) {
   return (
-    <label className="flex items-center gap-2">
+    <label className="flex min-w-0 max-w-full items-center gap-2">
       <span className="text-muted-foreground">Sheet</span>
       <Select
         value={value}
@@ -967,7 +968,7 @@ function ContainerSelect({
   onChange: (target: RootContainer) => void
 }) {
   return (
-    <label className="flex items-center gap-2">
+    <label className="flex min-w-0 max-w-full items-center gap-2">
       <span className="text-muted-foreground">Container</span>
       <Select
         value={value ?? undefined}
@@ -1007,7 +1008,7 @@ function WebViewURLField({
     if (next && next !== url) onCommit(next)
   }
   return (
-    <label className="flex items-center gap-2">
+    <label className="flex min-w-0 max-w-full items-center gap-2">
       <span className="text-muted-foreground">URL</span>
       <Input
         aria-label="Endereço da WebView"
@@ -1035,7 +1036,7 @@ function ToastSelect({
   onChange: (id: string | null) => void
 }) {
   return (
-    <label className="flex items-center gap-2">
+    <label className="flex min-w-0 max-w-full items-center gap-2">
       <span className="text-muted-foreground">Toast</span>
       <Select
         value={value}

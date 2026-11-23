@@ -1,5 +1,7 @@
 package com.nshiftui.poc.sdui.plugandplay
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -12,8 +14,6 @@ import com.nshiftui.NShiftPluginModel
 import com.nshiftui.NShiftEngineTree
 import com.nshiftui.NShiftView
 import com.nshiftui.makeNShiftEngine
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nshiftui.NShiftConfig
 import com.nshiftui.poc.domain.protocols.FetchScreenUseCaseProtocol
 import com.nshiftui.poc.screens.ErrorScreen
@@ -90,7 +90,7 @@ class Screen private constructor(
 
     @Composable
     fun startup(onBack: (() -> Unit)? = null) {
-        ScreenStartup(this, onBack)
+        ResolvedScreen(this, onBack, showLaunchScreen = true)
     }
 
     private fun copy(
@@ -105,40 +105,42 @@ class Screen private constructor(
 private fun ResolvedScreen(
     builder: Screen,
     onBack: (() -> Unit)?,
+    showLaunchScreen: Boolean = false,
 ) {
-    val retained = viewModel<RetainedScreenState>(key = "nshift-screen:${builder.requestedURL}")
+    val retained = viewModel<RetainedScreenState>(key = "nshift-screen:${builder.requestedURL}") {
+        RetainedScreenState(builder.phase)
+    }
     var attempt by remember(builder.requestedURL) { mutableIntStateOf(0) }
-    var phase by remember(builder.requestedURL) { mutableStateOf(retained.phase ?: builder.phase) }
     var retrying by remember(builder.requestedURL) { mutableStateOf(false) }
     val refresh = remember(builder.requestedURL) { ScreenRefreshObserver() }
     LaunchedEffect(builder.requestedURL, attempt) {
-        if (phase !is Screen.Phase.Pending) return@LaunchedEffect
+        if (retained.phase !is Screen.Phase.Pending) return@LaunchedEffect
         if (attempt > 0) {
             delay(RETRY_DELAY_MILLIS)
-            phase = builder.load().phase
+            retained.phase = builder.load().phase
             retrying = false
             return@LaunchedEffect
         }
         val started = System.nanoTime()
         val loaded = builder.load()
         holdFetchPresentation(started)
-        phase = loaded.phase
+        retained.phase = loaded.phase
     }
     LaunchedEffect(refresh) {
         refresh.events.collect {
             val loaded = builder.load()
             if (loaded.isLoaded) {
-                phase = loaded.phase
+                retained.phase = loaded.phase
             }
             refresh.finish()
         }
     }
-    when (val current = phase) {
-        Screen.Phase.Pending -> LoadingScreen(onBack)
+    when (val current = retained.phase) {
+        Screen.Phase.Pending -> if (showLaunchScreen) NShiftLaunchScreen() else LoadingScreen(onBack)
         Screen.Phase.Failed -> ErrorScreen(builder.screenTitle, onBack) {
             if (retrying) return@ErrorScreen
             retrying = true
-            phase = Screen.Phase.Pending
+            retained.phase = Screen.Phase.Pending
             attempt += 1
         }
         is Screen.Phase.Loaded -> CompositionLocalProvider(
@@ -146,14 +148,13 @@ private fun ResolvedScreen(
             LocalScreenRefresh provides refresh,
             LocalScreenRouteParameters provides builder.routeParameters,
         ) {
-            retained.phase = current
             NShiftView(retained.engine(current.model))
         }
     }
 }
 
-internal class RetainedScreenState : ViewModel() {
-    var phase: Screen.Phase? = null
+private class RetainedScreenState(initialPhase: Screen.Phase) : ViewModel() {
+    var phase by mutableStateOf(initialPhase)
     private var model: NShiftPluginModel? = null
     private var engine: NShiftEngineTree? = null
 
@@ -164,53 +165,6 @@ internal class RetainedScreenState : ViewModel() {
             this.model = model
             engine = it
         }
-    }
-}
-
-@Composable
-private fun ScreenStartup(
-    builder: Screen,
-    onBack: (() -> Unit)?,
-) {
-    var attempt by remember(builder.requestedURL) { mutableIntStateOf(0) }
-    var loadedBuilder by remember(builder.requestedURL) {
-        mutableStateOf<Screen?>(null)
-    }
-    var failed by remember(builder.requestedURL) { mutableStateOf(false) }
-    var retrying by remember(builder.requestedURL) { mutableStateOf(false) }
-
-    LaunchedEffect(builder.requestedURL, attempt) {
-        failed = false
-        if (attempt > 0) {
-            delay(RETRY_DELAY_MILLIS)
-            val loaded = builder.load()
-            if (loaded.isLoaded) {
-                loadedBuilder = loaded
-            } else {
-                failed = true
-            }
-            retrying = false
-            return@LaunchedEffect
-        }
-        val started = System.nanoTime()
-        val loaded = builder.load()
-        holdFetchPresentation(started)
-        if (loaded.isLoaded) {
-            loadedBuilder = loaded
-        } else {
-            failed = true
-        }
-    }
-
-    when {
-        loadedBuilder != null -> loadedBuilder!!.resolve(onBack)
-        failed -> ErrorScreen(builder.screenTitle, onBack) {
-            if (retrying) return@ErrorScreen
-            retrying = true
-            failed = false
-            attempt += 1
-        }
-        else -> NShiftLaunchScreen()
     }
 }
 

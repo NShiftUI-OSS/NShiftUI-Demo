@@ -106,7 +106,7 @@ function RainbowPreviewBody({
       floatingButton={floatingButton ? <PreviewNode node={floatingButton} /> : null}
       interactive={false}
     >
-      <div className="phone-scroll pointer-events-none relative flex min-h-0 w-full flex-1 flex-col">
+      <div className="phone-scroll pointer-events-auto relative flex min-h-0 w-full flex-1 flex-col">
         {webView ? (
           <WebViewPage url={webView.url} interactive={false} />
         ) : invalid ? (
@@ -119,7 +119,7 @@ function RainbowPreviewBody({
           scroll.footer.length === 0 ? (
           <PreviewMessage>Tela vazia</PreviewMessage>
         ) : (
-          <div className="flex min-h-full w-full shrink-0 flex-col items-center justify-start gap-3 px-4 pt-4 pb-4">
+          <div className="phone-screen-content">
             {scroll?.header.map((node) => (
               <div key={node.id} className={rootItemClass(node.componentId, node.props)}>
                 <PreviewNode node={node} />

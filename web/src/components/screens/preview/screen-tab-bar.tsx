@@ -53,7 +53,10 @@ function GlassTab({ tab, selected }: { tab: ScreenLayoutNode; selected: boolean 
 function AndroidBar({ tabs }: { tabs: ScreenLayoutNode[] }) {
   if (tabs.length === 0) return null
   return (
-    <div className="bg-background flex h-14 items-stretch border-t">
+    <div
+      data-android-tab-bar=""
+      className="flex h-14 items-stretch border-t border-[var(--scn-border)] bg-[var(--scn-background)]"
+    >
       {tabs.map((tab, index) => {
         const title = text(tab, 'title') || 'Aba'
         const icon = text(tab, 'icon')
@@ -64,7 +67,14 @@ function AndroidBar({ tabs }: { tabs: ScreenLayoutNode[] }) {
             className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5"
             style={{ color: active ? 'var(--scn-primary)' : 'var(--scn-muted-foreground)' }}
           >
-            {icon ? <ScnIconMark name={icon} size={18} /> : null}
+            {icon ? (
+              <span
+                className="flex h-6 w-10 items-center justify-center rounded-full"
+                style={active ? { backgroundColor: 'var(--scn-muted)' } : undefined}
+              >
+                <ScnIconMark name={icon} size={18} />
+              </span>
+            ) : null}
             <span className="max-w-full truncate text-[10px] leading-none">{title}</span>
           </div>
         )

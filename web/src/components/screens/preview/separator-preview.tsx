@@ -3,7 +3,7 @@ import { MinusIcon } from 'lucide-react'
 
 import { PreviewFrame } from '@/components/screens/preview/preview-frame'
 import type { PreviewModule, PreviewRenderProps } from '@/components/screens/preview/types'
-import { ScnSeparator, ScnText } from '@/scn/widgets'
+import { ScnSeparator } from '@/scn/widgets'
 
 const definition = {
   id: 'separator',
@@ -16,14 +16,7 @@ const definition = {
 export function SeparatorPreview(props: PreviewRenderProps) {
   return (
     <PreviewFrame definition={definition} {...props}>
-      <div style={{ display: 'grid', gap: 12, width: '100%' }}>
-        <ScnSeparator />
-        <span className="scn-row">
-          <ScnText>A</ScnText>
-          <ScnSeparator axis="vertical" />
-          <ScnText>B</ScnText>
-        </span>
-      </div>
+      <ScnSeparator />
     </PreviewFrame>
   )
 }

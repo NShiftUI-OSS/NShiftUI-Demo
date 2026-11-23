@@ -58,11 +58,7 @@ struct SCNButton: View {
     }
 
     private var horizontalPadding: CGFloat {
-        if isIcon { return theme.spacing.s0 }
-        switch size {
-        case .xs: return theme.spacing.s2
-        default: return theme.spacing.s2_5
-        }
+        isIcon ? theme.spacing.s0 : theme.spacing.s3
     }
 
     private var textColor: SCNText.Color {

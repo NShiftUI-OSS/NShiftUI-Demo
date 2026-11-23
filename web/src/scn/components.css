@@ -5,12 +5,14 @@
 }
 
 .scn-text {
-  width: fit-content;
+  width: auto;
   max-width: 100%;
+  min-width: 0;
   margin: 0;
   color: var(--scn-foreground);
   font-family: inherit;
   line-height: 1.35;
+  overflow-wrap: break-word;
   text-align: start;
 }
 
@@ -35,7 +37,7 @@
   justify-content: center;
   box-sizing: border-box;
   min-height: 36px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 0;
   border-radius: var(--scn-radius-md);
   background: var(--scn-primary);
@@ -46,7 +48,7 @@
   line-height: 1;
 }
 
-.scn-button[data-size='xs'] { min-height: 24px; padding: 0 8px; font-size: 12px; }
+.scn-button[data-size='xs'] { min-height: 24px; padding: 0 12px; font-size: 12px; }
 .scn-button[data-size='sm'] { min-height: 32px; }
 .scn-button[data-size='lg'] { min-height: 40px; }
 .scn-button[data-size='icon'] { width: 36px; min-height: 36px; padding: 0; }
@@ -117,9 +119,31 @@
   background: color-mix(in srgb, var(--scn-input) 30%, transparent);
 }
 
-.scn-field[data-placeholder='true'],
-.scn-select {
+.scn-field[data-placeholder='true'] {
   color: var(--scn-muted-foreground);
+}
+
+.scn-select {
+  background: transparent;
+  color: var(--scn-foreground);
+}
+
+.scn[data-scn-appearance='dark'] .scn-select {
+  background: color-mix(in srgb, var(--scn-input) 30%, transparent);
+}
+
+.scn-select > span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+}
+
+.scn-select > svg {
+  flex: none;
+  color: color-mix(in srgb, var(--scn-muted-foreground) 50%, transparent);
 }
 
 .scn-textarea {
@@ -128,10 +152,6 @@
   padding-top: 10px;
 }
 
-.scn-select i {
-  color: color-mix(in srgb, var(--scn-muted-foreground) 50%, transparent);
-  font-style: normal;
-}
 
 .scn-badge {
   display: inline-flex;
@@ -278,7 +298,7 @@
 }
 .scn-avatar[data-size='sm'] { width: 24px; height: 24px; }
 .scn-avatar[data-size='lg'] { width: 40px; height: 40px; font-size: 14px; }
-.scn-avatar[data-size='xl'] { width: 128px; height: 128px; font-size: 20px; }
+.scn-avatar[data-size='xl'] { width: 128px; height: 128px; font-size: 14px; }
 .scn-avatar img {
   width: 100%;
   height: 100%;

@@ -103,7 +103,7 @@ export function ScnSelect({ value }: { value: string }) {
   return (
     <div className="scn-select">
       <span>{value}</span>
-      <i aria-hidden>⌄</i>
+      <ScnIconMark name="chevron-down" size={16} />
     </div>
   )
 }

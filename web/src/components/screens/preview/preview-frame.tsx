@@ -21,7 +21,7 @@ export function PreviewFrame({
   children,
 }: PreviewFrameProps) {
   const canvas = ghost || (sizing === 'intrinsic' && !values)
-  const hug = !canvas && (definition.id === 'text' || widthMode(definition.id, values) === 'hug')
+  const hug = !canvas && definition.id !== 'text' && widthMode(definition.id, values) === 'hug'
   const fixedHeight = !canvas && heightMode(values) === 'fixed'
 
   return (

@@ -1,27 +1,25 @@
 package com.nshiftui.poc.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import com.nshiftui.poc.sdui.plugins.scn.screen.AndroidNavigationBar
+import com.nshiftui.poc.sdui.plugins.scn.screen.LocalScreenBack
+import com.nshiftui.poc.sdui.plugins.scn.screen.ScreenNavigationBarMetadata
 import com.nshiftui.poc.sdui.plugins.scn.tabbar.LocalTabBarHosted
 import com.nshiftui.poc.theme.LocalSCNTheme
 import com.nshiftui.poc.theme.SCNSpace
-import com.nshiftui.poc.ui.SCNIcon
 import com.nshiftui.poc.ui.components.SCNButton
 import com.nshiftui.poc.ui.components.SCNButtonVariant
 import com.nshiftui.poc.ui.components.SCNSpinner
@@ -108,7 +106,6 @@ fun ErrorScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScreenBar(
     title: String?,
@@ -116,54 +113,18 @@ private fun ScreenBar(
     content: @Composable () -> Unit,
 ) {
     val colors = LocalSCNTheme.current.palette
-    // A modal screen closes from the right; it has no back button.
     val modal = LocalModalPresentation.current
     Scaffold(
         containerColor = colors.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    if (!title.isNullOrBlank()) {
-                        SCNText(title, weight = FontWeight.SemiBold)
-                    }
-                },
-                actions = {
-                    if (modal && onBack != null) {
-                        Box(
-                            Modifier
-                                .size(SCNSpace.s11)
-                                .clickable(onClick = onBack),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            SCNIcon(
-                                "x",
-                                size = SCNSpace.s5,
-                                tint = colors.foreground,
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    if (!modal && onBack != null) {
-                        Box(
-                            Modifier
-                                .size(SCNSpace.s11)
-                                .clickable(onClick = onBack),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            SCNIcon(
-                                "arrow-left",
-                                size = SCNSpace.s5,
-                                tint = colors.foreground,
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.background,
-                    titleContentColor = colors.foreground,
-                ),
-            )
+            CompositionLocalProvider(LocalScreenBack provides onBack) {
+                AndroidNavigationBar(
+                    ScreenNavigationBarMetadata(
+                        title = title.orEmpty(),
+                        trailing = if (modal && onBack != null) "close" else "none",
+                    ),
+                )
+            }
         },
     ) { padding ->
         Box(

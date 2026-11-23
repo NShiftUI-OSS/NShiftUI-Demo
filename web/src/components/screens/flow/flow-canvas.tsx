@@ -161,7 +161,9 @@ const FlowView = memo(function FlowView({
   )
 
   return (
-    <div className="event-flow bg-background relative h-full min-h-[70vh] w-full overflow-hidden rounded-xl border">
+    <div className="flex h-full min-h-[70vh] w-full min-w-0 flex-col">
+      <PreviewFidelityNotice />
+      <div className="event-flow bg-background relative min-h-0 w-full flex-1 overflow-hidden rounded-xl border">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -199,8 +201,8 @@ const FlowView = memo(function FlowView({
         <FitFocus focus={focus} hasNodes={nodes.length > 0} />
       </ReactFlow>
       <FlowLegend />
-      <PreviewFidelityNotice />
       {syntaxError ? <SyntaxErrorOverlay /> : null}
+      </div>
     </div>
   )
 })

@@ -387,13 +387,12 @@ struct ScreenPlugin: NShiftPluginContainer {
                     VStack(alignment: .leading, spacing: 0) {
                         scrollPageChildren
                     }
-                    .padding(.top, 16)
-                    .padding(.horizontal, 16)
-                        .frame(
-                            maxWidth: .infinity,
-                            minHeight: geometry.size.height,
-                            alignment: .top
-                        )
+                    .padding(16)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: geometry.size.height,
+                        alignment: .top
+                    )
                 }
                 .modifier(
                     FastRefreshModifier(enabled: fastRefresh) {
