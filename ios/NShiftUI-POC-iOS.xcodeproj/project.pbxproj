@@ -1308,7 +1308,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			packageReferences = (
-				E7A1C0FF11B24D6A9C3E0011 /* XCLocalSwiftPackageReference "NShiftUI-iOS" */,
+				E7A1C0FF11B24D6A9C3E0011 /* XCRemoteSwiftPackageReference "NShiftUI-iOS" */,
 				SW1A0FF11B24D6A9C3E0012 /* XCRemoteSwiftPackageReference "Swinject" */,
 				AF1A0FF11B24D6A9C3E0012 /* XCRemoteSwiftPackageReference "Alamofire" */,
 			);
@@ -1318,14 +1318,15 @@
 		};
 /* End PBXProject section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		E7A1C0FF11B24D6A9C3E0011 /* XCLocalSwiftPackageReference "NShiftUI-iOS" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../NShiftUI-iOS;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCRemoteSwiftPackageReference section */
+		E7A1C0FF11B24D6A9C3E0011 /* XCRemoteSwiftPackageReference "NShiftUI-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/NShiftUI-OSS/NShiftUI-iOS.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.0.0;
+			};
+		};
 		SW1A0FF11B24D6A9C3E0012 /* XCRemoteSwiftPackageReference "Swinject" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Swinject/Swinject.git";
@@ -1347,7 +1348,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		E7A1C0FF11B24D6A9C3E0022 /* NShiftUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E7A1C0FF11B24D6A9C3E0011 /* XCLocalSwiftPackageReference "NShiftUI-iOS" */;
+			package = E7A1C0FF11B24D6A9C3E0011 /* XCRemoteSwiftPackageReference "NShiftUI-iOS" */;
 			productName = NShiftUI;
 		};
 		SW1A0FF11B24D6A9C3E0023 /* Swinject */ = {

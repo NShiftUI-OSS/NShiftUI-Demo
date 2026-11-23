@@ -42,12 +42,12 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.navigation:navigation-compose:2.9.3")
-    implementation(files("${rootDir}/../../NShiftUI-Android/nshiftui/build/outputs/aar/nshiftui-release.aar"))
-    implementation("com.nshiftui.rainbowparser:rainbowparser:0.1.0-beta.1:release@aar")
+    implementation("com.nshiftui:nshiftui:1.0.0:release@aar")
+    implementation("com.nshiftui.rainbowparser:rainbowparser:1.0.0:release@aar")
     implementation("io.insert-koin:koin-android:4.1.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-    ksp("com.nshiftui:nshiftui-ksp:0.2.0-beta.1@jar")
+    ksp("com.nshiftui:nshiftui-ksp:1.0.0@jar")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
 

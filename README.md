@@ -9,7 +9,9 @@ Demonstração pública do NShiftUI. O comando `rainbow demo` baixa a tag `0.1.0
 | `ios` | App de iOS |
 | `android` | App de Android |
 
-As bibliotecas nativas não estão aqui. O app de iOS depende da tag publicada de `NShiftUI-iOS`. O app de Android baixa o AAR publicado de `NShiftUI-Android`. O catálogo começa vazio: as telas são criadas no editor e publicadas na API.
+Os apps usam as releases `1.0.0` do NShiftUI e dos parsers nativos. O iOS resolve os pacotes pelo Swift Package Manager. O Android baixa os AARs e o JAR do KSP pelo Gradle. O editor e a API usam os pacotes WASM do RainbowParser Rust `1.0.0`.
+
+No primeiro startup com um banco vazio, a API carrega as oito telas da demonstração e a revisão publicada de cada uma. Um banco com telas mantém o próprio conteúdo. As alterações e exclusões feitas no CMS persistem nas próximas inicializações.
 
 ## Requisitos
 
