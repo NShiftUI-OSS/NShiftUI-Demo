@@ -65,3 +65,22 @@ struct ClearListEvent: NShiftEvent {
         await dispatch(.onComplete, events: nested, handler: handler, viewModel: viewModel)
     }
 }
+
+@NShiftMetadata
+struct RemoveListItemEventMetadata: NShiftMetadata, Decodable {
+    let listID: String
+    let entryID: String
+}
+
+@NShiftEvent(name: "RemoveListItemEvent", version: "1.0.0", metadata: RemoveListItemEventMetadata.self)
+struct RemoveListItemEvent: NShiftEvent {
+    func execute() async throws {
+        let listID = metadata.listID
+        let entryID = metadata.entryID
+        guard !listID.isEmpty, !entryID.isEmpty else { return }
+        let removed = await MainActor.run { AppLists.shared.remove(entryID: entryID, from: listID) }
+        if removed {
+            await dispatch(.onComplete, events: events, handler: eventHandler, viewModel: viewModel)
+        }
+    }
+}

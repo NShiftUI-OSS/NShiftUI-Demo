@@ -34,7 +34,7 @@ O metadata no CMS ainda é `{}`. No iOS, `TextMetadata` já carrega `text`, `sty
 
 ## Catálogo registrado no app
 
-Fonte: `NShiftUI-iOS-POC/NShiftUI/DI/CatalogAssembly.swift`. O Android instala o catálogo gerado em `CatalogAssembly.assemblePlugins`. O preview desses nomes já está na sidebar, menos `Sheet` e `Screen`:
+Fonte: `ios/NShiftUI/DI/CatalogAssembly.swift`. O Android instala o catálogo gerado em `CatalogAssembly.assemblePlugins`. O preview desses nomes já está na sidebar, menos `Sheet` e `Screen`:
 
 Alert, Attachment, Avatar, Badge, ButtonGroup, Calendar, Card, Checkbox, Field, HorizontalList, HorizontalScroll, HorizontalStack, Input, InputOTP, Item, LayerStack, Progress, Radio, Select, Separator, Skeleton, Slider, Spinner, Switch, Tabs, Textarea, ToggleGroup, VerticalList, VerticalScroll, VerticalStack.
 
@@ -53,3 +53,30 @@ Triggers já usados pelo app: `onTap`, `onChange`, `onSelect`, `onDismiss`, `onC
 5. Mapear o nome Rainbow para o `previewId` em `previewIds` (`rainbow-source.ts`).
 
 Cadastrar o plugin na tela de Plugins grava uma linha no Postgres. Isso não cria o preview nem escreve um nó Rainbow. Soltar o bloco no telefone escreve o nó no texto.
+
+## SwipeActions nas listas
+
+Use `SwipeActions` como wrapper da linha de uma `Screen` com `scroll.isLazy: true`, inclusive no template de um `ForEach`. Os slots opcionais `Leading` e `Trailing` recebem um ou mais `SwipeAction(title:, icon:, variant:)`. O gesto só revela os botões. O toque em um botão no app dispara o seu `OnTap`. No preview, arraste a linha para mostrar a borda configurada. As setas também revelam as bordas e Escape fecha a prévia.
+
+```rainbow
+use SwipeActions@1.0.0
+use SwipeAction@1.0.0
+use Text@1.0.0
+use RemoveListItemEvent@1.0.0
+
+SwipeActions {
+  Text(text: "{{title}}")
+}
+.slots {
+  Trailing {
+    SwipeAction(title: "Remover", icon: "trash-2", variant: "destructive")
+    .events {
+      OnTap {
+        RemoveListItemEvent(listID: "minha-lista", entryID: "{{listEntryID}}")
+      }
+    }
+  }
+}
+```
+
+Cada entrada criada por `AddListItemEvent` recebe um `listEntryID` próprio. O template do `ForEach` pode usar esse identificador para remover uma única entrada, inclusive se a lista contiver objetos iguais.

@@ -9,7 +9,7 @@ A stack está instalada e ligada no app. A organização de pastas está em [02-
 - Painel administrativo em **TypeScript**, SPA com **Vite**.
 - POC para banca: fluxo funcional e arquitetura explicável, não produto em produção.
 - Idioma da interface: **somente português**. Sem biblioteca de i18n.
-- Repositório alvo: **CMS-WEB**. O parser (`RainbowParser-Rust`) não entra nesta fase.
+- Implementação atual: editor em `NShiftUI-Demo/web` com RainbowParser WASM `1.0.0`. Os itens de escopo abaixo registram o planejamento inicial.
 - **CMS-BACK** (autenticação, contrato de API e dados reais) vem depois de o front estar montado.
 
 ## O que já está no app

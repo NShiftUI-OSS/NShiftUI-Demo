@@ -6,15 +6,15 @@ os dois POCs usem HTTPS desde o primeiro build.
 Depois de clonar os projetos, execute uma vez em qualquer sistema operacional:
 
 ```bash
-cd CMS-BACK
+cd back
+npm ci
 npm run setup:local-https
 ```
 
 O comando:
 
 - gera os certificados em uma pasta de dados do usuário;
-- grava `NSHIFTUI_LOCAL_CERT_DIR` no `.env` do CMS-BACK;
-- não depende de os repositórios estarem lado a lado;
+- grava `NSHIFTUI_LOCAL_CERT_DIR` no `.env` de `back/`;
 - não versiona a chave privada.
 - tenta registrar a CA no trust store do usuário para o Chrome confiar no HTTPS.
 
@@ -41,14 +41,15 @@ Em seguida, suba os serviços:
 
 ```bash
 docker compose up -d --build
-cd ../CMS-WEB
-npm run dev -- --host 127.0.0.1 --port 5174
+cd ../web
+npm ci
+npm run dev
 ```
 
 URLs locais:
 
 - backend: `https://127.0.0.1:3000`;
-- CMS-WEB: `https://127.0.0.1:5174`;
+- CMS-WEB: `https://localhost:5173`;
 - Android Emulator: `https://10.0.2.2:3000`.
 
 O iOS copia a CA pública durante o build pelo build phase do Xcode quando o

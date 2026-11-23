@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8D44BB1759CF04575D10D3A1 /* SwipeActionsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D44BB1759CF04575D10D3A2 /* SwipeActionsPlugin.swift */; };
 		C1D2E3F40516273849A5B6C7 /* View+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E2F30415263748596A7B8C9 /* View+Extensions.swift */; };
 		08C1934332A29BC93DF18F8D /* SCNComponentPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD382294734470FFEDD5CA9 /* SCNComponentPreview.swift */; };
 		147C451A10288895D9F6035E /* SCNThemeID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65627C32EC81ECE78A00AA90 /* SCNThemeID.swift */; };
@@ -177,6 +178,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		8D44BB1759CF04575D10D3A2 /* SwipeActionsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NShiftUI/SDUI/Plugins/SCN/SwipeActions/SwipeActionsPlugin.swift; sourceTree = SOURCE_ROOT; };
 		D1E2F30415263748596A7B8C9 /* View+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Extensions.swift"; sourceTree = "<group>"; };
 		043F1605BAB86C9B16177801 /* SCNField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SCNField.swift; sourceTree = "<group>"; };
 		0591E72A614E84DC7948FBE9 /* SCNBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SCNBadge.swift; sourceTree = "<group>"; };
@@ -1095,6 +1097,7 @@
 		E7F3000000000000000000S1 /* SCN */ = {
 			isa = PBXGroup;
 			children = (
+				8D44BB1759CF04575D10D3A2 /* SwipeActionsPlugin.swift */,
 				194DBCB18A81FB41C47D656D /* WebView */,
 				656DF8BA412E35FBE5AE4F6C /* FloatingButton */,
 				CD4AEB1EB5CA9DC61B08C51D /* SearchBar */,
@@ -1399,6 +1402,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8D44BB1759CF04575D10D3A1 /* SwipeActionsPlugin.swift in Sources */,
 				DE299C60BF098C0838FD0EC8 /* WebViewPlugin.swift in Sources */,
 				12BA5107E8187A4499F9EA60 /* ShowToastEvent.swift in Sources */,
 				4C6A27A92B94DB14CA21F40D /* FloatingButtonPlugin.swift in Sources */,
@@ -1622,7 +1626,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LM_FILTER_WARNINGS = YES;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1689,7 +1693,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LM_FILTER_WARNINGS = YES;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -13,7 +13,7 @@ Este repositório não desenha plugin e não guarda catálogo. Plugin, evento e 
 
 O Rainbow da tela é livre. `use Text@1.0.0` é gravado no texto da screen. Não existe linha de plugin no banco.
 
-A lista de plugins e eventos que o app registra está no harness do CMS-WEB (`docs/Harness/Plugins.md`), copiada de `NShiftUI-iOS-POC/NShiftUI/DI/CatalogAssembly.swift`. O editor já desenha esses plugins, menos `Sheet` e `Screen`. Aqui a lista continua só como direção de nome:
+A lista de plugins e eventos que o app registra está no [harness do CMS web](../../../web/docs/Harness/Plugins.md), com base em `ios/NShiftUI/DI/CatalogAssembly.swift`. O editor já desenha esses plugins, menos `Sheet` e `Screen`. Aqui a lista continua só como direção de nome:
 
 Accordion, Alert, Attachment, Avatar, Badge, Bubble, Button, ButtonGroup, Calendar, Card, Carousel, Checkbox, Empty, Field, Form, Input, InputGroup, InputOTP, Item, Marker, Screen, Progress, Questionnaire, RadioGroup, Select, Separator, Sheet, Skeleton, Slider, Sonner, Spinner, Switch, Tabs, Text, Textarea, Toast, Toggle, ToggleGroup, WheelSelect.
 

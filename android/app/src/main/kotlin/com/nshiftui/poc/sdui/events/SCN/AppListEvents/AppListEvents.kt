@@ -56,3 +56,25 @@ class ClearListEvent : NShiftEventWithMetadata<ClearListEventMetadata>(
         dispatch(this, NShiftTrigger.onComplete)
     }
 }
+
+@kotlinx.serialization.Serializable
+data class RemoveListItemEventMetadata(
+    val listID: String,
+    val entryID: String,
+) : NShiftMetadata
+
+@NShiftEvent(
+    name = "RemoveListItemEvent",
+    version = "1.0.0",
+    metadata = RemoveListItemEventMetadata::class,
+)
+class RemoveListItemEvent : NShiftEventWithMetadata<RemoveListItemEventMetadata>(
+    "RemoveListItemEvent", "1.0.0", RemoveListItemEventMetadata::class,
+) {
+    override suspend fun execute() {
+        if (metadata.listID.isBlank() || metadata.entryID.isBlank()) return
+        if (AppLists.remove(metadata.listID, metadata.entryID)) {
+            dispatch(this, NShiftTrigger.onComplete)
+        }
+    }
+}

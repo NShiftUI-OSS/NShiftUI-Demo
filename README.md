@@ -1,6 +1,6 @@
 # NShiftUI-Demo
 
-Demonstração pública do NShiftUI. O comando `rainbow demo` baixa a tag `0.1.0` deste repositório.
+Demonstração pública do NShiftUI. A tag `v1.0.0` pode ser baixada pelo comando `rainbow demo` da fórmula Homebrew atual ou como [arquivo do GitHub](https://github.com/NShiftUI-OSS/NShiftUI-Demo/archive/refs/tags/v1.0.0.tar.gz).
 
 | Pasta | Conteúdo |
 | --- | --- |
@@ -12,6 +12,8 @@ Demonstração pública do NShiftUI. O comando `rainbow demo` baixa a tag `0.1.0
 Os apps usam as releases `1.0.0` do NShiftUI e dos parsers nativos. O iOS resolve os pacotes pelo Swift Package Manager. O Android baixa os AARs e o JAR do KSP pelo Gradle. O editor e a API usam os pacotes WASM do RainbowParser Rust `1.0.0`.
 
 No primeiro startup com um banco vazio, a API carrega as oito telas da demonstração e a revisão publicada de cada uma. Um banco com telas mantém o próprio conteúdo. As alterações e exclusões feitas no CMS persistem nas próximas inicializações.
+
+Para atualizar o seed depois de publicar alterações no CMS, rode `npm --prefix back run seed:refresh` com o Postgres do Demo ativo e versione `back/sql/005_demo_screens.sql`.
 
 ## Requisitos
 

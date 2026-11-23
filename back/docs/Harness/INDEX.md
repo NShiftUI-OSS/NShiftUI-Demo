@@ -13,4 +13,4 @@ Leia só o necessário.
 ## Atalhos
 
 - Contrato de resposta, rotas e Rainbow: `docs/response.md`, `docs/resources.md`, `docs/rainbow.md`, `docs/runtime.md`.
-- Espelho visual dos plugins: repositório CMS-WEB, `docs/Harness/Plugins.md`.
+- Espelho visual dos plugins: [harness de plugins do CMS web](../../../web/docs/Harness/Plugins.md).

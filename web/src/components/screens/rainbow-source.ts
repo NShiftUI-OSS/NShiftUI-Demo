@@ -64,6 +64,8 @@ const previewIds: Record<string, string> = {
   VerticalStack: 'vertical-stack',
   ForEach: 'for-each',
   SearchBar: 'search-bar',
+  SwipeActions: 'swipe-actions',
+  SwipeAction: 'swipe-action',
   FloatingButton: 'floating-button',
   HorizontalStack: 'horizontal-stack',
   LayerStack: 'layer-stack',
@@ -246,6 +248,19 @@ function toLayoutNode(
     for (const [index, plugin] of (slot?.plugins ?? []).entries()) {
       const mapped = toLayoutNode(plugin, `${path}/badges/${index}`)
       if (mapped) children.push(mapped)
+    }
+  }
+
+  if (componentId === 'swipe-actions') {
+    for (const slot of node.slots ?? []) {
+      const side = slot.name.value.toLowerCase()
+      if (side !== 'leading' && side !== 'trailing') continue
+      for (const [index, plugin] of slot.plugins.entries()) {
+        const action = toLayoutNode(plugin, `${path}/${side}/${index}`)
+        if (action?.componentId === 'swipe-action') {
+          children.push({ ...action, props: { ...action.props, swipeSide: side } })
+        }
+      }
     }
   }
 

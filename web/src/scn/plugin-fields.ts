@@ -182,6 +182,11 @@ export const pluginFields: Partial<Record<PreviewPluginId, PluginField[]>> = {
     text('searchInput', 'Input da busca', ''),
     text('searchPath', 'Campo buscado', ''),
   ],
+  'swipe-action': [
+    text('title', 'Título', 'Ação', true),
+    text('icon', 'Ícone', ''),
+    select('variant', 'Variante', ['default', 'destructive']),
+  ],
   'floating-button': [
     { name: 'icon', label: 'Ícone', kind: 'icon', defaultValue: 'plus' },
     text('badge', 'Badge fixo', ''),

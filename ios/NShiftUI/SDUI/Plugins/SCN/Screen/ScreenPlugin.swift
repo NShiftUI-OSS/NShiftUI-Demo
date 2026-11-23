@@ -429,29 +429,33 @@ struct ScreenPlugin: NShiftPluginContainer {
 
     @ViewBuilder
     private var scrollRows: some View {
-        slots(.scrollHeader) { _, view in
-            listRow(view, edge: .bottom)
-        }
         if let tree = engine as? any NShiftEngineTree,
-           let stack = lazyRootStack(in: tree) {
-            LazyStackRows(node: stack, screen: viewModel, engine: tree, viewModel: viewModel) { view, spacing, alignment in
-                view
-                    .frame(maxWidth: .infinity, alignment: alignment)
-                    .padding(.top, spacing)
-                    .padding(.horizontal, 16)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
+           let node = tree.node(withRenderID: renderID) {
+            ObservedScreenListRows(node: node, slot: ScreenSlot.scrollHeader.slotName) { child in
+                listRow(NShiftNodeView(node: child, engine: tree, viewModel: viewModel), edge: .bottom)
+                    .modifier(SwipeActionsRow(node: child, engine: tree))
             }
-        } else {
-            children { model, view in
-                if model.name.rawValue != "TabBar" {
-                    listRow(view)
+            if let stack = lazyRootStack(in: tree) {
+                LazyStackRows(node: stack, screen: viewModel) { item, spacing, alignment in
+                    NShiftNodeView(node: item, engine: tree, viewModel: viewModel)
+                        .frame(maxWidth: .infinity, alignment: alignment)
+                        .padding(.top, spacing)
+                        .padding(.horizontal, 16)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .modifier(SwipeActionsRow(node: item, engine: tree))
+                }
+            } else {
+                ObservedScreenListRows(node: node) { child in
+                    listRow(NShiftNodeView(node: child, engine: tree, viewModel: viewModel))
+                        .modifier(SwipeActionsRow(node: child, engine: tree))
                 }
             }
-        }
-        slots(.scrollFooter) { _, view in
-            listRow(view, edge: .top)
+            ObservedScreenListRows(node: node, slot: ScreenSlot.scrollFooter.slotName) { child in
+                listRow(NShiftNodeView(node: child, engine: tree, viewModel: viewModel), edge: .top)
+                    .modifier(SwipeActionsRow(node: child, engine: tree))
+            }
         }
     }
 
@@ -728,12 +732,22 @@ private struct ListContentInsetNormalizer: UIViewRepresentable {
     }
 }
 
+private struct ObservedScreenListRows<Row: View>: View {
+    @ObservedObject var node: NShiftPluginNode
+    var slot: NShiftSlotName? = nil
+    let row: (NShiftPluginNode) -> Row
+
+    var body: some View {
+        let nodes = slot.map { node.slotChildren[$0] ?? [] }
+            ?? node.children.filter { $0.model.name.rawValue != "TabBar" }
+        ForEach(nodes, id: \.renderId, content: row)
+    }
+}
+
 private struct LazyStackRows<Row: View>: View {
     @ObservedObject var node: NShiftPluginNode
     @ObservedObject var screen: ScreenViewModel
-    let engine: any NShiftEngineTree
-    let viewModel: (any NShiftPluginViewModel)?
-    let row: (NShiftNodeView, CGFloat, Alignment) -> Row
+    let row: (NShiftPluginNode, CGFloat, Alignment) -> Row
 
     var body: some View {
         let layout = node.model.metadata?.unwrap(as: StackLayoutMetadata.self)
@@ -751,14 +765,14 @@ private struct LazyStackRows<Row: View>: View {
                 // item becomes its own row.
                 ForEachRows(node: child, screen: screen, metadata: forEach) { item in
                     row(
-                        NShiftNodeView(node: item, engine: engine, viewModel: viewModel),
+                        item,
                         child.renderId == firstID && item.renderId == child.children.first?.renderId ? 0 : spacing,
                         alignment
                     )
                 }
             } else {
                 row(
-                    NShiftNodeView(node: child, engine: engine, viewModel: viewModel),
+                    child,
                     child.renderId == firstID ? 0 : spacing,
                     alignment
                 )

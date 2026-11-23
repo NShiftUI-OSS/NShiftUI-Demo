@@ -26,9 +26,20 @@ final class AppLists: ObservableObject {
         counts[listID] ?? 0
     }
 
-    func add(_ item: Any, to listID: String) {
-        lists[listID, default: []].append(item)
+    func add(_ item: [String: String], to listID: String) {
+        var entry = item
+        entry["listEntryID"] = UUID().uuidString
+        lists[listID, default: []].append(entry)
         publish(listID)
+    }
+
+    func remove(entryID: String, from listID: String) -> Bool {
+        guard let index = lists[listID]?.firstIndex(where: {
+            ($0 as? [String: String])?["listEntryID"] == entryID
+        }) else { return false }
+        lists[listID]?.remove(at: index)
+        publish(listID)
+        return true
     }
 
     func clear(_ listID: String) {

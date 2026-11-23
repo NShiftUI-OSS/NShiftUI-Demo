@@ -1,3 +1,4 @@
+import { removeListItemEventMetadata } from '@/domain/events/previews/remove-list-item-metadata'
 import { asyncNavigateEventMetadata } from '@/domain/events/previews/async-navigate-metadata'
 import { changeDsThemeMetadata } from '@/domain/events/previews/change-ds-theme-metadata'
 import { changeEventEventMetadata } from '@/domain/events/previews/change-event-metadata'
@@ -149,6 +150,14 @@ export const flowEvents: FlowEventDefinition[] = [
     triggers: complete,
     metadata: addListItemEventMetadata,
     fields: [text('listID', 'Lista (id)', 'cart', true)],
+  },
+  {
+    id: 'remove-list-item',
+    name: removeListItemEventMetadata.kind,
+    description: 'Remove uma entrada de uma lista do app pelo identificador da entrada.',
+    triggers: complete,
+    metadata: removeListItemEventMetadata,
+    fields: [text('listID', 'Lista (id)', '', true), text('entryID', 'Identificador da entrada', '{{listEntryID}}', true)],
   },
   {
     id: 'clear-list',

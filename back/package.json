@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
+    "seed:refresh": "node ./scripts/refresh-demo-seed.mjs",
     "setup:local-https": "node ./scripts/setup-local-https.mjs"
   },
   "dependencies": {

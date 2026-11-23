@@ -6,8 +6,8 @@ Node, Postgres e `npm install` acontecem dentro dos containers. Não instale o r
 docker compose up --build
 ```
 
-- `api` publica `http://localhost:3000`. O Swagger fica em `http://localhost:3000/docs`.
-- `db` é Postgres 16, sem porta publicada. O volume `pgdata` guarda as telas.
+- `api` publica `https://127.0.0.1:3000`. O Swagger fica em `https://127.0.0.1:3000/docs`.
+- `db` é Postgres 16, sem porta publicada. O volume `pgdata` guarda as telas. A API semeia um banco vazio uma vez a partir de `sql/005_demo_screens.sql`.
 - `DATABASE_URL` dentro do `api` usa o host `db`.
 
 O CMS web continua no Vite e chama essa porta. O CORS aceita a origem local e os métodos GET, POST, PUT e DELETE.

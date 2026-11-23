@@ -1,3 +1,4 @@
+import { swipeActionPreview, swipeActionsPreview } from '@/components/screens/preview/swipe-actions-preview'
 import { alertPreview } from '@/components/screens/preview/alert-preview'
 import { attachmentPreview } from '@/components/screens/preview/attachment-preview'
 import { avatarPreview } from '@/components/screens/preview/avatar-preview'
@@ -59,6 +60,8 @@ const previewCatalog = [
   inputPreview,
   searchBarPreview,
   floatingButtonPreview,
+  swipeActionsPreview,
+  swipeActionPreview,
   textareaPreview,
   inputOtpPreview,
   fieldPreview,

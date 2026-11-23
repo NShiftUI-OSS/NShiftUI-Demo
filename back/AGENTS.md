@@ -12,7 +12,7 @@ app  →  GET /runtime/screens/:name  →  Rainbow concreto
 ```
 
 - A tela é uma linha. O desenho é `screens.rainbow_source`.
-- O catálogo nasce vazio. Uma linha de plugin não desenha o telefone.
+- O catálogo nasce com oito telas em um banco novo. Após publicar alterações no CMS, execute `npm run seed:refresh` para atualizar o snapshot.
 - O nome nativo é UpperCamelCase. Quem espelha o plugin na UI é o CMS-WEB.
 
 ## Comandos
@@ -21,4 +21,4 @@ app  →  GET /runtime/screens/:name  →  Rainbow concreto
 docker compose up --build
 ```
 
-A API publica `http://localhost:3000`. O Swagger fica em `/docs`. O Postgres não publica porta.
+A API publica `https://127.0.0.1:3000`. O Swagger fica em `/docs`. O Postgres não publica porta.

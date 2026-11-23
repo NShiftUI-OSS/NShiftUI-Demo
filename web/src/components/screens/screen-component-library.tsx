@@ -22,7 +22,7 @@ const libraryGroups = [
   },
   {
     label: 'Ações',
-    ids: ['button', 'floating-button', 'button-group', 'tabs', 'toggle-group'],
+    ids: ['button', 'floating-button', 'button-group', 'tabs', 'toggle-group', 'swipe-actions', 'swipe-action'],
   },
   {
     label: 'Entrada',

@@ -3,6 +3,25 @@ import { previewPluginName } from '@/di/registrations'
 import { fieldsFor, type PluginField } from '@/scn/plugin-fields'
 
 export function pluginRainbowExample(component: ScreenComponentDefinition) {
+  if (component.id === 'swipe-actions') {
+    return `use SwipeActions@1.0.0
+use SwipeAction@1.0.0
+use Text@1.0.0
+
+SwipeActions {
+  Text(text: "Linha da lista")
+}
+.slots {
+  Leading {
+    SwipeAction(title: "Abrir", icon: "eye")
+  }
+
+  Trailing {
+    SwipeAction(title: "Remover", icon: "trash-2", variant: "destructive")
+  }
+}
+`
+  }
   const name = previewPluginName(component.id)
   const params = fieldsFor(component.id).flatMap((field) => {
     const printed = printField(field)

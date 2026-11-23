@@ -1,3 +1,4 @@
+import { swipeActionMetadata, swipeActionsMetadata } from '@/domain/plugins/previews/swipe-actions-metadata'
 import { createEventModel } from '@/domain/events/nshift-event-model'
 import { NShiftEventName } from '@/domain/events/nshift-event-name'
 import { createMetadata, metadataKind } from '@/domain/metadata/nshift-metadata'
@@ -81,6 +82,8 @@ const previewPlugins = [
   { previewId: 'vertical-stack', metadata: verticalStackMetadata },
   { previewId: 'for-each', metadata: forEachMetadata },
   { previewId: 'search-bar', metadata: searchBarMetadata },
+  { previewId: 'swipe-actions', metadata: swipeActionsMetadata },
+  { previewId: 'swipe-action', metadata: swipeActionMetadata },
   { previewId: 'floating-button', metadata: floatingButtonMetadata },
   { previewId: 'horizontal-stack', metadata: horizontalStackMetadata },
   { previewId: 'layer-stack', metadata: layerStackMetadata },

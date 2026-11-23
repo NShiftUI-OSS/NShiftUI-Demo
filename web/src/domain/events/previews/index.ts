@@ -15,3 +15,5 @@ export { addListItemEventMetadata } from '@/domain/events/previews/add-list-item
 export { clearListEventMetadata } from '@/domain/events/previews/clear-list-metadata'
 export { showSuccessEventMetadata } from '@/domain/events/previews/show-success-metadata'
 export { showToastEventMetadata } from '@/domain/events/previews/show-toast-metadata'
+
+export { removeListItemEventMetadata } from '@/domain/events/previews/remove-list-item-metadata'
